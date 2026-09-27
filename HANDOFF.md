@@ -180,12 +180,26 @@ Steps:
   - Details in `docs/PROTOCOL.md`, "Mixer DSP inputs" and "Mixer DSP per-track chain".
 
   **Next:**
-  1. The mix (`P:$294+`, `$9de`): routing, pan law, VOL gain, sends, individual outputs; translate
-     the same way (extend `MixerRef` to run the main loop's mix, compare with md-mm's DSP1 output).
-  2. Wire it together: `HostModel` → `VoiceEngine` (DSP2) → `TrackFx` ×16 → mix, and an end-to-end
-     comparison with md-mm's audio output.
+  1. ~~The mix~~ done; ~~wire it together~~ done (next entry).
+  2. End-to-end comparison with md-mm's audio output (needs the master FX, below).
   3. ROM/RAM machines: sample data from the user's flash (not in the `.syx`).
   4. Port `VoiceEngine` to `libs/dsp56300` (arm32) and measure on the Force.
+
+- **2026-09-27: the mix translated, bit-exact; the engine renders audio.**
+  - `engine/Mixer`: pan law, VOL gain, reverb/delay sends, individual-output routing, from DSP1's
+    mix code (`$294-$341`, `$9de` and the code it generates). 384,000 words identical to the DSP's
+    own code (`mdmixtest`).
+  - `engine/Engine`: HostModel → VoiceEngine → 16 × TrackFx → Mixer; outputs dry main L/R, the two
+    sends, the individual outputs and each track's post-effects signal. `tools/mdrender` renders a
+    demo pattern to a WAV: 8 s in ~1.3 s on x86, nearly all of it the voice DSP emulation.
+
+  **Next:**
+  1. Machinedrum FX: translate the master section (`P:$344-$970`) the same way; then One + FX can be
+     compared end to end with md-mm's audio.
+  2. Port `VoiceEngine` to `libs/dsp56300` (arm32) and measure on the Force: the voice DSP is now the
+     only emulated part and the whole cost.
+  3. ROM/RAM machines: sample data from the user's flash (not in the `.syx`).
+  4. The plugin itself (wrapper, skin, `vst.json`) following `mpc-vst-monomodule`.
 
 ## Relationship between the projects
 

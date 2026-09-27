@@ -101,6 +101,32 @@ namespace md::mixref
 		return true;
 	}
 
+	bool MixerRef::runMix(const Block* _tracks, const uint32_t (*_mix)[5])
+	{
+		// As the main loop leaves things: main-routed tracks' blocks at X:$200 upwards, the others from X:$3e0
+		// downwards; routing words copied to X:$6c8; the frame buffer base in X:$640.
+		TWord up = 0x200, down = 0x3e0;
+		for(int t = 0; t < kTracks; ++t)
+		{
+			const TWord at = (_mix[t][0] & 0xffffff) == 6 ? up : down;
+			if(at == up) up += 0x20; else down -= 0x20;
+			for(int i = 0; i < kBlock; ++i)
+				pokeX(at + static_cast<TWord>(i), static_cast<uint32_t>(_tracks[t][i]));
+			pokeX(0x6c8 + static_cast<TWord>(t), _mix[t][0]);
+			for(int k = 0; k < 5; ++k)
+				pokeY(0x100 + 5 * static_cast<TWord>(t) + static_cast<TWord>(k), _mix[t][k]);
+		}
+		pokeX(0x640, 0x400);
+		m_dsp->writeReg(Reg_SR, TReg24(m_dsp->getSR().toWord() | 0x300));
+		const TWord stop = 0x342;
+		const TWord saved = m_dsp->memory().get(MemArea_P, stop);
+		m_dsp->memWriteP(stop, 0x0c0000 | stop);
+		m_dsp->setPC(0x294);
+		const bool ok = runUntil(stop, 10'000'000);
+		m_dsp->memWriteP(stop, saved);
+		return ok;
+	}
+
 	bool MixerRef::runTrack(const int _track, const Block& _in, Block& _out, const uint32_t _stopAt)
 	{
 		const auto k = static_cast<TWord>(_track);

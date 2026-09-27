@@ -5,3 +5,4 @@
 fw/
 fwdump/
 build*/
+*.wav

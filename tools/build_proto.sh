@@ -20,3 +20,7 @@ $CXX -std=c++17 -O2 $DSP_INC "$R/tools/mdmix/mdmix.cpp" "$R/tools/mdmix/MixerRef
 echo "built: $OUT/mdmix"
 $CXX -std=c++17 -O2 $DSP_INC "$R/tools/mdmix/mdfxtest.cpp" "$R/tools/mdmix/MixerRef.cpp" "$R/engine/TrackFx.cpp" "$R/tools/mdfw/Firmware.cpp" $DSP_LIBS -lpthread -ldl -o "$OUT/mdfxtest"
 echo "built: $OUT/mdfxtest"
+$CXX -std=c++17 -O2 $DSP_INC "$R/tools/mdmix/mdmixtest.cpp" "$R/tools/mdmix/MixerRef.cpp" "$R/engine/Mixer.cpp" "$R/engine/TrackFx.cpp" "$R/tools/mdfw/Firmware.cpp" $DSP_LIBS -lpthread -ldl -o "$OUT/mdmixtest"
+echo "built: $OUT/mdmixtest"
+$CXX -std=c++17 -O2 $DSP_INC -I"$MM/source/mc68k" "$R/tools/mdrender/mdrender.cpp" "$R/engine/Engine.cpp" "$R/engine/HostModel.cpp" "$R/engine/MachineRunner.cpp" "$R/engine/VoiceEngine.cpp" "$R/engine/TrackFx.cpp" "$R/engine/Mixer.cpp" "$R/tools/mdfw/Firmware.cpp" "$B/mc68k/lib68kEmu.a" $DSP_LIBS -lpthread -ldl -o "$OUT/mdrender"
+echo "built: $OUT/mdrender"

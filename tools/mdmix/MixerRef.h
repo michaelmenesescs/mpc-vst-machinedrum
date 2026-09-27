@@ -30,6 +30,11 @@ namespace md::mixref
 		// _stopAt: stop at another P address instead of the function's end, to inspect an intermediate stage.
 		bool runTrack(int _track, const Block& _in, Block& _out, uint32_t _stopAt = 0x25e);
 
+		// The mix (P:$294-$341) on 16 processed track blocks and their 5 mix words (route, VOL, PAN, REV, DEL).
+		// Results in X memory: main L/R $180, reverb send $1c0, delay send $600 (interleaved pairs), output
+		// frames $400 (6 channels).
+		bool runMix(const Block* _tracks, const uint32_t (*_mix)[5]);
+
 		uint32_t peekX(uint32_t _a) const;
 		uint32_t peekY(uint32_t _a) const;
 		void pokeX(uint32_t _a, uint32_t _v);

@@ -77,7 +77,8 @@ DIST, 33-36 VOL PAN DEL REV, 37-39 LFOS LFOD LFOM, 8 level.
 `tools/mdmix/MixerRef` runs the mixer DSP's program from the `.syx` in dsp56300 and calls its per-track
 effect function (`P:$a4-$25d`) directly, one track and block at a time; `mdfxtest OS.syx STAGE [TRIALS]
 [BLOCKS] [walk]` compares `engine/TrackFx` against it word for word (stages `amd eq f1 f2 srr all`;
-`walk` moves the parameters every block). Built by `tools/build_proto.sh`.
+`walk` moves the parameters every block); `mdmixtest OS.syx [TRIALS]` does the same for `engine/Mixer`
+against the DSP's mix (`MixerRef::runMix`). Built by `tools/build_proto.sh`.
 
 ## mddis
 

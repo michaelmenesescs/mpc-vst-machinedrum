@@ -384,5 +384,31 @@ sine, silence, full-scale square), both with parameters fixed per trial and movi
 **Cost:** 16 tracks ≈ 2.9% of one x86 core, against ~1,830 DSP instructions per track per block
 (~40 M instr/s for 16 tracks) if emulated.
 
-Not yet translated: the mix (`$294+`: routing, pan law tables at `$148000`/`$14a000`, VOL gain, the
-reverb/delay sends; it generates part of its own code at `P:$9e2`) and the master FX.
+## Mixer DSP mix: translated to C++, bit-exact
+
+After the 16 tracks, the main loop runs the mix (`P:$294-$341`):
+
+- **Tracks routed to the main outs** (route word 6): pan picks a gain pair from the boot-time sine
+  table: `idx = min(PAN, $7fffff if PAN > $7ecccd) >> 10`, **L = VOL·sin[$14a000+idx]** (cosine),
+  **R = VOL·sin[$148000+idx]**; then REV·L, REV·R, DEL·L, DEL·R, six gains per track at `Y:$0`. The
+  code emits a two-instruction MAC pair per main track into a routine at `P:$9e2` (and patches its
+  loop end and last pair), which `$9de` runs three times: sums over the main tracks per sample, `<< 3`,
+  limited: **dry main L/R at `X:$180`**, **reverb send at `X:$1c0`**, **delay send at `X:$600`**
+  (interleaved pairs). These feed the master FX.
+- **Other routes** (0-5): `sample · VOL << 4`, added (limited) into the 6-channel output frame buffer
+  (`X:$400` or `$4c0`) at channel 2, 5, 1, 4, 0, 3 for route 0-5. At the end of the block (`$971`) the
+  master output is added to channels 2 and 5 (the main pair), so routes 0 and 1 go to the main outs
+  without panning or effects, and routes 2-5 to the individual outputs.
+
+`engine/Mixer` is the translation. **Verification** (`tools/mdmix`: `MixerRef::runMix` runs the DSP's
+mix code on the same inputs; `mdmixtest`): **384,000 output words identical** over 1,000 random
+blocks (random routing mixes, levels, pans, sends, full-scale and saturating inputs).
+
+`engine/Engine` ties it together: `HostModel` → `VoiceEngine` (DSP2, emulated) → 16 × `TrackFx` →
+`Mixer`, per 32-sample block, giving the dry main mix, the sends, the individual outputs and each
+track's own post-effects signal. `tools/mdrender` plays a demo pattern through it into a WAV
+(x86: 8 s of audio in ~1.3 s, almost all of it the voice DSP emulation).
+
+Not yet translated: the master FX (`P:$344-$970`: rhythm echo, gate box, EQ, dynamix, i.e.
+Machinedrum FX), and so no end-to-end comparison with md-mm's final audio yet (its output always
+includes the master section).

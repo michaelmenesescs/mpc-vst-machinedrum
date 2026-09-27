@@ -16,12 +16,14 @@ Planned products:
 
 - `engine/`: `VoiceEngine` (the voice DSP alone, from the user's OS file; 16 voice outputs),
   `MachineRunner` (the OS's own machine coefficient functions in a 68k emulator), `HostModel` (the OS
-  tick: parameters, LFOs, triggers, voice slots and mixer inputs) and `TrackFx` (the mixer DSP's
-  per-track effects page as native C++, with `Dsp56.h`'s DSP56300 arithmetic). Prototype stage,
-  verified bit-exact; built for x86 by `tools/build_proto.sh`.
-- `tools/mdvoice`, `tools/mdmachine`, `tools/mdhost`: command-line drivers.
-- `tools/mdmix`: the mixer DSP's own per-track code in the emulator (reference) and `mdfxtest`, which
-  checks `TrackFx` against it.
+  tick: parameters, LFOs, triggers, voice slots and mixer inputs), `TrackFx` and `Mixer` (the mixer
+  DSP's per-track effects page and mix as native C++, with `Dsp56.h`'s DSP56300 arithmetic) and
+  `Engine` (all of it, per 32-sample block). Prototype stage, verified bit-exact; built for x86 by
+  `tools/build_proto.sh`.
+- `tools/mdvoice`, `tools/mdmachine`, `tools/mdhost`: command-line drivers; `tools/mdrender`: a demo
+  pattern through the whole engine into a WAV.
+- `tools/mdmix`: the mixer DSP's own code in the emulator (reference); `mdfxtest` and `mdmixtest` check
+  `TrackFx` and `Mixer` against it.
 
 - `tools/mdfw`: decodes a Machinedrum OS `.syx` (sysex, flash container, aPLib sections, DSP records). Adapted
   from Monomodule's decoder.
