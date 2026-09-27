@@ -228,6 +228,38 @@ that sends the voice's 32 samples out over HI08 and continues at `$d5`; `$e2` �
   (6.2 M/s; silent voices could be skipped entirely), ~1,300 more per playing TRX-B2 voice
   (~1.8 M/s per voice).
 
+## Host model: tick scheduling and the per-voice rule (decoded)
+
+- **What drives the tick.** DSP2's main loop sends the ColdFire a word after every 4 voices (group
+  0-3, `P:$73`), which raises a ColdFire interrupt (handler `$100043a` in internal SRAM). Group 3
+  runs the slot pump (`$10004d0`) and other jobs; group 1 calls the tick routine `$20ad9a`; every
+  4th group-2 interrupt flags the LFO oscillator. The tick routine holds a lock and runs with
+  interrupts enabled, so the next tick starts only after it finishes: the tick rate is **CPU-bound,
+  ~120 Hz** in gearmulator-md-mm (intervals of 12-14 DSP blocks, varying with load) and **not
+  tempo-synced**. Smoothing, LFO oscillator and LFO apply run once per tick. On the real machine,
+  LFO and smoothing speed therefore vary slightly with load; the host model uses a fixed schedule
+  (default one tick per 11 blocks, 125.3 Hz).
+- **Tempo** is a factor at `$100150c` = BPM × 24 (default 3000 = 125 BPM), used by the LFO speed and
+  by the E12/ROM machines' retrigger times.
+- **Per voice, every tick:** the OS calls the voice's machine function on its current `a6` and the
+  pump sends the returned words. Word 0 is staged as the trigger flag (1/0) and the pump replaces a
+  non-zero value with **current machine id + 1** (UW ids ≥ 128 give bit 7). Idle tracks have the
+  empty machine GND-- (`$201128`), whose function returns 2: that is the 2-word `[0, 0]` update.
+  MID/CTR machines (ids `$60-$7b`) are not sent. A pending **machine change is applied at the
+  trigger**: the track's 24 kit values go straight into the targets, the smoothed array and `a6`
+  (no glide), and the voice's function pointer switches.
+- **DSP1 per-track effects slot** (`Y:$200+$40·k`, 9 words) is sent by `$1000702` as `a6` words 8-16
+  unchanged (AMD..DIST after smoothing and LFO). The 5-word block at `Y:$100+5·k` is computed in the
+  tick routine (`$20b1f6-$20b302`): VOL² with velocity/accent scaling, PAN `<<9`, REV² `>>5`,
+  DEL² `>>5` (translation pending).
+- **Internal SRAM** `$1000000-$1000a2a` is the OS's copy of image `$2622f4`, apart from a few bytes
+  of variables near the start; everything after is zero-initialised state.
+
+`engine/HostModel` implements this with the OS's routines in `MachineRunner` (which now holds the
+OS's main RAM and internal SRAM). **End to end** (assign machine, set 24 parameters, trigger →
+MachineRunner → VoiceEngine): TRX-B2 on track 1 and TRX-SD on track 2 are each **6,400/6,400
+samples identical** to gearmulator-md-mm.
+
 ## Design consequences
 
 - **All voices from one instance: yes.** One DSP2 renders all 16 voices; the host drives 16 slots.

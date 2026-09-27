@@ -136,6 +136,22 @@ Steps:
   4. DSP1 per-track chain: disassemble and start the bit-exact C++ translation.
   5. Port VoiceEngine to `libs/dsp56300` (arm32 branch): needs md-mm's DSP fixes (MERGE, DMA) checked.
 
+- **2026-09-27: host model, first version, bit-exact end to end.** `engine/HostModel` (tick schedule,
+  machine assignment applied at trigger, trigger codes, per-voice machine functions, smoothing and
+  LFO via the OS's own routines) + `engine/VoiceEngine`: TRX-B2 and TRX-SD each 6,400/6,400 samples
+  identical to md-mm. Tick scheduling decoded: DSP2-driven interrupts, CPU-bound ~120 Hz, not tempo
+  synced (see `docs/PROTOCOL.md`, "Host model: tick scheduling"). Tool: `mdhost`.
+
+  **Next:**
+  1. LFO configuration and trigger restart: LFO struct layout (`$1000f8c + $24·k`: destination
+     track/param, shapes, update mode) and how the tick routine restarts an LFO on trigger
+     (`$204c94` trigger path, `$1001510` flags). Verify against md-mm with LFO depth > 0.
+  2. Measure DSP2 cost per machine family (loop over the machine table with defaults).
+  3. Mixer DSP: translate the `Y:$100+5·k` computation (volume/velocity/accent, pan, sends); then
+     the bit-exact C++ translation of DSP1's per-track chain.
+  4. ROM/RAM machines: sample data from the user's flash (not in the `.syx`).
+  5. Port to `libs/dsp56300` (arm32) and measure on the Force.
+
 ## Relationship between the projects
 
 Monomodule (Shnolk) and gearmulator-md-mm (Joe Landers) share no code and neither credits the other. md-mm is

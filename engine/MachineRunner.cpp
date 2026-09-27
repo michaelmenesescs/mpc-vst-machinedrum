@@ -11,68 +11,45 @@ namespace md::engine
 {
 	namespace
 	{
-		constexpr uint32_t kScratchBase = 0x01000000, kScratchSize = 0x10000;	// ColdFire internal SRAM range
-		constexpr uint32_t kParams = kScratchBase + 0x100, kOut = kScratchBase + 0x200;
-		constexpr uint32_t kStackTop = kScratchBase + kScratchSize - 0x10;
+		constexpr uint32_t kMainBase = 0x200000, kMainSize = 0x100000;		// main RAM (OS loaded here)
+		constexpr uint32_t kSramBase = 0x01000000, kSramSize = 0x10000;		// ColdFire internal SRAM
+		constexpr uint32_t kSramImage = 0x2622f4;							// the OS copies its fast routines from here
+		constexpr uint32_t kScratch = 0x0100e000;							// our args/stack area (unused by the OS routines)
+		constexpr uint32_t kParams = kScratch, kOut = kScratch + 0x100;
+		constexpr uint32_t kStackTop = kSramBase + kSramSize - 0x10;
 		constexpr uint32_t kReturnSentinel = 0x00000100;	// unmapped, never executed: we stop when PC gets here
-		constexpr uint64_t kMaxInstructions = 100'000;
+		constexpr uint64_t kMaxInstructions = 2'000'000;
 		constexpr size_t kRecordSize = 86;
 	}
 
-	// The OS image is read-only at $200000; a small scratch RAM at $01000000 holds the stack, params and output.
 	class MachineCpu final : public mc68k::Mc68k
 	{
 	public:
-		MachineCpu(const std::vector<uint8_t>& _os) : Mc68k(M68K_CPU_TYPE_MCF5206E), m_os(_os), m_ram(kScratchSize, 0) {}
+		MachineCpu() : Mc68k(M68K_CPU_TYPE_MCF5206E), m_main(kMainSize, 0), m_sram(kSramSize, 0) {}
 
-		uint8_t read8(const uint32_t _addr) override
-		{
-			if(const auto* p = ptr(_addr, 1)) return *p;
-			++m_badAccesses;
-			return 0;
-		}
-		uint16_t read16(const uint32_t _addr) override
-		{
-			if(const auto* p = ptr(_addr, 2)) return static_cast<uint16_t>(p[0] << 8 | p[1]);
-			++m_badAccesses;
-			return 0;
-		}
+		uint8_t read8(const uint32_t _addr) override { if(const auto* p = ptr(_addr, 1)) return *p; ++m_badAccesses; return 0; }
+		uint16_t read16(const uint32_t _addr) override { if(const auto* p = ptr(_addr, 2)) return static_cast<uint16_t>(p[0] << 8 | p[1]); ++m_badAccesses; return 0; }
 		uint16_t readImm16(const uint32_t _addr) override { return read16(_addr); }
-		void write8(const uint32_t _addr, const uint8_t _val) override
-		{
-			if(auto* p = ramPtr(_addr, 1)) *p = _val; else ++m_badAccesses;
-		}
+		void write8(const uint32_t _addr, const uint8_t _val) override { if(auto* p = ptr(_addr, 1)) *p = _val; else ++m_badAccesses; }
 		void write16(const uint32_t _addr, const uint16_t _val) override
 		{
-			if(auto* p = ramPtr(_addr, 2)) { p[0] = static_cast<uint8_t>(_val >> 8); p[1] = static_cast<uint8_t>(_val); }
-			else ++m_badAccesses;
+			if(auto* p = ptr(_addr, 2)) { p[0] = static_cast<uint8_t>(_val >> 8); p[1] = static_cast<uint8_t>(_val); } else ++m_badAccesses;
 		}
 		uint32_t exec() override { return execInstruction(); }	// CPU only: no on-chip peripherals
 
-		void poke32(const uint32_t _a, const uint32_t _v) { write16(_a, static_cast<uint16_t>(_v >> 16)); write16(_a + 2, static_cast<uint16_t>(_v)); }
-		uint32_t peek32(const uint32_t _a) { return static_cast<uint32_t>(read16(_a)) << 16 | read16(_a + 2); }
 		void setAReg(const int _i, const uint32_t _v) { m68k_set_reg(getCpuState(), static_cast<m68k_register_t>(M68K_REG_A0 + _i), _v); }
-		void setDReg(const int _i, const uint32_t _v) { m68k_set_reg(getCpuState(), static_cast<m68k_register_t>(M68K_REG_D0 + _i), _v); }
 		void setSR(const uint32_t _v) { m68k_set_reg(getCpuState(), M68K_REG_SR, _v); }
 
+		uint8_t* ptr(const uint32_t _addr, const uint32_t _n)
+		{
+			if(_addr >= kMainBase && _addr + _n <= kMainBase + kMainSize) return &m_main[_addr - kMainBase];
+			if(_addr >= kSramBase && _addr + _n <= kSramBase + kSramSize) return &m_sram[_addr - kSramBase];
+			return nullptr;
+		}
+
+		std::vector<uint8_t> m_main, m_sram;
 		uint32_t m_badAccesses = 0;
-
-	private:
-		const uint8_t* ptr(const uint32_t _addr, const uint32_t _n) const
-		{
-			if(_addr >= MachineRunner::kOsBase && _addr + _n <= MachineRunner::kOsBase + m_os.size()) return &m_os[_addr - MachineRunner::kOsBase];
-			if(_addr >= kScratchBase && _addr + _n <= kScratchBase + kScratchSize) return &m_ram[_addr - kScratchBase];
-			return nullptr;
-		}
-		uint8_t* ramPtr(const uint32_t _addr, const uint32_t _n)
-		{
-			if(_addr >= kScratchBase && _addr + _n <= kScratchBase + kScratchSize) return &m_ram[_addr - kScratchBase];
-			return nullptr;
-		}
-		const std::vector<uint8_t>& m_os;
-		std::vector<uint8_t> m_ram;
 	};
-
 }
 
 #define MC68K_CLASS md::engine::MachineCpu
@@ -82,13 +59,27 @@ namespace md::engine
 {
 	MachineRunner::MachineRunner(std::vector<uint8_t> _osImage) : m_os(std::move(_osImage))
 	{
+		if(m_os.size() > kMainSize) throw std::runtime_error("OS image too large");
 		m_index.fill(-1);
-		m_cpu = std::make_unique<MachineCpu>(m_os);
+		m_cpu = std::make_unique<MachineCpu>();
+		std::memcpy(m_cpu->m_main.data(), m_os.data(), m_os.size());
+		if(m_os.size() > kSramImage - kMainBase)
+		{
+			const size_t n = std::min<size_t>(m_os.size() - (kSramImage - kMainBase), kSramSize);
+			std::memcpy(m_cpu->m_sram.data(), m_os.data() + (kSramImage - kMainBase), n);
+		}
 		m_cpu->setSR(0x2700);	// supervisor, interrupts masked
 		parseMachineTable();
 	}
 
 	MachineRunner::~MachineRunner() = default;
+
+	uint8_t MachineRunner::peek8(const uint32_t _a) const { const auto* p = m_cpu->ptr(_a, 1); return p ? *p : 0; }
+	uint16_t MachineRunner::peek16(const uint32_t _a) const { const auto* p = m_cpu->ptr(_a, 2); return p ? static_cast<uint16_t>(p[0] << 8 | p[1]) : 0; }
+	uint32_t MachineRunner::peek32(const uint32_t _a) const { return static_cast<uint32_t>(peek16(_a)) << 16 | peek16(_a + 2); }
+	void MachineRunner::poke8(const uint32_t _a, const uint8_t _v) { m_cpu->write8(_a, _v); }
+	void MachineRunner::poke16(const uint32_t _a, const uint16_t _v) { m_cpu->write16(_a, _v); }
+	void MachineRunner::poke32(const uint32_t _a, const uint32_t _v) { poke16(_a, static_cast<uint16_t>(_v >> 16)); poke16(_a + 2, static_cast<uint16_t>(_v)); }
 
 	void MachineRunner::parseMachineTable()
 	{
@@ -128,27 +119,18 @@ namespace md::engine
 		return m_index[_id] < 0 ? nullptr : &m_machines[static_cast<size_t>(m_index[_id])];
 	}
 
-	int MachineRunner::compute(const uint8_t _machineId, const uint16_t* _params, uint32_t* _out, const int _outCapacity)
+	int64_t MachineRunner::call(const uint32_t _address, const std::initializer_list<uint32_t> _args)
 	{
 		m_fault.clear();
-		const auto* m = machine(_machineId);
-		if(!m) { m_fault = "unknown machine"; return -1; }
-
 		auto& cpu = *m_cpu;
-		for(uint32_t k = 0; k < 24; ++k)
-			cpu.write16(kParams + 2 * k, k < 8 ? _params[k] : 0);
-		for(uint32_t k = 0; k < 32; ++k)
-			cpu.poke32(kOut + 4 * k, 0);
-
-		// C calling convention: fn(out, params), return address on top of the stack
 		uint32_t sp = kStackTop;
-		sp -= 4; cpu.poke32(sp, kParams);
-		sp -= 4; cpu.poke32(sp, kOut);
-		sp -= 4; cpu.poke32(sp, kReturnSentinel);
+		// C calling convention: arguments pushed right to left, then the return address
+		std::vector<uint32_t> args(_args);
+		for(auto it = args.rbegin(); it != args.rend(); ++it) { sp -= 4; poke32(sp, *it); }
+		sp -= 4; poke32(sp, kReturnSentinel);
 		cpu.setAReg(7, sp);
-		cpu.setPC(m->function);
+		cpu.setPC(_address);
 		cpu.m_badAccesses = 0;
-
 		uint64_t n = 0;
 		while(cpu.getPC() != kReturnSentinel)
 		{
@@ -156,11 +138,22 @@ namespace md::engine
 			if(++n > kMaxInstructions) { m_fault = "instruction budget exceeded"; return -1; }
 		}
 		m_lastInstructions = n;
-		if(cpu.m_badAccesses) { m_fault = "access outside the OS image/scratch RAM"; return -1; }
+		if(cpu.m_badAccesses) { m_fault = "access outside main RAM / internal SRAM"; return -1; }
+		return cpu.getDReg(0);
+	}
 
-		const int count = static_cast<int>(cpu.getDReg(0));
+	int MachineRunner::compute(const uint8_t _machineId, const uint16_t* _params, uint32_t* _out, const int _outCapacity)
+	{
+		const auto* m = machine(_machineId);
+		if(!m) { m_fault = "unknown machine"; return -1; }
+		for(uint32_t k = 0; k < 24; ++k)
+			poke16(kParams + 2 * k, k < 8 ? _params[k] : 0);
+		for(uint32_t k = 0; k < 32; ++k)
+			poke32(kOut + 4 * k, 0);
+		const auto count = call(m->function, {kOut, kParams});
+		if(count < 0) return -1;
 		for(int k = 0; k < _outCapacity; ++k)
-			_out[k] = cpu.peek32(kOut + 4 * static_cast<uint32_t>(k));
-		return count;
+			_out[k] = peek32(kOut + 4 * static_cast<uint32_t>(k));
+		return static_cast<int>(count);
 	}
 }
