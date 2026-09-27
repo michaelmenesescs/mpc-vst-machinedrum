@@ -274,6 +274,19 @@ samples identical** to gearmulator-md-mm. **With an LFO** (TRX-B2, LFO → PTCH,
 speed 80, depth 100): the per-tick voice arrays md-mm passed to the machine function give exactly
 the slot sequence the host model produces, 20/20 ticks.
 
+### DSP2 cost per machine (measured)
+
+One voice of each machine triggered with its defaults, 150 blocks, `mdhost` (DSP2 M instructions/s
+at 44.1 kHz, including the harness's 16-voice loop; baseline with all voices silent = 6.2):
+
+GND-- 6.2 | GNDSN 6.7 | GNDNS 6.5 | GNDIM 6.2 | TRXBD 8.6 | TRXSD 8.3 | TRXXT 6.8 | TRXCP 6.2 | TRXRS 8.0 | TRXCB 8.8 | TRXCH 8.8 | TRXOH 8.8 | TRXCY 9.5 | TRXMA 6.2 | TRXCL 6.2 | TRXXC 6.8 | TRXB2 8.0 | TRXS2 9.6 | EFMBD 8.0 | EFMSD 8.8 | EFMXT 8.2 | EFMCP 8.3 | EFMRS 9.2 | EFMCB 9.7 | EFMHH 8.9 | EFMCY 9.3 | E12BD 7.6 | E12SD 8.5 | E12HT 7.7 | E12RS 8.5 | E12OH 7.7 | E12RC 8.5 | E12CC 7.7 | E12SH 8.3 | P-IBD 9.5 | P-ISD 9.8 | P-IMT 9.8 | P-IML 8.8 | P-IMA 7.8 | P-IRS 9.8 | P-IRC 9.2 | P-ICC 9.2 | P-IHH 9.2 | INPGA 6.6 | INPFA 7.2 | INPEA 7.2 | ROM01 6.2 | ROM25 6.2 | RAMR1 8.1 | RAMP1 6.2
+
+So one playing voice adds ~1.5-2.5 M/s (TRX, E12) up to ~3.6 M/s (EFM-CB, P-I). TRX-CP/MA/CL and
+ROM (no sample data) stayed at baseline with defaults. A busy kit (6-8 voices ringing) is ~20-30 M/s
+plus overhead; the worst case, 16 P-I voices at once, ~60 M/s. Silent voices can be skipped (most of
+the 6.2 M/s baseline). For scale: Monomodule's one Monomachine track, ~21 M/s, needed 58% of a Force
+core with the static recompiler.
+
 ## Design consequences
 
 - **All voices from one instance: yes.** One DSP2 renders all 16 voices; the host drives 16 slots.

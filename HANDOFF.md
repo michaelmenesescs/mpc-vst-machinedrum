@@ -145,7 +145,9 @@ Steps:
   **Next:**
   1. ~~LFO configuration and trigger restart~~ done 2026-09-27: `HostModel::setLfo()`, trigger
      flag + the tick's trigger path; tick-by-tick identical to md-mm with an LFO on PTCH.
-  2. Measure DSP2 cost per machine family (loop over the machine table with defaults).
+  2. ~~Measure DSP2 cost per machine family~~ done: +1.5-3.6 M instr/s per playing voice over a 6.2 M/s
+     baseline (docs/PROTOCOL.md "DSP2 cost per machine"). Next for cost: skip silent voices in the
+     harness.
   3. Mixer DSP: translate the `Y:$100+5·k` computation (volume/velocity/accent, pan, sends); then
      the bit-exact C++ translation of DSP1's per-track chain.
   4. ROM/RAM machines: sample data from the user's flash (not in the `.syx`).
