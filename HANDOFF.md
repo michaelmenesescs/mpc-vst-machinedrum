@@ -309,8 +309,8 @@ Steps:
     Machinedrum — anything whose program load goes through this exact boot-protocol path and then
     gets recompiled could hit it; Monomodule's tooling apparently loads differently (or never
     revisited the affected addresses before boot fully finished) and never tripped it.
-  - Both fixes are in `libs/dsp56300` (this repo's fork; not yet pushed anywhere, unlike the earlier
-    MERGE-op fix branch — do that before anyone else builds against this).
+  - Both fixes are in `libs/dsp56300`, pushed to `sd88me/dsp56300` branch `recomp-fixes` (built on
+    top of the earlier MERGE-op fix commit, same as that branch).
   - **Verified**: rebuilt discovery (`tools/mdrecomp/mdrecomp_discover.cpp`, still 8228 distinct
     instructions, now with correct lengths — 840 blocks instead of 1527, 97.3% coverage, since
     correct lengths merge more instructions per block), rebuilt `mdrender` x86 with `-DDSP56K_RECOMP`:
@@ -325,15 +325,34 @@ Steps:
     remaining 2.7% uncovered instructions are concentrated in something hot.
 
   **Next:**
-  1. Push both `libs/dsp56300` fixes to a branch (like the earlier MERGE fix) so this state is
-     recoverable/shareable, and consider upstreaming bug 2 (boot-protocol invalidation gap) since
-     it's a real, generally-applicable correctness bug, not Machinedrum-specific.
+  1. ~~Push both `libs/dsp56300` fixes to a branch~~ done (`recomp-fixes`). Consider upstreaming bug 2
+     (boot-protocol invalidation gap) since it's a real, generally-applicable correctness bug, not
+     Machinedrum-specific.
   2. Try to close the gap to real-time: wider discovery coverage, and/or measure where the
      remaining time actually goes (per-machine cost, same as the interpreter-only breakdown earlier
      in this doc) now that the recompiled build is trustworthy to profile.
   3. DSP1 (mixer/FX) is already native C++, not part of this — this was all DSP2 (voice engine).
   4. ROM/RAM machines: still need the user's flash sample data.
   5. The plugin itself (wrapper, skin, `vst.json`).
+
+- **2026-09-28: full 16-track kit measured on the Force — 231% of real time, the gap is bigger than
+  the 6-track number suggested.** Built an ad-hoc benchmark (not committed — a throwaway variant of
+  `tools/mdrender/mdrender.cpp` with all 16 tracks assigned instead of 6: a mix of TRX, EFM and E12
+  machines, several with dense 16th-note patterns, no silent tracks). Recompiled build, same
+  `.inl` as the 141%-measurement above: **29% of real time on x86, 231% on the real Force** for 8 s
+  of this pattern. So a genuinely busy full kit is over 2x too slow even with the static
+  recompiler — the earlier 141% (6 of 16 tracks, some idle) undersold the gap for a real
+  performance target.
+  - Not yet done: a per-machine-family cost breakdown on the recompiled build (the interpreter-only
+    breakdown in "DSP2 cost per machine" above is stale now that the recompiler changes the constant
+    factor). That's the next useful measurement before deciding where to spend further optimization
+    effort — e.g. whether cost concentrates in a few expensive machine families (letting some voices
+    stay interpreted while cheap ones get the recompiler's full benefit is not how it works today:
+    recompilation is program-wide, not per-machine) or is roughly uniform.
+  - Given the scope of closing this gap further (profiling, and likely real work on interpreter
+    per-instruction overhead or the discovery sweep's coverage), this is a substantial next
+    investigation in its own right, not a quick follow-up — left for the next session rather than
+    rushed here.
 
 ## Relationship between the projects
 
