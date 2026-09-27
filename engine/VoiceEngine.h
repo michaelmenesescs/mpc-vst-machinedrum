@@ -1,0 +1,60 @@
+// Runs the Machinedrum voice DSP (DSP2) program from the user's OS file on its own, in the dsp56300
+// emulator: no ColdFire, no mixer DSP. The hardware's link DMA and frame sync are replaced by a small
+// harness stub (the Monomodule approach): each 32-sample block renders all 16 voices, and every voice's
+// 32 samples go out over the host port instead of ESSI0. The host fills the 16 voice slots (Y:$800 +
+// $40*k: word 0 = trigger/machine code, words 1-12 = machine coefficients) directly in DSP memory
+// between blocks. See docs/PROTOCOL.md.
+#pragma once
+#include <array>
+#include <cstdint>
+#include <memory>
+#include <string>
+
+#include "../tools/mdfw/Firmware.h"
+
+namespace dsp56k { class DSP; class Memory; class Peripherals56303; class PeripheralsNop; class DefaultMemoryValidator; }
+
+namespace md::engine
+{
+	class VoiceEngine
+	{
+	public:
+		static constexpr int kVoices = 16;
+		static constexpr int kBlockFrames = 32;
+		static constexpr int kSlotWords = 13;
+		static constexpr uint32_t kSlotBase = 0x800, kSlotStride = 0x40;
+
+		using Block = std::array<std::array<int32_t, kBlockFrames>, kVoices>;	// [voice][frame], 24-bit signed
+
+		explicit VoiceEngine(const fw::Firmware& _fw);
+		~VoiceEngine();
+
+		// Load the program, run its own init, install the harness. Throws on failure.
+		void reset();
+
+		// Write a voice slot (up to kSlotWords words) for the next block. Word 0 is the trigger/machine
+		// code: non-zero only on the block the voice is (re)triggered; the DSP clears it.
+		void setSlot(int _voice, const uint32_t* _words, int _count = kSlotWords);
+
+		// Render one 32-sample block of all 16 voices. Returns false on a fault.
+		bool renderBlock(Block& _out);
+
+		uint64_t instructionsLastBlock() const { return m_lastInstructions; }
+		const std::string& faultReason() const { return m_fault; }
+		dsp56k::DSP& dsp() { return *m_dsp; }
+
+	private:
+		void loadImage(const fw::DspImage& _img);
+		void installHarness();
+		bool runUntilTx(size_t _words, uint64_t _maxInstructions);
+
+		const fw::Firmware& m_fw;
+		std::unique_ptr<dsp56k::DefaultMemoryValidator> m_validator;
+		std::unique_ptr<dsp56k::Memory> m_mem;
+		std::unique_ptr<dsp56k::Peripherals56303> m_periphX;
+		std::unique_ptr<dsp56k::PeripheralsNop> m_periphY;
+		std::unique_ptr<dsp56k::DSP> m_dsp;
+		uint64_t m_lastInstructions = 0;
+		std::string m_fault;
+	};
+}

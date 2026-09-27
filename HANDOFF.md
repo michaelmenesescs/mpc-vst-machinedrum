@@ -119,6 +119,23 @@ Steps:
   routine's per-voice orchestration (triggers, accent/velocity, DSP1 per-track values), then
   prototype `md::VoiceEngine` (step 2 below).
 
+- **2026-09-27: voice engine prototype works, bit-exact.** `engine/VoiceEngine` (DSP2 alone from the
+  `.syx`, Monomodule-style harness, 16 voice outputs per 32-sample block) matches md-mm's output
+  sample for sample; `engine/MachineRunner` (the OS's machine functions in Musashi) reproduces the
+  slot words exactly. Build with `tools/build_proto.sh` (x86, against md-mm's built libraries);
+  tools `mdvoice` and `mdmachine`. Details in `docs/PROTOCOL.md`, "Voice engine prototype".
+
+  **Next:**
+  1. Host model (`engine/HostModel`): tick schedule (64 per beat), smoothing + LFO via the OS's own
+     routines in `MachineRunner`'s CPU (load the internal-SRAM routine copy from OS `$2622f4` to
+     `$1000000`), trigger codes, then per voice `compute()` → `VoiceEngine::setSlot()`. Translate the
+     tick routine's trigger/accent/velocity handling and DSP1 per-track values (`$20af52-$20b44c`).
+  2. End-to-end test: kit + triggers through HostModel + VoiceEngine vs. md-mm (mdProbe ESSI dump).
+  3. Measure every machine family's DSP2 cost (EFM, E12, P-I, ROM); ROM/RAM machines also need the
+     user's sample data (flash, not in the `.syx`).
+  4. DSP1 per-track chain: disassemble and start the bit-exact C++ translation.
+  5. Port VoiceEngine to `libs/dsp56300` (arm32 branch): needs md-mm's DSP fixes (MERGE, DMA) checked.
+
 ## Relationship between the projects
 
 Monomodule (Shnolk) and gearmulator-md-mm (Joe Landers) share no code and neither credits the other. md-mm is

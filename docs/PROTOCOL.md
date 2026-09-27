@@ -199,6 +199,35 @@ it with MIDI. Exact with no translation at all and only ~4-5 M 68k instructions/
 sequencer, the 20 s boot / first-run flash state, the three-processor scheduling md-mm needed, and
 MIDI-UART latency and bandwidth limits on every parameter change from the plugin.
 
+## Voice engine prototype: verified bit-exact
+
+`engine/VoiceEngine` runs DSP2's program from the user's `.syx` alone in dsp56300 (Monomodule-style
+harness), and `engine/MachineRunner` runs the OS's machine coefficient functions in Musashi.
+
+**DSP2 main loop** (`P:$64-$e7`, once per 32-sample block): for voice k = 0..15, if slot word 0 is
+non-zero it calls the machine's init routine on a machine change (`Y:$145af5 + code`) and its
+trigger routine (`Y:$145bb6 + code`) and clears word 0; then it calls the machine's render routine
+(`Y:$145c77 + code`) into a ping-pong buffer (`Y:$100`/`$120`, pointer in `Y:$140`) and DMAs the 32
+samples to the ESSI0 link (voice 0 first waits for the link frame sync on Port C). Init (`$24`):
+`$100000`/`$100012` fill unused machine-table entries depending on the memory map (AAR2), `$100024`
+sets up ESSI, DMA and interrupts, clears the slots and builds a table at `$148000`.
+
+**Harness:** load section 1's records; set AAR0-3 = `$100539 $140639 $180539 $1c0639` and OMR =
+`$00498d` (DSP2's state in md-mm); run from `$24`; ESSI ports get non-blocking silent input and
+discarded output; patches: `$73` (per-group handshake word to the ColdFire) → nop; `$b5` → a stub
+that sends the voice's 32 samples out over HI08 and continues at `$d5`; `$e2` → wait for a host
+"go" word, then `jmp $64`; the silent-voice render's timing-padding loop (`$100093-4`) → nops
+(output unchanged).
+
+**Results:**
+- Voice 1 (TRX-B2) triggered with md-mm's captured slot words: **6,400/6,400 samples identical** to
+  md-mm's link output over 200 blocks.
+- `MachineRunner` with md-mm's captured parameter arrays reproduces the slot words **exactly** for
+  TRX-B2 (103 68k instructions) and TRX-SD (82 instructions).
+- DSP2 cost in the harness: ~4,500 instructions per block for the loop and 16 silent voices
+  (6.2 M/s; silent voices could be skipped entirely), ~1,300 more per playing TRX-B2 voice
+  (~1.8 M/s per voice).
+
 ## Design consequences
 
 - **All voices from one instance: yes.** One DSP2 renders all 16 voices; the host drives 16 slots.

@@ -10,10 +10,14 @@ Planned products:
 - **Machinedrum One**: the voice machines (sound modules only), from the voice DSP program.
 - **Machinedrum FX**: the master effects as a separate effect plugin, from the mixer/FX DSP program.
 
-**Status: research.** The OS file decodes and holds two complete DSP programs; the CPU-to-DSP protocol is not
-mapped yet. See `HANDOFF.md` for where this stands and `docs/FIRMWARE.md` for the OS file format.
+**Status: prototype.** Protocol decoded; the voice engine runs bit-exact against a full-system emulation. See `HANDOFF.md` for where this stands and `docs/FIRMWARE.md` for the OS file format.
 
 ## Layout
+
+- `engine/`: `VoiceEngine` (the voice DSP alone, from the user's OS file; 16 voice outputs) and
+  `MachineRunner` (the OS's own machine coefficient functions in a 68k emulator). Prototype stage,
+  verified bit-exact against gearmulator-md-mm; built for x86 by `tools/build_proto.sh`.
+- `tools/mdvoice`, `tools/mdmachine`: command-line drivers for the two.
 
 - `tools/mdfw`: decodes a Machinedrum OS `.syx` (sysex, flash container, aPLib sections, DSP records). Adapted
   from Monomodule's decoder.
