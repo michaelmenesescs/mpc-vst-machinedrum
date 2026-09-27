@@ -41,12 +41,17 @@ in OS 1.63, meaning unknown. Each program starts with `[3][$24] [4][0]` and ends
 a full vector table at `P:$0` (reset vector `jmp >$ff0000`, the bootstrap ROM; unused vectors jump to
 themselves).
 
+## DSP roles: confirmed by tracing
+
+Program A (section 1) runs on DSP2 (voice producer); program B (section 2) runs on DSP1
+(mixer/codec/master FX). Confirmed by capturing the real ColdFire→DSP transfer with
+`tools/mdtrace` and matching it word-for-word against these decoded sections. See
+`docs/PROTOCOL.md`.
+
 ## Open questions
 
-- **Which program runs on which DSP.** gearmulator-md-mm calls DSP2 (`0x600000`) the voice producer and DSP1
-  (`0x500000`) the mixer/codec. From the sizes, program A is probably the voice DSP (large tables, possibly the
-  E12 sample data) and program B the mixer/FX DSP. Unconfirmed: settle it by logging which image the ColdFire
-  boots into which DSP.
-- **What the 234K words of external P memory in program A are.** Code, tables or sample data.
+- **What the 234K words of external P memory in program A are.** Code, tables or sample data;
+  likely includes the E12/ROM/RAM sample data given the size, not yet directly confirmed.
 - **Sections 3 and 4.** Probably RAM or factory data images, in two variants.
 - **The `[4][arg]` marker.**
+- **The runtime CPU↔DSP protocol** (post-boot parameter/control words): see `docs/PROTOCOL.md`.

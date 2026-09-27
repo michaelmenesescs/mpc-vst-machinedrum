@@ -27,7 +27,33 @@ Steps:
 ## Status
 
 - **2026-09-27: OS file decoded.** `tools/mdfw` unpacks the MD OS 1.63 `.syx` into five sections, two of them
-  complete DSP programs. Details and open questions in `docs/FIRMWARE.md`. Next: step 1.
+  complete DSP programs. Details and open questions in `docs/FIRMWARE.md`.
+
+- **2026-09-27: step 1 (trace) done for the DSP-role question; runtime protocol still open.** Built
+  gearmulator-md-mm's mdLib/test targets on x86 (plugin build off, `BUILD_TESTING=ON`; needs the
+  `dsp56300`, `mc68k`, `cpp-terminal`, `asmjit`, `freetype`, `RmlUi` submodules initialized — see
+  `tools/mdtrace/README.md`). It boots and passes `mdAudioFirmwareTest` against the user's full MD
+  1.63 flash image.
+
+  Added `tools/mdtrace`: a local patch to `mddsp.cpp` (not committed to the submodule, not
+  upstreamed) that logs every UC↔DSP HI08 word, plus a driver tool (`mdTraceTool`). Capturing 5
+  emulated seconds of boot and comparing the real transfer to `tools/mdfw`'s decoded sections
+  **confirmed which OS-file section runs on which DSP**: section 1 (large) → DSP2 (voice producer);
+  section 2 (small) → DSP1 (mixer/codec/master FX). This also confirms `tools/mdfw` decodes
+  byte-exactly, and settles the split: **Machinedrum One** (voices) comes from section 1 on DSP2,
+  **Machinedrum FX** from section 2 on DSP1, exactly the two-plugin split the user wants (master FX
+  dropped from One, shipped as its own plugin). Also found: the boot has two stages, a tiny
+  first-stage loader over the standard `dsp56300` boot protocol, then the real program streamed as
+  ordinary runtime host-port words read by DSP-side loader code. Full details in
+  `docs/PROTOCOL.md`.
+
+  **Not yet done: the runtime (post-boot) parameter protocol** — the MD equivalent of Monomodule's
+  52-word block. Both DSPs reach real runtime traffic within the 5-second capture (350K+ runtime
+  words, 36K host-command IRQs on top of the program transfer), but what any of it means is
+  undecoded. That's the next tracing session, and it's the hard part: correlate known
+  machine/parameter changes (driven via sysex or the front panel, see md-mm's `mdautomation.cpp`/
+  `mdsysexautomation.cpp` for how to script that) against the word stream, the way Monomodule's
+  `HostModel.cpp` was worked out for the Monomachine.
 
 ## Relationship between the projects
 
