@@ -1,0 +1,542 @@
+{
+ "name": "Machinedrum One",
+ "params": [
+  {
+   "key": "track0_machine",
+   "name": "T1 Machine",
+   "min": 0,
+   "max": 191,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track0_level",
+   "name": "T1 Level",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track0_pan",
+   "name": "T1 Pan",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track1_machine",
+   "name": "T2 Machine",
+   "min": 0,
+   "max": 191,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track1_level",
+   "name": "T2 Level",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track1_pan",
+   "name": "T2 Pan",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track2_machine",
+   "name": "T3 Machine",
+   "min": 0,
+   "max": 191,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track2_level",
+   "name": "T3 Level",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track2_pan",
+   "name": "T3 Pan",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track3_machine",
+   "name": "T4 Machine",
+   "min": 0,
+   "max": 191,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track3_level",
+   "name": "T4 Level",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track3_pan",
+   "name": "T4 Pan",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track4_machine",
+   "name": "T5 Machine",
+   "min": 0,
+   "max": 191,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track4_level",
+   "name": "T5 Level",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track4_pan",
+   "name": "T5 Pan",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track5_machine",
+   "name": "T6 Machine",
+   "min": 0,
+   "max": 191,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track5_level",
+   "name": "T6 Level",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track5_pan",
+   "name": "T6 Pan",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track6_machine",
+   "name": "T7 Machine",
+   "min": 0,
+   "max": 191,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track6_level",
+   "name": "T7 Level",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track6_pan",
+   "name": "T7 Pan",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track7_machine",
+   "name": "T8 Machine",
+   "min": 0,
+   "max": 191,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track7_level",
+   "name": "T8 Level",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track7_pan",
+   "name": "T8 Pan",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track8_machine",
+   "name": "T9 Machine",
+   "min": 0,
+   "max": 191,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track8_level",
+   "name": "T9 Level",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track8_pan",
+   "name": "T9 Pan",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track9_machine",
+   "name": "T10 Machine",
+   "min": 0,
+   "max": 191,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track9_level",
+   "name": "T10 Level",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track9_pan",
+   "name": "T10 Pan",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track10_machine",
+   "name": "T11 Machine",
+   "min": 0,
+   "max": 191,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track10_level",
+   "name": "T11 Level",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track10_pan",
+   "name": "T11 Pan",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track11_machine",
+   "name": "T12 Machine",
+   "min": 0,
+   "max": 191,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track11_level",
+   "name": "T12 Level",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track11_pan",
+   "name": "T12 Pan",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track12_machine",
+   "name": "T13 Machine",
+   "min": 0,
+   "max": 191,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track12_level",
+   "name": "T13 Level",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track12_pan",
+   "name": "T13 Pan",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track13_machine",
+   "name": "T14 Machine",
+   "min": 0,
+   "max": 191,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track13_level",
+   "name": "T14 Level",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track13_pan",
+   "name": "T14 Pan",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track14_machine",
+   "name": "T15 Machine",
+   "min": 0,
+   "max": 191,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track14_level",
+   "name": "T15 Level",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track14_pan",
+   "name": "T15 Pan",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track15_machine",
+   "name": "T16 Machine",
+   "min": 0,
+   "max": 191,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track15_level",
+   "name": "T16 Level",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track15_pan",
+   "name": "T16 Pan",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "tempo",
+   "name": "Tempo",
+   "min": 30,
+   "max": 300,
+   "default": 120,
+   "display": "int"
+  },
+  {
+   "key": "max_voices",
+   "name": "Max Voices",
+   "min": 1,
+   "max": 16,
+   "default": 16,
+   "display": "int"
+  }
+ ],
+ "sections": [
+  {
+   "label": "TRACK 1",
+   "keys": [
+    "track0_machine",
+    "track0_level",
+    "track0_pan"
+   ]
+  },
+  {
+   "label": "TRACK 2",
+   "keys": [
+    "track1_machine",
+    "track1_level",
+    "track1_pan"
+   ]
+  },
+  {
+   "label": "TRACK 3",
+   "keys": [
+    "track2_machine",
+    "track2_level",
+    "track2_pan"
+   ]
+  },
+  {
+   "label": "TRACK 4",
+   "keys": [
+    "track3_machine",
+    "track3_level",
+    "track3_pan"
+   ]
+  },
+  {
+   "label": "TRACK 5",
+   "keys": [
+    "track4_machine",
+    "track4_level",
+    "track4_pan"
+   ]
+  },
+  {
+   "label": "TRACK 6",
+   "keys": [
+    "track5_machine",
+    "track5_level",
+    "track5_pan"
+   ]
+  },
+  {
+   "label": "TRACK 7",
+   "keys": [
+    "track6_machine",
+    "track6_level",
+    "track6_pan"
+   ]
+  },
+  {
+   "label": "TRACK 8",
+   "keys": [
+    "track7_machine",
+    "track7_level",
+    "track7_pan"
+   ]
+  },
+  {
+   "label": "TRACK 9",
+   "keys": [
+    "track8_machine",
+    "track8_level",
+    "track8_pan"
+   ]
+  },
+  {
+   "label": "TRACK 10",
+   "keys": [
+    "track9_machine",
+    "track9_level",
+    "track9_pan"
+   ]
+  },
+  {
+   "label": "TRACK 11",
+   "keys": [
+    "track10_machine",
+    "track10_level",
+    "track10_pan"
+   ]
+  },
+  {
+   "label": "TRACK 12",
+   "keys": [
+    "track11_machine",
+    "track11_level",
+    "track11_pan"
+   ]
+  },
+  {
+   "label": "TRACK 13",
+   "keys": [
+    "track12_machine",
+    "track12_level",
+    "track12_pan"
+   ]
+  },
+  {
+   "label": "TRACK 14",
+   "keys": [
+    "track13_machine",
+    "track13_level",
+    "track13_pan"
+   ]
+  },
+  {
+   "label": "TRACK 15",
+   "keys": [
+    "track14_machine",
+    "track14_level",
+    "track14_pan"
+   ]
+  },
+  {
+   "label": "TRACK 16",
+   "keys": [
+    "track15_machine",
+    "track15_level",
+    "track15_pan"
+   ]
+  },
+  {
+   "label": "GLOBAL",
+   "keys": [
+    "tempo",
+    "max_voices"
+   ]
+  }
+ ]
+}
