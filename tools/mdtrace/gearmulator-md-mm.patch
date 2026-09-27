@@ -142,7 +142,7 @@ index 05557026..e356de8f 100644
  		{
  			return m_frontPanelPublisher->tryRead(_panel);
 diff --git a/source/elektron/md/mdLib/mdmc.cpp b/source/elektron/md/mdLib/mdmc.cpp
-index dae644c3..d580faef 100644
+index dae644c3..454cef03 100644
 --- a/source/elektron/md/mdLib/mdmc.cpp
 +++ b/source/elektron/md/mdLib/mdmc.cpp
 @@ -21,6 +21,7 @@
@@ -153,7 +153,57 @@ index dae644c3..d580faef 100644
  	namespace
  	{
  		// The SFX-60 MKII stores user DigiPRO waves in the uniform-sector portion
-@@ -610,11 +611,43 @@ namespace md
+@@ -429,8 +430,49 @@ namespace md
+ 				getCycles());
+ 	}
+ 
++	// mpc-vst-machinedrum tracing (local only): 68k PC breakpoints that log registers and memory at a register.
++	uint32_t g_mdBp[8] = {};
++	uint32_t g_mdBpCount = 0;
++	uint32_t g_mdBpDumpReg = 14;	// 0-7 = d0-d7, 8-15 = a0-a7; dump 64 bytes at that register
++	uint32_t g_mdBpDumpLen = 64;
++
++	void Microcontroller::traceBreakpoint()
++	{
++		const auto pc = getPC();
++		for(uint32_t i = 0; i < g_mdBpCount; ++i)
++		{
++			if(g_mdBp[i] != pc) continue;
++			std::fprintf(stderr, "BP pc=%06x a=", pc);
++			for(uint32_t r = 0; r < 8; ++r) std::fprintf(stderr, "%08x ", getAReg(r));
++			std::fprintf(stderr, "d=");
++			for(uint32_t r = 0; r < 8; ++r) std::fprintf(stderr, "%08x ", getDReg(r));
++			const uint32_t base = g_mdBpDumpReg < 8 ? getDReg(g_mdBpDumpReg) : getAReg(g_mdBpDumpReg - 8);
++			std::fprintf(stderr, "mem[%08x]=", base);
++			for(uint32_t k = 0; k < g_mdBpDumpLen; k += 2)
++			{
++				const auto r = resolve(base + k);
++				std::fprintf(stderr, "%04x ", (r.data && !r.peripheral && r.offset + 2 <= r.size) ? (uint32_t(r.data[r.offset]) << 8 | r.data[r.offset + 1]) : 0xdead);
++			}
++			std::fprintf(stderr, "\n");
++		}
++	}
++
++	// mpc-vst-machinedrum tracing (local only): instruction counts by PC region.
++	bool g_mdCountOn = false;
++	uint64_t g_mdCount[4] = {};	// 0 ISRAM param/LFO code, 1 OS LFO shape code, 2 OS machine fns, 3 everything
++
+ 	uint32_t Microcontroller::exec()
+ 	{
++		if(g_mdBpCount)
++			traceBreakpoint();
++		if(g_mdCountOn)
++		{
++			const auto pc = getPC();
++			++g_mdCount[3];
++			if(pc >= 0x1000088 && pc < 0x100043a) ++g_mdCount[0];
++			else if(pc >= 0x204c94 && pc < 0x205200) ++g_mdCount[1];
++			else if(pc >= 0x201128 && pc < 0x204c94) ++g_mdCount[2];
++		}
+ 
+ 		// Step the CPU one instruction, then advance the derived SIM and interrupt wiring.
+ 		const auto cycles = execInstruction();
+@@ -610,11 +652,43 @@ namespace md
  		return mc68k::memoryOps::readU16(r.data, r.offset);
  	}
  
@@ -198,7 +248,7 @@ index dae644c3..d580faef 100644
  		const bool patchRam = memorymap::isPatchRam(_addr);
  		std::unique_lock patchLock(m_patchRamMutex, std::defer_lock);
  		if(patchRam)
-@@ -622,6 +655,7 @@ namespace md
+@@ -622,6 +696,7 @@ namespace md
  		const auto r = resolve(_addr);
  		if(r.peripheral)								{ logPeripheral(_addr, _val, 1, true); return; }
  		if(!r.writable || !r.data || r.offset >= r.size)	return;
@@ -206,7 +256,7 @@ index dae644c3..d580faef 100644
  		r.data[r.offset] = _val;
  	}
  
-@@ -674,6 +708,7 @@ namespace md
+@@ -674,6 +749,7 @@ namespace md
  			}
  		}
  		if(memorymap::g_sim.contains(_addr))		{ m_sim.write16(memorymap::g_sim.offset(_addr), _val); return; }
@@ -214,7 +264,7 @@ index dae644c3..d580faef 100644
  		if(memorymap::g_dsp1Hdi08.contains(_addr))	{ m_hdi08Dsp1.write16(static_cast<mc68k::PeriphAddress>(memorymap::g_dsp1Hdi08.offset(_addr)), _val); return; }
  		if(memorymap::g_dsp2Hdi08.contains(_addr))	{ m_hdi08Dsp2.write16(static_cast<mc68k::PeriphAddress>(memorymap::g_dsp2Hdi08.offset(_addr)), _val); return; }
  		if(m_monomachineFlash && (memorymap::g_flashFull.contains(_addr)
-@@ -697,6 +732,7 @@ namespace md
+@@ -697,6 +773,7 @@ namespace md
  		const auto r = resolve(_addr);
  		if(r.peripheral)										{ logPeripheral(_addr, _val, 2, true); return; }
  		if(!r.writable || !r.data || (r.offset + 1) >= r.size)	return;
@@ -223,15 +273,16 @@ index dae644c3..d580faef 100644
  	}
  
 diff --git a/source/elektron/md/mdLib/mdmc.h b/source/elektron/md/mdLib/mdmc.h
-index 2666e3c2..283f387f 100644
+index 2666e3c2..a76d9cd5 100644
 --- a/source/elektron/md/mdLib/mdmc.h
 +++ b/source/elektron/md/mdLib/mdmc.h
-@@ -70,6 +70,8 @@ namespace md
+@@ -70,6 +70,9 @@ namespace md
  		uint16_t read16(uint32_t _addr) override;
  		void     write8 (uint32_t _addr, uint8_t  _val) override;
  		void     write16(uint32_t _addr, uint16_t _val) override;
 +		void     traceHdiWrite(uint32_t _addr, uint32_t _val, uint32_t _size);	// mpc-vst-machinedrum tracing
 +		void     traceWatch(uint32_t _addr, uint32_t _val, uint32_t _size);	// mpc-vst-machinedrum tracing
++		void     traceBreakpoint();	// mpc-vst-machinedrum tracing
  
  		uint32_t getResetPC() override;
  		uint32_t getResetSP() override;

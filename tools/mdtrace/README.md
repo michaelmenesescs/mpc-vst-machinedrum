@@ -20,7 +20,10 @@ DSP program and firmware-computed data verbatim.
   cached to a file you name), advances 20 emulated seconds (`MDPROBE_BOOT=frames` to change), then
   runs a script. Copy to `source/elektron/md/mdLibTest/`.
 - `mdTraceTool.cpp`: the earlier, plugin-level tool used for the boot/DSP-role trace.
-- `analysis/*.py`: parsers for the logs (`state.py` per-step changed Y addresses, `voice.py` DSP2
+- `analysis/dis68.py` (OS image, `MD_SECTION0=section0.bin`), `analysis/isram.py` (internal SRAM
+  captured with `peek32`), `analysis/machines.py` (machine table): ColdFire code with Capstone
+  (`pip install capstone`).
+- `analysis/*.py` (others): parsers for the logs (`state.py` per-step changed Y addresses, `voice.py` DSP2
   voice-slot history, `sweep.py` parameter-sweep diff, `dma.py` block shapes).
 
 ## Build
@@ -58,6 +61,11 @@ after about 20 emulated seconds of `Hardware::advance()`. Driving it any shorter
 | `panel:NAME` | tap Kit, Enter, Exit, Up, Down, Left, Right, Play, Stop, Function, Record |
 | `lcd` | print the LCD as ASCII |
 | `prof:N` | N frames with a PC histogram and instruction counts for both DSPs |
+| `cf:on` / `cf:off` | log ColdFire PC + registers on every HI08 write |
+| `watch:BEGIN:END` | log ColdFire writes into [BEGIN, END) (hex); `watch:0:0` off |
+| `bp:PC[,PC…][:REG:LEN]` | log registers at 68k PCs, plus LEN bytes at REG (0-7 d0-d7, 8-15 a0-a7); `bp:0` off |
+| `count:N` | 68k instructions/s by region (param/LFO code, LFO shapes, machine fns, total) |
+| `dis68k:FROM:TO`, `peek32:FROM:TO` | ColdFire memory (the disassembler needs Musashi's read callbacks; use `analysis/dis68.py` / `isram.py` instead) |
 
 Track parameters by CC on channel 0 (track 1): 16-23 SYN1-8, 24-32 AMD AMF EQF EQG FLTF FLTW FLTQ SRR
 DIST, 33-36 VOL PAN DEL REV, 37-39 LFOS LFOD LFOM, 8 level.

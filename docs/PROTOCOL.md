@@ -151,15 +151,53 @@ matches the file byte for byte) with Capstone (`tools/mdtrace/analysis/dis68.py`
   VOL/PAN/sends, …), i.e. the kit values after the OS's own modulation. The same routine turns the
   non-SYN part into DSP1's per-track values (with velocity/accent handling).
 
-What the host model must reproduce exactly, by translating the OS code (like Monomodule's
-`HostModel.cpp` for the Monomachine):
+### The per-track parameter pipeline (decoded)
 
-1. How `a6` is built each tick from the kit's 0-127 values: scaling (`<<7` plus fraction?), the
-   per-track LFO (LFOS/LFOD/LFOM and its destination), any parameter smoothing, and pitch/note
-   input.
-2. The per-voice tick routine's DSP1-facing arithmetic (volume with velocity/accent, pan, sends) and
-   the trigger word (machine id + 1, bit 7 for the UW table).
-3. The tick schedule: 96-sample control tick, DSP2 slots every other tick.
+`a6` for voice k is `$010011cc + $30·k` in internal SRAM (24 16-bit values). It is produced each
+**sequencer tick** by three routines that the OS copies into internal SRAM (`$1000000` = OS image
+`$2622f4`), called from the tick routine (`$20ad9a`) at `$20b488..$20b49c` after the per-voice loop:
+
+1. **Smoothing** `$10002e0`: for all 16 tracks × 24 parameters (two per 32-bit word),
+   `cur = (3·cur + (raw << 7)) >> 2`, masked to `$3fff`. `raw` = kit bytes at `$1000ddc`
+   (16 × 24), `cur` = working array at `$1000a4c` (16 × 48 bytes). Same slew as the Monomachine.
+   A second smoother (`$100029e`, 48 values at `$1000d7c` from `$1000f5c`) handles global values.
+2. **LFO apply** `$1000332`: for each track's LFO (structs at `$1000f8c + $24·k`: destination
+   track and parameter, two shape outputs S1/S2 at `+$10/+$14`), `lfo = ((0x3f80 - LFOM)·S1 -
+   LFOM·S2) >> 14`, `dest = clamp(cur + (LFOD · lfo) >> 14, 0, $3fff)`, then copies all 16 working
+   arrays to the `a6` arrays and restores the un-modulated values. (`$10001e8` = the same for one
+   track, used at trigger.)
+3. **LFO oscillator** `$1000088` (called when flagged): per LFO, a phase increment from LFOS (param
+   21) and a tempo factor at `$100150c` (linear below `$1fff`, cubic above), `phase = (phase + inc)
+   & $7fff`, then the OS waveform routine `$204c94(k)`, which calls two of 8 **shape functions**
+   through a table at `$2523ee` (args: track, shape 0/1, trigger flag), then the decaying shape
+   types 3 (linear fall) and 4 (exponential decay).
+
+**Tick rate:** at 120 BPM the tick routine ran 128.6 times/s = 64 per beat, i.e. the parameter
+pipeline is tempo-synced; only the HI08 transport to the DSPs runs at a fixed rate. (To confirm at
+other tempos.)
+
+**Cost if we call these routines in a 68k emulator** (measured, `mdProbe count`): smoothing + LFO
+0.5-0.65 M 68k instructions/s, LFO shapes ~0.15 M/s, machine functions up to ~0.2 M/s: **~1 M/s in
+total**, a few percent of a Force core. For comparison the entire ColdFire OS runs ~4.1-4.8 M/s.
+
+### Host model plan: hybrid
+
+Our C++ owns the tick schedule and the inputs, the MD's routines do the maths:
+
+- C++ writes the kit bytes (`$1000ddc`), LFO settings (struct fields), tempo factor (`$100150c`),
+  and trigger flags into a memory image built from section 0 of the user's `.syx` (+ the internal
+  SRAM code copy), then calls, in Musashi: smoothing, LFO oscillator, LFO apply, and for each voice
+  its machine function with its `a6` array. It writes the 13-word result and trigger code straight
+  into DSP2's voice slot.
+- Still to translate from the tick routine (`$20ad9a`, the per-voice loop around `$20af52-$20b44c`):
+  trigger handling (machine code in word 0, LFO restart per LFO mode), velocity/accent, and the
+  DSP1 per-track values it derives from `a6` (volume, pan, sends, effect parameters). This is
+  ordinary compiled C, readable with `analysis/dis68.py`.
+
+Alternative, kept as a fallback: run the **whole** ColdFire OS in Musashi (as md-mm does) and drive
+it with MIDI. Exact with no translation at all and only ~4-5 M 68k instructions/s, but it brings the
+sequencer, the 20 s boot / first-run flash state, the three-processor scheduling md-mm needed, and
+MIDI-UART latency and bandwidth limits on every parameter change from the plugin.
 
 ## Design consequences
 
@@ -181,7 +219,8 @@ What the host model must reproduce exactly, by translating the OS code (like Mon
 
 ## Open
 
-- **Building `a6`** (see "Host model: the ColdFire side"): LFO, smoothing, pitch.
+- The tick routine's per-voice orchestration and DSP1 values (see "Host model plan: hybrid").
+- Tick rate vs. tempo (64 per beat at 120 BPM measured).
 - The rest of DSP2's 64-word slot (words 13-63: DSP-side voice state?) and where pitch/note enters.
 - DSP1's global blocks (`$150-$18c`): master FX parameters and per-tick modulation.
 - Whether DSP1 keeps per-track processed blocks in memory before the pan/mix (for per-track outs

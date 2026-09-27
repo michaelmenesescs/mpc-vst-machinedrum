@@ -109,6 +109,16 @@ Steps:
      bit-exact C++ translation, with a DSP1-in-emulator reference test.
   4. Measure DSP2 alone on the Force (static recompiler).
 
+- **2026-09-27: step 1 of the host model done: the per-track parameter pipeline is decoded.**
+  Smoothing (same slew as the Monomachine), per-track LFO (tempo-relative oscillator, 8 shape
+  functions, mix and depth) and the LFO apply that builds each voice's 24-value parameter array
+  are all self-contained routines in the OS; they run per sequencer tick (64 per beat at 120 BPM).
+  Measured cost of running them plus the machine functions in a 68k emulator: ~1 M 68k
+  instructions/s in total. Plan (see `docs/PROTOCOL.md`, "Host model plan: hybrid"): our C++ owns the
+  tick schedule and inputs; the MD's own routines do the maths in Musashi. Next: translate the tick
+  routine's per-voice orchestration (triggers, accent/velocity, DSP1 per-track values), then
+  prototype `md::VoiceEngine` (step 2 below).
+
 ## Relationship between the projects
 
 Monomodule (Shnolk) and gearmulator-md-mm (Joe Landers) share no code and neither credits the other. md-mm is

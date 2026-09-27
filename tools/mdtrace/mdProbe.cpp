@@ -30,7 +30,7 @@
 #include <string>
 #include <vector>
 
-namespace md { extern bool g_mdTraceOn; extern bool g_mdEssiDumpOn; extern bool g_mdCfTraceOn; extern uint32_t g_mdWatchBegin, g_mdWatchEnd; }
+namespace md { extern bool g_mdTraceOn; extern bool g_mdEssiDumpOn; extern bool g_mdCfTraceOn; extern uint32_t g_mdWatchBegin, g_mdWatchEnd; extern uint32_t g_mdBp[8], g_mdBpCount, g_mdBpDumpReg, g_mdBpDumpLen; extern bool g_mdCountOn; extern uint64_t g_mdCount[4]; }
 
 namespace
 {
@@ -144,6 +144,32 @@ int main(int argc, char** argv)
 					std::fprintf(stderr, " %04x%04x", hw.traceUc().read16(a + k), hw.traceUc().read16(a + k + 2));
 				std::fprintf(stderr, "\n");
 			}
+			continue;
+		}
+		if(kind == "bp")	// bp:PC[,PC...][:REG:LEN]  REG 0-7 d0-d7, 8-15 a0-a7; bp:0 clears
+		{
+			md::g_mdBpCount = 0;
+			const auto list = s.substr(3, s.find(':', 3) == std::string::npos ? std::string::npos : s.find(':', 3) - 3);
+			for(size_t p = 0; p < list.size() && md::g_mdBpCount < 8;)
+			{
+				const auto e = list.find(',', p);
+				const auto pc = static_cast<uint32_t>(std::strtoul(list.substr(p, e - p).c_str(), nullptr, 16));
+				if(pc) md::g_mdBp[md::g_mdBpCount++] = pc;
+				if(e == std::string::npos) break;
+				p = e + 1;
+			}
+			if(v.size() >= 3) { md::g_mdBpDumpReg = static_cast<uint32_t>(v[v.size() - 2]); md::g_mdBpDumpLen = static_cast<uint32_t>(v.back()); }
+			continue;
+		}
+		if(kind == "count")	// count:FRAMES - 68k instructions by region over FRAMES frames
+		{
+			for(auto& n : md::g_mdCount) n = 0;
+			md::g_mdCountOn = true;
+			run(hw, static_cast<uint32_t>(v.at(0)));
+			md::g_mdCountOn = false;
+			const double sec = double(v.at(0)) / md::g_samplerate;
+			std::fprintf(stderr, "   68k instr/s: param+LFO(isram) %.0f  LFO shapes %.0f  machine fns %.0f  total CPU %.0f\n",
+				md::g_mdCount[0] / sec, md::g_mdCount[1] / sec, md::g_mdCount[2] / sec, md::g_mdCount[3] / sec);
 			continue;
 		}
 		if(s == "cf:on") { md::g_mdCfTraceOn = true; continue; }
