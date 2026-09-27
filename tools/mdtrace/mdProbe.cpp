@@ -64,13 +64,17 @@ namespace
 		return v;
 	}
 
-	const std::map<std::string, md::PanelControl> g_panel = {
-		{"Kit", md::PanelControl::Kit}, {"Enter", md::PanelControl::Enter}, {"Exit", md::PanelControl::Exit},
-		{"Up", md::PanelControl::Up}, {"Down", md::PanelControl::Down}, {"Left", md::PanelControl::Left},
-		{"Right", md::PanelControl::Right}, {"Play", md::PanelControl::Play}, {"Stop", md::PanelControl::Stop},
-		{"Function", md::PanelControl::Function}, {"Record", md::PanelControl::Record},
-		{"Track1", md::PanelControl::Track1}, {"Track2", md::PanelControl::Track2},
-	};
+	std::map<std::string, md::PanelControl> makePanelMap()
+	{
+		std::map<std::string, md::PanelControl> m;
+		for(int i = 0; i <= static_cast<int>(md::PanelControl::ClassicExtended); ++i)
+		{
+			const auto c = static_cast<md::PanelControl>(i);
+			m[md::panelControlName(c)] = c;
+		}
+		return m;
+	}
+	const std::map<std::string, md::PanelControl> g_panel = makePanelMap();
 
 	bool press(md::Hardware& _hw, md::PanelControl _c, uint32_t _hold)
 	{
