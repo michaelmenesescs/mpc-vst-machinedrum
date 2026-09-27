@@ -225,8 +225,21 @@ that sends the voice's 32 samples out over HI08 and continues at `$d5`; `$e2` �
 - `MachineRunner` with md-mm's captured parameter arrays reproduces the slot words **exactly** for
   TRX-B2 (103 68k instructions) and TRX-SD (82 instructions).
 - DSP2 cost in the harness: ~4,500 instructions per block for the loop and 16 silent voices
-  (6.2 M/s; silent voices could be skipped entirely), ~1,300 more per playing TRX-B2 voice
-  (~1.8 M/s per voice).
+  (6.2 M/s), ~1,300 more per playing TRX-B2 voice (~1.8 M/s per voice).
+
+**Silent voices skipped (2026-09-27):** a voice's persisted "current machine" code (the `Y:$142+
+$153`-indexed table, read at `P:$a3`) is 0 before any trigger and `id+1` after — the empty machine
+GND-- (id 0) is applied to all tracks at boot, so idle tracks actually read back **1**, not 0 (see
+"per voice, every tick" below). Harness patch: redirect `P:$a8`'s render-function lookup (normally
+`r1 = y:(r0+$145c77)`) through a check — code 0 or 1 skips the `jsr` and instead clears the
+32-sample buffer directly (`kSkipStub`/`kSkipNormal`/`kSkipSilent`/`kClearVoice` in
+`VoiceEngine::installHarness`). GND--'s real render and this clear both write 32 zeros, so output
+is unchanged: confirmed byte-identical to the pre-patch engine over 200 blocks, both for an idle
+voice (all-zero output) and for a voice playing TRX-B2 (2,692/6,400 nonzero samples, unchanged
+sample values). Cost: **16 silent voices 6.2 → 2.7 M/s; one playing voice + 15 idle 8.0 → 4.8
+M/s.** (Gotcha: this assembler's `Bcc_xxxx` — `beq`/`bra`/etc. — takes a raw PC-relative
+displacement as its operand, not an address, unlike `jmp`/`jclr`/`jset`; giving it an absolute hex
+address sent the DSP to an invalid PC. `jeq`/`jmp`, the absolute forms, are correct here.)
 
 ## Host model: tick scheduling and the per-voice rule (decoded)
 
@@ -277,7 +290,10 @@ the slot sequence the host model produces, 20/20 ticks.
 ### DSP2 cost per machine (measured)
 
 One voice of each machine triggered with its defaults, 150 blocks, `mdhost` (DSP2 M instructions/s
-at 44.1 kHz, including the harness's 16-voice loop; baseline with all voices silent = 6.2):
+at 44.1 kHz, including the harness's 16-voice loop; baseline with all voices silent = 6.2 **at the
+time of this table** — the other 15 idle voices' cost, not the playing one's, dropped afterward
+when silent voices were skipped: baseline is now 2.7, so subtract ~3.5 from every figure below for
+the current harness).
 
 GND-- 6.2 | GNDSN 6.7 | GNDNS 6.5 | GNDIM 6.2 | TRXBD 8.6 | TRXSD 8.3 | TRXXT 6.8 | TRXCP 6.2 | TRXRS 8.0 | TRXCB 8.8 | TRXCH 8.8 | TRXOH 8.8 | TRXCY 9.5 | TRXMA 6.2 | TRXCL 6.2 | TRXXC 6.8 | TRXB2 8.0 | TRXS2 9.6 | EFMBD 8.0 | EFMSD 8.8 | EFMXT 8.2 | EFMCP 8.3 | EFMRS 9.2 | EFMCB 9.7 | EFMHH 8.9 | EFMCY 9.3 | E12BD 7.6 | E12SD 8.5 | E12HT 7.7 | E12RS 8.5 | E12OH 7.7 | E12RC 8.5 | E12CC 7.7 | E12SH 8.3 | P-IBD 9.5 | P-ISD 9.8 | P-IMT 9.8 | P-IML 8.8 | P-IMA 7.8 | P-IRS 9.8 | P-IRC 9.2 | P-ICC 9.2 | P-IHH 9.2 | INPGA 6.6 | INPFA 7.2 | INPEA 7.2 | ROM01 6.2 | ROM25 6.2 | RAMR1 8.1 | RAMP1 6.2
 

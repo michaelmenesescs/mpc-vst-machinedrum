@@ -153,6 +153,21 @@ Steps:
   4. ROM/RAM machines: sample data from the user's flash (not in the `.syx`).
   5. Port to `libs/dsp56300` (arm32) and measure on the Force.
 
+- **2026-09-27: silent voices skipped in the harness.** `VoiceEngine::installHarness` now redirects
+  the per-voice render call to a fast clear when the voice's persisted machine code is 0 (never
+  triggered) or 1 (the empty machine GND--, which all tracks default to at boot) — both cases
+  already output 32 zeros, so this only removes the cost of getting there. Confirmed
+  byte-identical output to the pre-patch engine for 200 blocks, both idle and with a playing voice.
+  Baseline (16 silent voices) 6.2 → 2.7 M instr/s; one playing voice + 15 idle 8.0 → 4.8 M instr/s.
+  Details and a gotcha (this assembler's `beq`/`bra` take a raw relative displacement, not an
+  address) in `docs/PROTOCOL.md`.
+
+  **Next:**
+  1. Mixer DSP: translate the `Y:$100+5·k` computation (volume/velocity/accent, pan, sends); then
+     the bit-exact C++ translation of DSP1's per-track chain (filter, EQ, SRR, distortion, AMD).
+  2. ROM/RAM machines: sample data from the user's flash (not in the `.syx`).
+  3. Port `VoiceEngine` to `libs/dsp56300` (arm32) and measure on the Force.
+
 ## Relationship between the projects
 
 Monomodule (Shnolk) and gearmulator-md-mm (Joe Landers) share no code and neither credits the other. md-mm is

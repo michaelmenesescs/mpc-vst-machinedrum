@@ -30,11 +30,17 @@ namespace md::engine
 		// Program addresses (OS 1.63 voice program, see docs/PROTOCOL.md)
 		constexpr TWord kEntry = 0x24;			// after the vector table: init, then bra $64
 		constexpr TWord kHostGroupTx = 0x73;	// movep a1,x:HTX every 4 voices (ColdFire pacing): removed
+		constexpr TWord kRenderFn = 0xa8;		// r1 = y:(r0+$145c77): render fn address for the voice's machine
+		constexpr TWord kAfterRenderFn = 0xaa;	// resumes normal flow after the render-fn lookup
 		constexpr TWord kAfterRender = 0xb5;	// voice rendered into Y:(y:$140); original: frame sync + link DMA
 		constexpr TWord kNextVoice = 0xd5;		// advance to the next voice
 		constexpr TWord kEndOfBlock = 0xe2;		// all 16 voices done; original: RAM-R input position, bra $64
 		constexpr TWord kBlockStart = 0x64;
 		constexpr TWord kStub = 0x0c00;			// free internal P RAM (the program's internal P ends at $3e2)
+		constexpr TWord kSkipStub = 0x0c20;	// silent-voice check, replaces kRenderFn's lookup
+		constexpr TWord kSkipNormal = 0x0c30;	// real render fn lookup, resumed
+		constexpr TWord kSkipSilent = 0x0c38;	// r1 = kClearVoice instead
+		constexpr TWord kClearVoice = 0x0c40;	// fast rts routine: 32 zeros into y:(r7), same as machine 0/1's render
 
 		constexpr uint64_t kMaxInstrInit = 200'000'000;
 		constexpr uint64_t kMaxInstrBlock = 20'000'000;
@@ -130,6 +136,48 @@ namespace md::engine
 			emit(pc, "nop");
 			m_dsp->memWriteP(pc++, 0x0af080);	// jmp >next voice
 			m_dsp->memWriteP(pc++, kNextVoice);
+		}
+
+		// 2b) skip the machine call for idle voices (current machine code 0 = never assigned, or 1 = the
+		//     empty machine GND--, both of which render 32 zeros, docs/PROTOCOL.md "per voice, every
+		//     tick"): redirect r1 (the render fn about to be jsr'd at $b4) to a fast clear instead of the
+		//     real GND-- function. r0 (current machine code) and r7 (buffer pointer, mod 32) are live here.
+		{
+			TWord pc = kRenderFn;
+			m_dsp->memWriteP(pc++, 0x0af080);	// jmp >kSkipStub
+			m_dsp->memWriteP(pc++, kSkipStub);
+		}
+		{
+			// jeq/jmp, not beq/bra: Bcc_xxxx's operand is a raw PC-relative displacement, not an address
+			// (unlike jmp/jclr/jset elsewhere in this file); jeq is the short-absolute conditional form.
+			TWord pc = kSkipStub;
+			emit(pc, "move r0,a");
+			emit(pc, "tst a");
+			emit(pc, "jeq " + hex(kSkipSilent));
+			emit(pc, "move #>1,b");
+			emit(pc, "cmp a,b");
+			emit(pc, "jeq " + hex(kSkipSilent));
+			emit(pc, "jmp " + hex(kSkipNormal));
+		}
+		{
+			TWord pc = kSkipNormal;
+			emit(pc, "move y:(r0+$145c77),r1");
+			m_dsp->memWriteP(pc++, 0x0af080);	// jmp >kAfterRenderFn
+			m_dsp->memWriteP(pc++, kAfterRenderFn);
+		}
+		{
+			TWord pc = kSkipSilent;
+			emit(pc, "move #>" + hex(kClearVoice) + ",r1");
+			m_dsp->memWriteP(pc++, 0x0af080);	// jmp >kAfterRenderFn
+			m_dsp->memWriteP(pc++, kAfterRenderFn);
+		}
+		{
+			TWord pc = kClearVoice;
+			emit(pc, "clr a");
+			emit(pc, "do #32," + hex(pc + 3));
+			emit(pc, "move a,y:(r7)+");
+			emit(pc, "nop");
+			emit(pc, "rts");
 		}
 
 		// 3) after all 16 voices: wait for the host's "go" word (the host updates the voice slots meanwhile)
