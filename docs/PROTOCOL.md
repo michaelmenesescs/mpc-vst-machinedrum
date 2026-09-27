@@ -412,3 +412,55 @@ track's own post-effects signal. `tools/mdrender` plays a demo pattern through i
 Not yet translated: the master FX (`P:$344-$970`: rhythm echo, gate box, EQ, dynamix, i.e.
 Machinedrum FX), and so no end-to-end comparison with md-mm's final audio yet (its output always
 includes the master section).
+
+## Force port: VoiceEngine cross-compiles and runs correctly on 32-bit ARM
+
+Cross-compiled `VoiceEngine`, `HostModel`, `MachineRunner`, `TrackFx` and `Mixer` for armhf against
+`libs/dsp56300` (the arm32 fork; `tools/arm32jit_prototype/toolchain-diff/armhf.cmake`,
+`-mcpu=cortex-a17 -mfpu=neon-vfpv4 -mfloat-abi=hard`, matching the Force). No source changes were
+needed beyond one: **on a target with no JIT (`dsp56k::g_useJIT` false at compile time, i.e. not
+x86-64/arm64), the DSP must be told to enable its interpreter opcode cache explicitly**
+(`m_dsp->setInterpreterEnabled(true)`) — this fork only builds that cache on request, since normal
+(JIT) hosts never read it. Without it, `exec()` still correctly falls back to `execInterpreter()` on
+armhf, but every entry is an unresolved null instruction pointer, and the very first instruction
+segfaults. `VoiceEngine::VoiceEngine()` and `MixerRef::MixerRef()` (test-only) now do this when
+`!dsp56k::g_useJIT`.
+
+**Verified, no physical device available in this session** (`qemu-arm`, cross-built, statically
+linked): `mdvoice` cross-built for armhf reproduces the x86 build's output exactly for both a
+playing voice (TRX-B2) and an idle voice, 200 blocks. The decisive portability check: this fork's
+interpreter forced on x86 too (`-DDSP56K_NO_JIT_RUNTIME`) against the same armhf cross-build,
+running the full engine (`mdrender`'s demo pattern, 8 s, 6 tracks) — **byte-identical WAV output**.
+That proves the port itself (source + cross-compilation) is sound and deterministic across
+architectures; it does not by itself prove the arm32 fork's interpreter matches real Machinedrum
+hardware for every instruction (see below).
+
+**Found and fixed along the way:** `op_Merge` was an unimplemented stub in this fork
+(`errNotImplemented("MERGE")`); gearmulator-md-mm's separate dsp56300 fork has a real
+implementation. Ported it (`libs/dsp56300`, branch `armhf-interp-merge-fix`), adapted to this
+fork's left-aligned accumulator (`a1()`/`b1()` instead of that fork's `aluField24(reg, pos)`).
+Not exercised by the demo kit (neither DSP1 nor DSP2's program in OS 1.63 uses `MERGE`), but a real
+gap worth having fixed regardless.
+
+**Open: one fork-level discrepancy found, not yet root-caused.** Bisecting the demo kit's 6
+machines one at a time (`mdvoice`, single voice, `mdmachine`-computed coefficients) against both
+dsp56300 forks: TRX-BD, TRX-CH, TRX-OH, EFM-CB and P-I-MT agree between the two forks;
+**TRX-SD (id 17) does not** — output matches for the first 64 samples (2 blocks) then diverges.
+Candidates checked and ruled out by inspection (implementations read equivalent, modulo each
+fork's accumulator convention): `Tcc` (`op_Tcc_S1D1`/`S1D1S2D2`), `LRA` (`op_Lra_Rn` is an
+identical stub in both forks, so not a source of disagreement between them; `op_Lra_xxxx` is
+identical and implemented in both). Not yet found: whichever instruction TRX-SD's render routine
+(`P:$100776`, section 1) uses that the two forks disagree on. Since this session only ever verified
+TRX-B2's audio (not TRX-SD's) sample-for-sample against real captured hardware output (only
+TRX-SD's *coefficient words* were checked, in "Voice engine prototype"), it is not yet known which
+fork is correct here — worth noting, this arm32/Monomodule fork independently added its own fixes
+(SR.SM saturation, MPYRI) that gearmulator-md-mm's fork lacks, so "disagrees with md-mm" does not
+imply "wrong". Needs a real hardware capture of TRX-SD audio (or a traced instruction-level diff
+between the two forks' interpreters on the same input) to resolve. Tracked in `HANDOFF.md`.
+
+**Not done in this session (no physical Force access):** on-device timing. The static recompiler
+(`libs/dsp56300`'s `tools/arm32jit_prototype/recomp/`, see `docs/ARM32_JIT.md`) is generic
+infrastructure, not Monomodule-specific, and should apply directly to `VoiceEngine`'s DSP2 program
+once discovery is re-run against it; measured ~3.8-3.9x over the plain interpreter for Monomachine
+machines. DSP2's interpreted cost is already measured (this doc, "DSP2 cost per machine"); the
+Force number needs the actual device.

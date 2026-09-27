@@ -196,10 +196,34 @@ Steps:
   **Next:**
   1. Machinedrum FX: translate the master section (`P:$344-$970`) the same way; then One + FX can be
      compared end to end with md-mm's audio.
-  2. Port `VoiceEngine` to `libs/dsp56300` (arm32) and measure on the Force: the voice DSP is now the
-     only emulated part and the whole cost.
+  2. ~~Port `VoiceEngine` to `libs/dsp56300` (arm32)~~ done (next entry); still needed: measure on the
+     Force (no physical device in this session).
   3. ROM/RAM machines: sample data from the user's flash (not in the `.syx`).
   4. The plugin itself (wrapper, skin, `vst.json`) following `mpc-vst-monomodule`.
+
+- **2026-09-27: engine cross-compiles and runs correctly for 32-bit ARM (the Force).** No physical
+  device in this session (sandboxed container) — verified with cross-compilation + `qemu-arm`, not
+  on-device timing. `docs/PROTOCOL.md`, "Force port" has the details; summary:
+  - One real fix needed: on a target with no JIT, this fork's interpreter opcode cache must be
+    turned on explicitly (`setInterpreterEnabled(true)`) or `exec()` calls through a null instruction
+    pointer on the first instruction. Done in `VoiceEngine`'s constructor (guarded by
+    `!dsp56k::g_useJIT`, so x86 is unaffected).
+  - **Portability proved**: this fork's interpreter, forced on x86 too
+    (`-DDSP56K_NO_JIT_RUNTIME`), matches the armhf cross-build byte-for-byte on the full engine
+    (8 s demo render). The port itself is sound.
+  - **Found and fixed a real gap**: `op_Merge` was an unimplemented stub in `libs/dsp56300`; ported
+    the real implementation from gearmulator-md-mm's separate fork, adapted to this fork's
+    accumulator representation. Pushed to `sd88me/dsp56300` branch `armhf-interp-merge-fix`
+    (this repo's `libs/dsp56300` submodule now points there). Not exercised by the current demo kit.
+  - **Open, not blocking**: bisecting the demo kit found that TRX-SD (only, of 6 machines checked)
+    produces different DSP2 audio between this fork and gearmulator-md-mm's fork, diverging after
+    2 blocks. Not yet root-caused (Tcc and LRA inspected and ruled out). Since this session never
+    checked TRX-SD's *audio* against real hardware (only its coefficient words, elsewhere), it's
+    not yet known which fork is right. Needs either a real hardware capture of TRX-SD or an
+    instruction-level trace diff between the two forks to resolve.
+  - **Still needed**: real Force timing (this session has no device access) — re-run the static
+    recompiler's discovery step (`libs/dsp56300`'s `tools/arm32jit_prototype/recomp/`, ~3.8-3.9x
+    over the interpreter for Monomachine machines) against DSP2's program, once on-device.
 
 ## Relationship between the projects
 

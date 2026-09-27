@@ -54,6 +54,7 @@ namespace md::engine
 		m_periphX = std::make_unique<Peripherals56303>();
 		m_periphY = std::make_unique<PeripheralsNop>();
 		m_dsp = std::make_unique<DSP>(*m_mem, m_periphX.get(), m_periphY.get());
+		if constexpr(g_useJIT)
 		{
 			// As gearmulator-md-mm configures its DSPs: the program keeps code in the vector area.
 			auto cfg = m_dsp->getJit().getConfig();
@@ -61,6 +62,14 @@ namespace md::engine
 			cfg.aguSupportBitreverse = true;
 			cfg.linkJitBlocks = false;
 			m_dsp->getJit().setConfig(cfg);
+		}
+		else
+		{
+			// No JIT on this target (32-bit ARM, the Force): exec() falls back to the interpreter, whose
+			// per-address opcode cache this fork only builds on request (it costs ~48 bytes x P size, moot
+			// when the JIT is the normal path). Without this, the cache is empty and exec() dereferences a
+			// null instruction-handler pointer on the very first instruction.
+			m_dsp->setInterpreterEnabled(true);
 		}
 		m_periphX->getHI08().setRXRateLimit(0);
 		m_periphX->getHI08().setTransmitDataAlwaysEmpty(true);

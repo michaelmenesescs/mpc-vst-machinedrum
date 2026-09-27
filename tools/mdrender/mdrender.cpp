@@ -77,6 +77,7 @@ int main(int argc, char** argv)
 		int32_t peak = 0;
 		std::array<int32_t, 16> trackPeak{}, voicePeak{};
 		md::engine::Engine::Output out;
+		std::FILE* dbgTracks = std::getenv("MDRENDER_DUMP_TRACKS") ? std::fopen(std::getenv("MDRENDER_DUMP_TRACKS"), "wb") : nullptr;
 		const auto t0 = std::chrono::steady_clock::now();
 		for(uint32_t pos = 0; pos < frames; pos += 32)
 		{
@@ -89,6 +90,7 @@ int main(int argc, char** argv)
 				nextStep += samplesPerStep;
 			}
 			if(!eng.render(out)) throw std::runtime_error("render fault: " + eng.fault());
+			if(dbgTracks) for(int t = 0; t < 6; ++t) std::fwrite(out.tracks[t].data(), 4, 32, dbgTracks);
 			for(int t = 0; t < 16; ++t)
 				for(const int32_t v : out.tracks[t]) trackPeak[t] = std::max(trackPeak[t], std::abs(v));
 			for(const auto& fr : out.mix.main)

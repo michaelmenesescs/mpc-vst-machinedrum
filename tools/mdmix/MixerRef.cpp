@@ -35,12 +35,17 @@ namespace md::mixref
 		m_periphX = std::make_unique<Peripherals56303>();
 		m_periphY = std::make_unique<PeripheralsNop>();
 		m_dsp = std::make_unique<DSP>(*m_mem, m_periphX.get(), m_periphY.get());
+		if constexpr(g_useJIT)
 		{
 			auto cfg = m_dsp->getJit().getConfig();
 			cfg.dynamicFastInterrupts = true;
 			cfg.aguSupportBitreverse = true;
 			cfg.linkJitBlocks = false;
 			m_dsp->getJit().setConfig(cfg);
+		}
+		else
+		{
+			m_dsp->setInterpreterEnabled(true);	// see VoiceEngine.cpp: no JIT on 32-bit ARM
 		}
 		for(auto* essi : {&m_periphX->getEssi0(), &m_periphX->getEssi1()})
 		{
