@@ -14,6 +14,7 @@
 // max_voices (HostModel::setMaxActiveVoices - a voice cap safety valve, see HANDOFF.md "adjustable voice
 // cap"). Per-track FX (AMD/EQ/filter/SRR/DIST) and per-track LFOs are not yet exposed - a natural next
 // increment once this basic version is verified on the device.
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cmath>
@@ -23,6 +24,10 @@
 #include <memory>
 #include <string>
 #include <thread>
+
+#include <pthread.h>
+#include <sched.h>
+#include <unistd.h>
 
 #include "Engine.h"
 #include "Firmware.h"
@@ -34,6 +39,43 @@ extern "C" {
 namespace {
 
 using md::engine::Engine;
+
+// One engine per core, never the UI core (MPC's main thread lives on cpu0): take the least busy of
+// cores 1..N-1 (sampled from /proc/stat over 100 ms). Same approach as mpc-vst-monomodule's chooseCore().
+int chooseCore()
+{
+	auto sample = [](unsigned long long* busy, unsigned long long* total, int n)
+	{
+		std::FILE* f = std::fopen("/proc/stat", "r");
+		if(!f) return;
+		char line[256];
+		while(std::fgets(line, sizeof line, f))
+		{
+			int c; unsigned long long u, ni, s, id, io, ir, so, st;
+			if(std::sscanf(line, "cpu%d %llu %llu %llu %llu %llu %llu %llu %llu", &c, &u, &ni, &s, &id, &io, &ir, &so, &st) == 9 && c >= 0 && c < n)
+			{
+				busy[c] = u + ni + s + ir + so + st;
+				total[c] = busy[c] + id + io;
+			}
+		}
+		std::fclose(f);
+	};
+	const int n = static_cast<int>(std::min<long>(sysconf(_SC_NPROCESSORS_ONLN), 8));
+	if(n < 2) return -1;
+	unsigned long long b0[8] = {}, t0[8] = {}, b1[8] = {}, t1[8] = {};
+	sample(b0, t0, n);
+	struct timespec ts{0, 100000000};
+	nanosleep(&ts, nullptr);
+	sample(b1, t1, n);
+	int best = -1; double bestLoad = 2;
+	for(int c = 1; c < n; ++c)
+	{
+		const double dt = static_cast<double>(t1[c] - t0[c]);
+		const double load = dt > 0 ? static_cast<double>(b1[c] - b0[c]) / dt : 0;
+		if(load < bestLoad) { bestLoad = load; best = c; }
+	}
+	return best;
+}
 
 constexpr int kFrames = 128;					// the host's block size
 constexpr int kInner = kFrames / Engine::kBlock;	// 32-sample engine blocks per host block
@@ -69,6 +111,7 @@ struct Inst
 	std::atomic<int> param[kNumSlots];
 	std::atomic<bool> stop{false}, ready{false};
 	std::atomic<uint32_t> underruns{0}, blocks{0};
+	std::atomic<int> core{-1};
 
 	NoteEv notes[256];
 	std::atomic<uint32_t> nWrite{0}, nRead{0};
@@ -109,6 +152,32 @@ void Inst::run()
 			h.setParam(t, 13, 127);	// FLTW: fully open
 			h.setParam(t, 10, 64);	// EQF
 			h.setParam(t, 11, 64);	// EQG: flat
+		}
+
+		// Real-time priority, above MPC's own AudioWorkers (SCHED_RR 20) - only once booted, so the boot
+		// itself doesn't hog the CPU at real-time priority. Without this the render thread is a plain
+		// SCHED_OTHER thread that can get starved under system load, heard as choppy/dropped audio (a
+		// plain background thread was the whole design point of this architecture - see the top-of-file
+		// comment - but it still needs real-time scheduling to actually keep up, same as
+		// mpc-vst-monomodule's own DSP thread).
+		{
+			int prio = 30;
+			if(const char* e = std::getenv("MD_FIFO")) prio = std::atoi(e);
+			if(prio > 0)
+			{
+				sched_param sp{};
+				sp.sched_priority = prio;
+				pthread_setschedparam(pthread_self(), SCHED_FIFO, &sp);
+			}
+			const int c = std::getenv("MD_CPU") ? std::atoi(std::getenv("MD_CPU")) : chooseCore();
+			if(c >= 0)
+			{
+				cpu_set_t s;
+				CPU_ZERO(&s);
+				CPU_SET(c, &s);
+				sched_setaffinity(0, sizeof s, &s);
+			}
+			core.store(c, std::memory_order_relaxed);
 		}
 
 		int appliedTempo = -1, appliedMaxVoices = -1;
@@ -228,6 +297,8 @@ int eGet(void* p, const char* key, char* buf, int bufLen)
 		return std::snprintf(buf, static_cast<size_t>(bufLen), "%u", in->underruns.load(std::memory_order_relaxed)) > 0;
 	if(!std::strcmp(key, "blocks"))
 		return std::snprintf(buf, static_cast<size_t>(bufLen), "%u", in->blocks.load(std::memory_order_relaxed)) > 0;
+	if(!std::strcmp(key, "core"))
+		return std::snprintf(buf, static_cast<size_t>(bufLen), "%d", in->core.load(std::memory_order_relaxed)) > 0;
 	const int slot = slotOf(key);
 	if(slot < 0) return 0;
 	return std::snprintf(buf, static_cast<size_t>(bufLen), "%d", in->param[slot].load(std::memory_order_relaxed)) > 0;
