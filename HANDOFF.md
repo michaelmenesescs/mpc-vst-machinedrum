@@ -444,6 +444,31 @@ Steps:
     version" above, but not broken out per-trigger under heavy simultaneous-retrigger load) and
     consider skipping it for voices already marked for stealing before computing, not just after.
 
+- **2026-09-28: step 5 (the plugin) started — Machinedrum One's `mpc_engine()`, offline-verified.**
+  Following `mpc-vst-monomodule`'s architecture: `vst/engine.cpp` (all 16 voices from one instance,
+  MIDI note → track, a persistent render thread — not per-block spawn, unlike yesterday's
+  `ParallelVoiceEngine` prototype — feeding a ring buffer the host's audio callback drains). V1
+  params are deliberately minimal (per track: machine id, level, pan; global: tempo, max_voices);
+  per-track FX/LFOs aren't exposed yet. Top-level `CMakeLists.txt` + `cmake/dsp56300.cmake` mirror
+  `mpc-vst-monomodule`'s structure (an `MPC_VST_DIR`-gated plugin target, plus `vst/smoke.cpp` for
+  an offline end-to-end test — see `mpc-vst-plugin` skill's pipeline, step 4).
+  - **First end-to-end test caught two real bugs** neither of which any earlier tool (mdrender,
+    mdrendercap, mdrenderpar) had exercised, since those always set every per-track param
+    explicitly: "level" was wired to `HostModel::setLevel` (a separate kit LEV knob), not param 17
+    VOL, which is what the mixer's own gain formula actually reads — silent regardless of
+    everything else. And FLTW (filter width) defaults to 0 (closed) unless set, same as EQF/EQG —
+    now defaulted per track in `engine.cpp` (matching `mdrender.cpp`'s working demo kit), since
+    they aren't yet exposed as VST params. Fixed; verified real audio (peak 5710/32767), zero
+    underruns, ~12% CPU for 8 s of real time on x86.
+  - **Deliberately stopped here for this session**: no `.so` build yet (needs `MPC_VST_DIR` +
+    the armhf Docker toolchain from `mpc-vst-plugins`), no skin/`TUI.json`, nothing touching the
+    physical Force. Given yesterday's reboot incident, any step from here that reaches the device
+    (bench, deploy, register/restart) should happen with the user present, per the `mpc-vst-plugin`
+    skill's own "ask before restarting MPC" rule.
+  - **Next:** build the actual `.so` (offline, no device) via `mpc-vst-plugins`' `tools/build_port.sh`
+    or this repo's own CMake + `MPC_VST_DIR`; run the skill's `tools/test_port.sh` (ASan/UBSan host
+    test) and `tools/bench.sh` before any device step; expose per-track FX/LFO params; then a skin.
+
 ## Relationship between the projects
 
 Monomodule (Shnolk) and gearmulator-md-mm (Joe Landers) share no code and neither credits the other. md-mm is
