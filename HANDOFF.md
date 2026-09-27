@@ -553,6 +553,25 @@ Steps:
     extend `vst/gen_params.py`/`engine.cpp` with the AMP/EFX and SYN1-8 params now that their real
     layout is confirmed.
 
+- **2026-09-28: first real on-device test — deployed, played, fixed a real bug, confirmed working.**
+  Deployed a quick checkpoint build (auto-generated `gen_vst.py` skin, no custom layout — dropped
+  `custom_skin` from `vst.json` for this) to the Force: `.so` + the user's `.syx` (to
+  `MODULE_DIR`) + skin, registered in `MPC.settings`, MPC restarted (device itself stayed up the
+  whole time — `systemctl restart acvs` is not a reboot; `force_shadow.so` confirmed still loaded
+  both times). The user played it and reported audible sound but choppy on some material.
+  - **Root cause and fix**: the render thread was a plain `SCHED_OTHER` `std::thread` — exactly the
+    kind of thing that can get starved under system load. `mpc-vst-monomodule`'s own DSP thread
+    elevates to `SCHED_FIFO` priority 30 (above MPC's `AudioWorkers` at `SCHED_RR` 20) once booted,
+    plus picks the least-busy non-UI core via `/proc/stat` sampling — ported both over verbatim
+    (`MD_FIFO`/`MD_CPU` env overrides, matching `MNM_FIFO`/`MNM_CPU`). Also exposed a `core`
+    get_param for future diagnostics (no remote way yet to query a live instance's params — worth
+    a debug-log-file mechanism if a future issue needs it).
+  - Rebuilt, redeployed (md5-verified), MPC restarted again. **User confirmed: sounds better.**
+    Real-time scheduling was the actual missing piece for this architecture on real hardware, not
+    a DSP or engine correctness issue.
+  - Still on the auto-generated skin, not the bit-exact LCD one — that's the next real design/build
+    step, per the entry above.
+
 ## Relationship between the projects
 
 Monomodule (Shnolk) and gearmulator-md-mm (Joe Landers) share no code and neither credits the other. md-mm is
