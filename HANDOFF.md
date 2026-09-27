@@ -572,6 +572,34 @@ Steps:
   - Still on the auto-generated skin, not the bit-exact LCD one — that's the next real design/build
     step, per the entry above.
 
+- **2026-09-28: pushed both open threads — AMP/EFX params exposed, and a real bit-exact LCD skin
+  deployed and confirmed stable.**
+  - **Params**: exposed AMD/AMF/EQF/EQG/FLTF/FLTW/FLTQ/SRR/DIST per track (`HostModel` raw params
+    8-16, the real hardware's own AMP/EFX page order, confirmed against a captured real screen) —
+    12 params/track × 16 + 2 globals = 194 total, up from 3/track. Renamed `level`→`vol` to match
+    what it actually reads (param 17 VOL, not the separate kit LEV knob). Removed the hardcoded
+    per-track FLTW/EQ startup defaults now that `gen_params.py`'s own declared defaults cover it.
+    **Deliberately still not exposed**: SYN1-8 (their good defaults are per-machine, set by
+    `HostModel::setMachine()` itself — a flat VST default would stomp them the moment a machine is
+    assigned; needs "has the user touched this knob" tracking, not implemented) and
+    DEL/REV/LFOS/LFOD/LFOM. Verified bit-exact: x86 smoke test peak unchanged at 5710/32767.
+  - **Skin**: `vst/gen_layout.py` writes a 16-tab (+ GLOBAL) `layout.conf` — each tab shows the
+    real Machinedrum's own AMP/EFX page (captured via `tools/mdtrace/capture_screens.py`, never
+    committed itself) as a decorative header behind knobs for that track's 12 params, roughly
+    column-aligned with the real screen's own AMD/AMF/EQF/EQG/FLTF/FLTW/FLTQ/SRR layout. Built via
+    the browser art renderer (`"art": "html"` in `vst.json`, `mpc-vst-html-art` image). Previewed
+    (`tools/studio.py preview`): genuinely reads as the real hardware's LCD content integrated with
+    working MPC controls — not yet pixel-exact per-control alignment against the real column
+    positions, but a real, working version of "the same philosophy as Monomodule."
+  - **Deployed and confirmed stable on the Force**: rebuilt the `.so` (properties unchanged: one
+    exported symbol, `GLIBC_2.36`), redeployed both `.so` and skin (md5-verified), MPC restarted
+    (device uptime unaffected, `force_shadow.so` confirmed still loaded). Not yet re-tested by the
+    user for sound/feel with the new knob layout and params — that's the natural next check.
+  - **Next**: get the user's read on the new skin/params on-device; then either refine alignment
+    (line knobs up exactly against the real screen's own column positions, per-tab instead of
+    reusing one static capture) or move to the SYN1-8 "touched" tracking, whichever the user
+    prioritizes.
+
 ## Relationship between the projects
 
 Monomodule (Shnolk) and gearmulator-md-mm (Joe Landers) share no code and neither credits the other. md-mm is
