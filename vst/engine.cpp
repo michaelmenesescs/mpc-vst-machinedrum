@@ -83,8 +83,14 @@ constexpr int kRing = 4, kAhead = 2;
 constexpr int kTracks = Engine::kTracks;
 constexpr int kBaseNote = 36;					// MPC/GM kick; note 36 = track 0, 37 = track 1, ...
 
-// slot layout: per-track (machine, level, pan) x 16, then two globals
-constexpr int kSlotTrack = 0, kSlotsPerTrack = 3;	// machine, level, pan
+// slot layout, per track: 0=machine, 1=vol (HostModel raw param 17), 2=pan (param 18), 3.. = the 9
+// AMP/EFX params (params 8-16, real hardware page order - see gen_params.py's FX_PARAMS, must match).
+// Not yet exposed: SYN1-8 and DEL/REV/LFOS/LFOD/LFOM - see gen_params.py's docstring.
+constexpr const char* kFxKeys[] = {"amd", "amf", "eqf", "eqg", "fltf", "fltw", "fltq", "srr", "dist"};
+constexpr int kNumFx = sizeof(kFxKeys) / sizeof(kFxKeys[0]);
+constexpr int kFxRawParamBase = 8;	// HostModel raw param index of kFxKeys[0] ("amd")
+
+constexpr int kSlotTrack = 0, kSlotsPerTrack = 3 + kNumFx;	// machine, vol, pan, then the FX params
 constexpr int kSlotTempo = kSlotTrack + kTracks * kSlotsPerTrack;
 constexpr int kSlotMaxVoices = kSlotTempo + 1;
 constexpr int kNumSlots = kSlotMaxVoices + 1;
@@ -96,10 +102,17 @@ int slotOf(const char* key)
 	int t = -1, consumed = 0;
 	if(std::sscanf(key, "track%d_machine%n", &t, &consumed) == 1 && key[consumed] == '\0' && t >= 0 && t < kTracks)
 		return kSlotTrack + t * kSlotsPerTrack + 0;
-	if(std::sscanf(key, "track%d_level%n", &t, &consumed) == 1 && key[consumed] == '\0' && t >= 0 && t < kTracks)
+	if(std::sscanf(key, "track%d_vol%n", &t, &consumed) == 1 && key[consumed] == '\0' && t >= 0 && t < kTracks)
 		return kSlotTrack + t * kSlotsPerTrack + 1;
 	if(std::sscanf(key, "track%d_pan%n", &t, &consumed) == 1 && key[consumed] == '\0' && t >= 0 && t < kTracks)
 		return kSlotTrack + t * kSlotsPerTrack + 2;
+	if(std::sscanf(key, "track%d_%n", &t, &consumed) == 1 && t >= 0 && t < kTracks)
+	{
+		const char* fxKey = key + consumed;
+		for(int i = 0; i < kNumFx; ++i)
+			if(!std::strcmp(fxKey, kFxKeys[i]))
+				return kSlotTrack + t * kSlotsPerTrack + 3 + i;
+	}
 	return -1;
 }
 
@@ -125,10 +138,16 @@ struct Inst
 		for(auto& p : param) p.store(0);
 		param[kSlotTempo].store(120);
 		param[kSlotMaxVoices].store(kTracks);
+		// Matches gen_params.py's declared defaults: the host normally pushes these via set_param right
+		// after create(), but this is what plays if render() is called before that (or from a host that
+		// doesn't restore params on creation).
+		constexpr int kFxDefaults[kNumFx] = {0, 0, 64, 64, 0, 127, 0, 0, 0};	// amd amf eqf eqg fltf fltw fltq srr dist
 		for(int t = 0; t < kTracks; ++t)
 		{
-			param[kSlotTrack + t * kSlotsPerTrack + 1].store(100);	// level
+			param[kSlotTrack + t * kSlotsPerTrack + 1].store(100);	// vol
 			param[kSlotTrack + t * kSlotsPerTrack + 2].store(64);	// pan (centre)
+			for(int i = 0; i < kNumFx; ++i)
+				param[kSlotTrack + t * kSlotsPerTrack + 3 + i].store(kFxDefaults[i]);
 		}
 	}
 
@@ -143,16 +162,6 @@ void Inst::run()
 		auto c = md::fw::parseContainer(md::fw::parseSysex(md::fw::readFile(osPath)));
 		Engine eng(fwv, std::move(c.sections.at(0).data));
 		auto& h = eng.host();
-		// Per-track FX defaults not yet exposed as VST params (V1): FLTW open, EQ flat, matching
-		// tools/mdrender/mdrender.cpp's demo kit. Without these, FLTW's raw default (0) leaves the track's
-		// filter effectively closed - most machines would render near-silent, not just "unfiltered".
-		for(int t = 0; t < kTracks; ++t)
-		{
-			h.setParam(t, 12, 0);	// FLTF
-			h.setParam(t, 13, 127);	// FLTW: fully open
-			h.setParam(t, 10, 64);	// EQF
-			h.setParam(t, 11, 64);	// EQG: flat
-		}
 
 		// Real-time priority, above MPC's own AudioWorkers (SCHED_RR 20) - only once booted, so the boot
 		// itself doesn't hog the CPU at real-time priority. Without this the render thread is a plain
@@ -181,8 +190,13 @@ void Inst::run()
 		}
 
 		int appliedTempo = -1, appliedMaxVoices = -1;
-		int appliedMachine[kTracks], appliedLevel[kTracks], appliedPan[kTracks];
-		for(int t = 0; t < kTracks; ++t) appliedMachine[t] = appliedLevel[t] = appliedPan[t] = -1;
+		int appliedMachine[kTracks], appliedVol[kTracks], appliedPan[kTracks];
+		int appliedFx[kTracks][kNumFx];
+		for(int t = 0; t < kTracks; ++t)
+		{
+			appliedMachine[t] = appliedVol[t] = appliedPan[t] = -1;
+			for(int i = 0; i < kNumFx; ++i) appliedFx[t][i] = -1;
+		}
 
 		Engine::Output out;
 		ready.store(true);
@@ -205,12 +219,17 @@ void Inst::run()
 			{
 				const int m = std::clamp(param[kSlotTrack + t * kSlotsPerTrack + 0].load(std::memory_order_relaxed), 0, 191);
 				if(m != appliedMachine[t]) { appliedMachine[t] = m; h.setMachine(t, static_cast<uint8_t>(m)); }
-				const int lv = std::clamp(param[kSlotTrack + t * kSlotsPerTrack + 1].load(std::memory_order_relaxed), 0, 127);
+				const int vol = std::clamp(param[kSlotTrack + t * kSlotsPerTrack + 1].load(std::memory_order_relaxed), 0, 127);
 				// VOL (param 17, read by the mixer's own gain formula) - not setLevel(), a separate kit LEV
 				// knob (HostModel.h) that also gates level but isn't what mdrender.cpp's working demo kit uses.
-				if(lv != appliedLevel[t]) { appliedLevel[t] = lv; h.setParam(t, 17, lv); }
+				if(vol != appliedVol[t]) { appliedVol[t] = vol; h.setParam(t, 17, vol); }
 				const int pan = std::clamp(param[kSlotTrack + t * kSlotsPerTrack + 2].load(std::memory_order_relaxed), 0, 127);
 				if(pan != appliedPan[t]) { appliedPan[t] = pan; h.setParam(t, 18, pan); }
+				for(int i = 0; i < kNumFx; ++i)
+				{
+					const int v = std::clamp(param[kSlotTrack + t * kSlotsPerTrack + 3 + i].load(std::memory_order_relaxed), 0, 127);
+					if(v != appliedFx[t][i]) { appliedFx[t][i] = v; h.setParam(t, kFxRawParamBase + i, v); }
+				}
 			}
 
 			uint32_t r = nRead.load(std::memory_order_relaxed);

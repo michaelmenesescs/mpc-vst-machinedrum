@@ -10,8 +10,8 @@
    "display": "int"
   },
   {
-   "key": "track0_level",
-   "name": "T1 Level",
+   "key": "track0_vol",
+   "name": "T1 Vol",
    "min": 0,
    "max": 127,
    "default": 100,
@@ -26,6 +26,78 @@
    "display": "int"
   },
   {
+   "key": "track0_amd",
+   "name": "T1 AMD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track0_amf",
+   "name": "T1 AMF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track0_eqf",
+   "name": "T1 EQF",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track0_eqg",
+   "name": "T1 EQG",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track0_fltf",
+   "name": "T1 FLTF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track0_fltw",
+   "name": "T1 FLTW",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "track0_fltq",
+   "name": "T1 FLTQ",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track0_srr",
+   "name": "T1 SRR",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track0_dist",
+   "name": "T1 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
    "key": "track1_machine",
    "name": "T2 Machine",
    "min": 0,
@@ -34,8 +106,8 @@
    "display": "int"
   },
   {
-   "key": "track1_level",
-   "name": "T2 Level",
+   "key": "track1_vol",
+   "name": "T2 Vol",
    "min": 0,
    "max": 127,
    "default": 100,
@@ -50,6 +122,78 @@
    "display": "int"
   },
   {
+   "key": "track1_amd",
+   "name": "T2 AMD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track1_amf",
+   "name": "T2 AMF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track1_eqf",
+   "name": "T2 EQF",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track1_eqg",
+   "name": "T2 EQG",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track1_fltf",
+   "name": "T2 FLTF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track1_fltw",
+   "name": "T2 FLTW",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "track1_fltq",
+   "name": "T2 FLTQ",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track1_srr",
+   "name": "T2 SRR",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track1_dist",
+   "name": "T2 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
    "key": "track2_machine",
    "name": "T3 Machine",
    "min": 0,
@@ -58,8 +202,8 @@
    "display": "int"
   },
   {
-   "key": "track2_level",
-   "name": "T3 Level",
+   "key": "track2_vol",
+   "name": "T3 Vol",
    "min": 0,
    "max": 127,
    "default": 100,
@@ -74,6 +218,78 @@
    "display": "int"
   },
   {
+   "key": "track2_amd",
+   "name": "T3 AMD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track2_amf",
+   "name": "T3 AMF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track2_eqf",
+   "name": "T3 EQF",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track2_eqg",
+   "name": "T3 EQG",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track2_fltf",
+   "name": "T3 FLTF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track2_fltw",
+   "name": "T3 FLTW",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "track2_fltq",
+   "name": "T3 FLTQ",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track2_srr",
+   "name": "T3 SRR",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track2_dist",
+   "name": "T3 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
    "key": "track3_machine",
    "name": "T4 Machine",
    "min": 0,
@@ -82,8 +298,8 @@
    "display": "int"
   },
   {
-   "key": "track3_level",
-   "name": "T4 Level",
+   "key": "track3_vol",
+   "name": "T4 Vol",
    "min": 0,
    "max": 127,
    "default": 100,
@@ -98,6 +314,78 @@
    "display": "int"
   },
   {
+   "key": "track3_amd",
+   "name": "T4 AMD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track3_amf",
+   "name": "T4 AMF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track3_eqf",
+   "name": "T4 EQF",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track3_eqg",
+   "name": "T4 EQG",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track3_fltf",
+   "name": "T4 FLTF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track3_fltw",
+   "name": "T4 FLTW",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "track3_fltq",
+   "name": "T4 FLTQ",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track3_srr",
+   "name": "T4 SRR",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track3_dist",
+   "name": "T4 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
    "key": "track4_machine",
    "name": "T5 Machine",
    "min": 0,
@@ -106,8 +394,8 @@
    "display": "int"
   },
   {
-   "key": "track4_level",
-   "name": "T5 Level",
+   "key": "track4_vol",
+   "name": "T5 Vol",
    "min": 0,
    "max": 127,
    "default": 100,
@@ -122,6 +410,78 @@
    "display": "int"
   },
   {
+   "key": "track4_amd",
+   "name": "T5 AMD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track4_amf",
+   "name": "T5 AMF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track4_eqf",
+   "name": "T5 EQF",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track4_eqg",
+   "name": "T5 EQG",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track4_fltf",
+   "name": "T5 FLTF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track4_fltw",
+   "name": "T5 FLTW",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "track4_fltq",
+   "name": "T5 FLTQ",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track4_srr",
+   "name": "T5 SRR",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track4_dist",
+   "name": "T5 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
    "key": "track5_machine",
    "name": "T6 Machine",
    "min": 0,
@@ -130,8 +490,8 @@
    "display": "int"
   },
   {
-   "key": "track5_level",
-   "name": "T6 Level",
+   "key": "track5_vol",
+   "name": "T6 Vol",
    "min": 0,
    "max": 127,
    "default": 100,
@@ -146,6 +506,78 @@
    "display": "int"
   },
   {
+   "key": "track5_amd",
+   "name": "T6 AMD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track5_amf",
+   "name": "T6 AMF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track5_eqf",
+   "name": "T6 EQF",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track5_eqg",
+   "name": "T6 EQG",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track5_fltf",
+   "name": "T6 FLTF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track5_fltw",
+   "name": "T6 FLTW",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "track5_fltq",
+   "name": "T6 FLTQ",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track5_srr",
+   "name": "T6 SRR",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track5_dist",
+   "name": "T6 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
    "key": "track6_machine",
    "name": "T7 Machine",
    "min": 0,
@@ -154,8 +586,8 @@
    "display": "int"
   },
   {
-   "key": "track6_level",
-   "name": "T7 Level",
+   "key": "track6_vol",
+   "name": "T7 Vol",
    "min": 0,
    "max": 127,
    "default": 100,
@@ -170,6 +602,78 @@
    "display": "int"
   },
   {
+   "key": "track6_amd",
+   "name": "T7 AMD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track6_amf",
+   "name": "T7 AMF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track6_eqf",
+   "name": "T7 EQF",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track6_eqg",
+   "name": "T7 EQG",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track6_fltf",
+   "name": "T7 FLTF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track6_fltw",
+   "name": "T7 FLTW",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "track6_fltq",
+   "name": "T7 FLTQ",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track6_srr",
+   "name": "T7 SRR",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track6_dist",
+   "name": "T7 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
    "key": "track7_machine",
    "name": "T8 Machine",
    "min": 0,
@@ -178,8 +682,8 @@
    "display": "int"
   },
   {
-   "key": "track7_level",
-   "name": "T8 Level",
+   "key": "track7_vol",
+   "name": "T8 Vol",
    "min": 0,
    "max": 127,
    "default": 100,
@@ -194,6 +698,78 @@
    "display": "int"
   },
   {
+   "key": "track7_amd",
+   "name": "T8 AMD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track7_amf",
+   "name": "T8 AMF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track7_eqf",
+   "name": "T8 EQF",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track7_eqg",
+   "name": "T8 EQG",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track7_fltf",
+   "name": "T8 FLTF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track7_fltw",
+   "name": "T8 FLTW",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "track7_fltq",
+   "name": "T8 FLTQ",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track7_srr",
+   "name": "T8 SRR",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track7_dist",
+   "name": "T8 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
    "key": "track8_machine",
    "name": "T9 Machine",
    "min": 0,
@@ -202,8 +778,8 @@
    "display": "int"
   },
   {
-   "key": "track8_level",
-   "name": "T9 Level",
+   "key": "track8_vol",
+   "name": "T9 Vol",
    "min": 0,
    "max": 127,
    "default": 100,
@@ -218,6 +794,78 @@
    "display": "int"
   },
   {
+   "key": "track8_amd",
+   "name": "T9 AMD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track8_amf",
+   "name": "T9 AMF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track8_eqf",
+   "name": "T9 EQF",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track8_eqg",
+   "name": "T9 EQG",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track8_fltf",
+   "name": "T9 FLTF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track8_fltw",
+   "name": "T9 FLTW",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "track8_fltq",
+   "name": "T9 FLTQ",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track8_srr",
+   "name": "T9 SRR",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track8_dist",
+   "name": "T9 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
    "key": "track9_machine",
    "name": "T10 Machine",
    "min": 0,
@@ -226,8 +874,8 @@
    "display": "int"
   },
   {
-   "key": "track9_level",
-   "name": "T10 Level",
+   "key": "track9_vol",
+   "name": "T10 Vol",
    "min": 0,
    "max": 127,
    "default": 100,
@@ -242,6 +890,78 @@
    "display": "int"
   },
   {
+   "key": "track9_amd",
+   "name": "T10 AMD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track9_amf",
+   "name": "T10 AMF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track9_eqf",
+   "name": "T10 EQF",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track9_eqg",
+   "name": "T10 EQG",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track9_fltf",
+   "name": "T10 FLTF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track9_fltw",
+   "name": "T10 FLTW",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "track9_fltq",
+   "name": "T10 FLTQ",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track9_srr",
+   "name": "T10 SRR",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track9_dist",
+   "name": "T10 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
    "key": "track10_machine",
    "name": "T11 Machine",
    "min": 0,
@@ -250,8 +970,8 @@
    "display": "int"
   },
   {
-   "key": "track10_level",
-   "name": "T11 Level",
+   "key": "track10_vol",
+   "name": "T11 Vol",
    "min": 0,
    "max": 127,
    "default": 100,
@@ -266,6 +986,78 @@
    "display": "int"
   },
   {
+   "key": "track10_amd",
+   "name": "T11 AMD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track10_amf",
+   "name": "T11 AMF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track10_eqf",
+   "name": "T11 EQF",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track10_eqg",
+   "name": "T11 EQG",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track10_fltf",
+   "name": "T11 FLTF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track10_fltw",
+   "name": "T11 FLTW",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "track10_fltq",
+   "name": "T11 FLTQ",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track10_srr",
+   "name": "T11 SRR",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track10_dist",
+   "name": "T11 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
    "key": "track11_machine",
    "name": "T12 Machine",
    "min": 0,
@@ -274,8 +1066,8 @@
    "display": "int"
   },
   {
-   "key": "track11_level",
-   "name": "T12 Level",
+   "key": "track11_vol",
+   "name": "T12 Vol",
    "min": 0,
    "max": 127,
    "default": 100,
@@ -290,6 +1082,78 @@
    "display": "int"
   },
   {
+   "key": "track11_amd",
+   "name": "T12 AMD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track11_amf",
+   "name": "T12 AMF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track11_eqf",
+   "name": "T12 EQF",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track11_eqg",
+   "name": "T12 EQG",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track11_fltf",
+   "name": "T12 FLTF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track11_fltw",
+   "name": "T12 FLTW",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "track11_fltq",
+   "name": "T12 FLTQ",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track11_srr",
+   "name": "T12 SRR",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track11_dist",
+   "name": "T12 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
    "key": "track12_machine",
    "name": "T13 Machine",
    "min": 0,
@@ -298,8 +1162,8 @@
    "display": "int"
   },
   {
-   "key": "track12_level",
-   "name": "T13 Level",
+   "key": "track12_vol",
+   "name": "T13 Vol",
    "min": 0,
    "max": 127,
    "default": 100,
@@ -314,6 +1178,78 @@
    "display": "int"
   },
   {
+   "key": "track12_amd",
+   "name": "T13 AMD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track12_amf",
+   "name": "T13 AMF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track12_eqf",
+   "name": "T13 EQF",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track12_eqg",
+   "name": "T13 EQG",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track12_fltf",
+   "name": "T13 FLTF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track12_fltw",
+   "name": "T13 FLTW",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "track12_fltq",
+   "name": "T13 FLTQ",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track12_srr",
+   "name": "T13 SRR",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track12_dist",
+   "name": "T13 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
    "key": "track13_machine",
    "name": "T14 Machine",
    "min": 0,
@@ -322,8 +1258,8 @@
    "display": "int"
   },
   {
-   "key": "track13_level",
-   "name": "T14 Level",
+   "key": "track13_vol",
+   "name": "T14 Vol",
    "min": 0,
    "max": 127,
    "default": 100,
@@ -338,6 +1274,78 @@
    "display": "int"
   },
   {
+   "key": "track13_amd",
+   "name": "T14 AMD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track13_amf",
+   "name": "T14 AMF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track13_eqf",
+   "name": "T14 EQF",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track13_eqg",
+   "name": "T14 EQG",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track13_fltf",
+   "name": "T14 FLTF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track13_fltw",
+   "name": "T14 FLTW",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "track13_fltq",
+   "name": "T14 FLTQ",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track13_srr",
+   "name": "T14 SRR",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track13_dist",
+   "name": "T14 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
    "key": "track14_machine",
    "name": "T15 Machine",
    "min": 0,
@@ -346,8 +1354,8 @@
    "display": "int"
   },
   {
-   "key": "track14_level",
-   "name": "T15 Level",
+   "key": "track14_vol",
+   "name": "T15 Vol",
    "min": 0,
    "max": 127,
    "default": 100,
@@ -362,6 +1370,78 @@
    "display": "int"
   },
   {
+   "key": "track14_amd",
+   "name": "T15 AMD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track14_amf",
+   "name": "T15 AMF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track14_eqf",
+   "name": "T15 EQF",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track14_eqg",
+   "name": "T15 EQG",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track14_fltf",
+   "name": "T15 FLTF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track14_fltw",
+   "name": "T15 FLTW",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "track14_fltq",
+   "name": "T15 FLTQ",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track14_srr",
+   "name": "T15 SRR",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track14_dist",
+   "name": "T15 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
    "key": "track15_machine",
    "name": "T16 Machine",
    "min": 0,
@@ -370,8 +1450,8 @@
    "display": "int"
   },
   {
-   "key": "track15_level",
-   "name": "T16 Level",
+   "key": "track15_vol",
+   "name": "T16 Vol",
    "min": 0,
    "max": 127,
    "default": 100,
@@ -383,6 +1463,78 @@
    "min": 0,
    "max": 127,
    "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track15_amd",
+   "name": "T16 AMD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track15_amf",
+   "name": "T16 AMF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track15_eqf",
+   "name": "T16 EQF",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track15_eqg",
+   "name": "T16 EQG",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track15_fltf",
+   "name": "T16 FLTF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track15_fltw",
+   "name": "T16 FLTW",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "track15_fltq",
+   "name": "T16 FLTQ",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track15_srr",
+   "name": "T16 SRR",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track15_dist",
+   "name": "T16 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
    "display": "int"
   },
   {
@@ -407,128 +1559,272 @@
    "label": "TRACK 1",
    "keys": [
     "track0_machine",
-    "track0_level",
-    "track0_pan"
+    "track0_vol",
+    "track0_pan",
+    "track0_amd",
+    "track0_amf",
+    "track0_eqf",
+    "track0_eqg",
+    "track0_fltf",
+    "track0_fltw",
+    "track0_fltq",
+    "track0_srr",
+    "track0_dist"
    ]
   },
   {
    "label": "TRACK 2",
    "keys": [
     "track1_machine",
-    "track1_level",
-    "track1_pan"
+    "track1_vol",
+    "track1_pan",
+    "track1_amd",
+    "track1_amf",
+    "track1_eqf",
+    "track1_eqg",
+    "track1_fltf",
+    "track1_fltw",
+    "track1_fltq",
+    "track1_srr",
+    "track1_dist"
    ]
   },
   {
    "label": "TRACK 3",
    "keys": [
     "track2_machine",
-    "track2_level",
-    "track2_pan"
+    "track2_vol",
+    "track2_pan",
+    "track2_amd",
+    "track2_amf",
+    "track2_eqf",
+    "track2_eqg",
+    "track2_fltf",
+    "track2_fltw",
+    "track2_fltq",
+    "track2_srr",
+    "track2_dist"
    ]
   },
   {
    "label": "TRACK 4",
    "keys": [
     "track3_machine",
-    "track3_level",
-    "track3_pan"
+    "track3_vol",
+    "track3_pan",
+    "track3_amd",
+    "track3_amf",
+    "track3_eqf",
+    "track3_eqg",
+    "track3_fltf",
+    "track3_fltw",
+    "track3_fltq",
+    "track3_srr",
+    "track3_dist"
    ]
   },
   {
    "label": "TRACK 5",
    "keys": [
     "track4_machine",
-    "track4_level",
-    "track4_pan"
+    "track4_vol",
+    "track4_pan",
+    "track4_amd",
+    "track4_amf",
+    "track4_eqf",
+    "track4_eqg",
+    "track4_fltf",
+    "track4_fltw",
+    "track4_fltq",
+    "track4_srr",
+    "track4_dist"
    ]
   },
   {
    "label": "TRACK 6",
    "keys": [
     "track5_machine",
-    "track5_level",
-    "track5_pan"
+    "track5_vol",
+    "track5_pan",
+    "track5_amd",
+    "track5_amf",
+    "track5_eqf",
+    "track5_eqg",
+    "track5_fltf",
+    "track5_fltw",
+    "track5_fltq",
+    "track5_srr",
+    "track5_dist"
    ]
   },
   {
    "label": "TRACK 7",
    "keys": [
     "track6_machine",
-    "track6_level",
-    "track6_pan"
+    "track6_vol",
+    "track6_pan",
+    "track6_amd",
+    "track6_amf",
+    "track6_eqf",
+    "track6_eqg",
+    "track6_fltf",
+    "track6_fltw",
+    "track6_fltq",
+    "track6_srr",
+    "track6_dist"
    ]
   },
   {
    "label": "TRACK 8",
    "keys": [
     "track7_machine",
-    "track7_level",
-    "track7_pan"
+    "track7_vol",
+    "track7_pan",
+    "track7_amd",
+    "track7_amf",
+    "track7_eqf",
+    "track7_eqg",
+    "track7_fltf",
+    "track7_fltw",
+    "track7_fltq",
+    "track7_srr",
+    "track7_dist"
    ]
   },
   {
    "label": "TRACK 9",
    "keys": [
     "track8_machine",
-    "track8_level",
-    "track8_pan"
+    "track8_vol",
+    "track8_pan",
+    "track8_amd",
+    "track8_amf",
+    "track8_eqf",
+    "track8_eqg",
+    "track8_fltf",
+    "track8_fltw",
+    "track8_fltq",
+    "track8_srr",
+    "track8_dist"
    ]
   },
   {
    "label": "TRACK 10",
    "keys": [
     "track9_machine",
-    "track9_level",
-    "track9_pan"
+    "track9_vol",
+    "track9_pan",
+    "track9_amd",
+    "track9_amf",
+    "track9_eqf",
+    "track9_eqg",
+    "track9_fltf",
+    "track9_fltw",
+    "track9_fltq",
+    "track9_srr",
+    "track9_dist"
    ]
   },
   {
    "label": "TRACK 11",
    "keys": [
     "track10_machine",
-    "track10_level",
-    "track10_pan"
+    "track10_vol",
+    "track10_pan",
+    "track10_amd",
+    "track10_amf",
+    "track10_eqf",
+    "track10_eqg",
+    "track10_fltf",
+    "track10_fltw",
+    "track10_fltq",
+    "track10_srr",
+    "track10_dist"
    ]
   },
   {
    "label": "TRACK 12",
    "keys": [
     "track11_machine",
-    "track11_level",
-    "track11_pan"
+    "track11_vol",
+    "track11_pan",
+    "track11_amd",
+    "track11_amf",
+    "track11_eqf",
+    "track11_eqg",
+    "track11_fltf",
+    "track11_fltw",
+    "track11_fltq",
+    "track11_srr",
+    "track11_dist"
    ]
   },
   {
    "label": "TRACK 13",
    "keys": [
     "track12_machine",
-    "track12_level",
-    "track12_pan"
+    "track12_vol",
+    "track12_pan",
+    "track12_amd",
+    "track12_amf",
+    "track12_eqf",
+    "track12_eqg",
+    "track12_fltf",
+    "track12_fltw",
+    "track12_fltq",
+    "track12_srr",
+    "track12_dist"
    ]
   },
   {
    "label": "TRACK 14",
    "keys": [
     "track13_machine",
-    "track13_level",
-    "track13_pan"
+    "track13_vol",
+    "track13_pan",
+    "track13_amd",
+    "track13_amf",
+    "track13_eqf",
+    "track13_eqg",
+    "track13_fltf",
+    "track13_fltw",
+    "track13_fltq",
+    "track13_srr",
+    "track13_dist"
    ]
   },
   {
    "label": "TRACK 15",
    "keys": [
     "track14_machine",
-    "track14_level",
-    "track14_pan"
+    "track14_vol",
+    "track14_pan",
+    "track14_amd",
+    "track14_amf",
+    "track14_eqf",
+    "track14_eqg",
+    "track14_fltf",
+    "track14_fltw",
+    "track14_fltq",
+    "track14_srr",
+    "track14_dist"
    ]
   },
   {
    "label": "TRACK 16",
    "keys": [
     "track15_machine",
-    "track15_level",
-    "track15_pan"
+    "track15_vol",
+    "track15_pan",
+    "track15_amd",
+    "track15_amf",
+    "track15_eqf",
+    "track15_eqg",
+    "track15_fltf",
+    "track15_fltw",
+    "track15_fltq",
+    "track15_srr",
+    "track15_dist"
    ]
   },
   {

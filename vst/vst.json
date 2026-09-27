@@ -1,6 +1,7 @@
 {
   "name": "Machinedrum One", "vendor": "sd88me", "uid": "MdOn", "version": 1000,
   "so": "machinedrum_one.so",
-  "params": "params.json", "defines": {"MODULE_DIR": "\"/sdcard/vst/machinedrum\""},
+  "params": "params.json", "layout": "layout.conf", "art": "html",
+  "defines": {"MODULE_DIR": "\"/sdcard/vst/machinedrum\""},
   "build": {"root": "..", "sources": [], "cflags": [], "libs": []}
 }
