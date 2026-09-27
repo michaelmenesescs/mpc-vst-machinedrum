@@ -30,7 +30,7 @@
 #include <string>
 #include <vector>
 
-namespace md { extern bool g_mdTraceOn; extern bool g_mdEssiDumpOn; }
+namespace md { extern bool g_mdTraceOn; extern bool g_mdEssiDumpOn; extern bool g_mdCfTraceOn; extern uint32_t g_mdWatchBegin, g_mdWatchEnd; }
 
 namespace
 {
@@ -119,6 +119,35 @@ int main(int argc, char** argv)
 		std::cerr << "-- #" << a << " " << s << " --\n";
 		if(s == "trace:on") { md::g_mdTraceOn = true; continue; }
 		if(s == "trace:off") { md::g_mdTraceOn = false; continue; }
+		if(kind == "watch") { md::g_mdWatchBegin = static_cast<uint32_t>(std::strtoul(s.c_str() + 6, nullptr, 16)); md::g_mdWatchEnd = static_cast<uint32_t>(std::strtoul(s.c_str() + s.rfind(':') + 1, nullptr, 16)); continue; }
+		if(kind == "dis68k")
+		{
+			const auto from = static_cast<uint32_t>(std::strtoul(s.c_str() + 7, nullptr, 16));
+			const auto to = static_cast<uint32_t>(std::strtoul(s.c_str() + s.rfind(':') + 1, nullptr, 16));
+			for(uint32_t pc = from; pc < to;)
+			{
+				char buf[256];
+				const auto len = hw.traceUc().disassemble(pc, buf);
+				std::fprintf(stderr, "   %07x  %s\n", pc, buf);
+				pc += len ? len : 2;
+			}
+			continue;
+		}
+		if(kind == "peek32")
+		{
+			const auto from = static_cast<uint32_t>(std::strtoul(s.c_str() + 7, nullptr, 16));
+			const auto to = static_cast<uint32_t>(std::strtoul(s.c_str() + s.rfind(':') + 1, nullptr, 16));
+			for(uint32_t a = from; a < to; a += 16)
+			{
+				std::fprintf(stderr, "   %08x ", a);
+				for(uint32_t k = 0; k < 16 && a + k < to; k += 4)
+					std::fprintf(stderr, " %04x%04x", hw.traceUc().read16(a + k), hw.traceUc().read16(a + k + 2));
+				std::fprintf(stderr, "\n");
+			}
+			continue;
+		}
+		if(s == "cf:on") { md::g_mdCfTraceOn = true; continue; }
+		if(s == "cf:off") { md::g_mdCfTraceOn = false; continue; }
 		if(s == "essi:on") { md::g_mdEssiDumpOn = true; continue; }
 		if(s == "essi:off") { md::g_mdEssiDumpOn = false; continue; }
 		if(s == "lcd")

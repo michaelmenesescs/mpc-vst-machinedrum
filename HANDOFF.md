@@ -87,6 +87,28 @@ Steps:
   Tools: `tools/mdtrace` (patches + `mdProbe` scripted driver + analysis scripts; see its README) and
   `tools/mddis` (disassembler for the `.syx` DSP programs).
 
+- **2026-09-27: decisions made, and the coefficient routines found.** The user chose:
+  (1) **the MD's own routines** for the voice coefficients, and (2) **a bit-exact native C++
+  translation** of DSP1's per-track effect chain and mixer (fixed-point arithmetic matching the
+  DSP56300, verified sample by sample against the emulated DSP1), rather than emulating DSP1.
+
+  (1) turned out to be cheap and clean: the OS has a 135-entry machine descriptor table whose
+  coefficient functions are pure `fn(out, params)` C functions (see `docs/PROTOCOL.md`, "Host
+  model: the ColdFire side"). Plan: load section 0 of the user's `.syx` into a Musashi instance and
+  call the function for the voice's machine. Remaining for (1): translate how the OS builds the
+  per-track 24-value parameter array (`a6`: kit value scaling, LFO, smoothing, pitch) and the tick
+  routine's DSP1 values.
+
+  **Next steps:**
+  1. Find where `a6` is built (watch writes to the per-track parameter arrays; start from the tick
+     routine around `$20b1a0` and its callers) and translate the LFO/smoothing code.
+  2. Prototype `md::VoiceEngine`: DSP2 alone in dsp56300 (program from section 1), a harness that
+     writes the 16 voice slots directly into Y memory and reads the ESSI0 link (16 × 32-sample
+     blocks), Musashi calling the machine functions. Check it sample-for-sample against md-mm.
+  3. Disassemble DSP1's per-track chain (hot loops at `$16e-$196`, `$95c-$9a0`) and start the
+     bit-exact C++ translation, with a DSP1-in-emulator reference test.
+  4. Measure DSP2 alone on the Force (static recompiler).
+
 ## Relationship between the projects
 
 Monomodule (Shnolk) and gearmulator-md-mm (Joe Landers) share no code and neither credits the other. md-mm is

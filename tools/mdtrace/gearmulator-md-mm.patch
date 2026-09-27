@@ -128,18 +128,113 @@ index 5f7d7d18..19247b92 100644
  				});
  		}
 diff --git a/source/elektron/md/mdLib/mdhardware.h b/source/elektron/md/mdLib/mdhardware.h
-index 05557026..d95eed23 100644
+index 05557026..e356de8f 100644
 --- a/source/elektron/md/mdLib/mdhardware.h
 +++ b/source/elektron/md/mdLib/mdhardware.h
-@@ -274,6 +274,8 @@ namespace md
+@@ -274,6 +274,9 @@ namespace md
  		// Last complete front-panel value published by the emulation thread. Returning
  		// by value prevents consumers from retaining a reference to live decoder state.
  		FrontPanel getFrontPanelSnapshot() const { return m_frontPanelPublisher->read(); }
 +		// mpc-vst-machinedrum tracing accessor (local only)
 +		dsp56k::DSP& traceDsp(const uint32_t _i) { return _i ? m_dspProducer.dsp() : m_dspMixer.dsp(); }
++		Microcontroller& traceUc() { return m_uc; }
  		bool tryGetFrontPanelSnapshot(FrontPanel& _panel) const
  		{
  			return m_frontPanelPublisher->tryRead(_panel);
+diff --git a/source/elektron/md/mdLib/mdmc.cpp b/source/elektron/md/mdLib/mdmc.cpp
+index dae644c3..d580faef 100644
+--- a/source/elektron/md/mdLib/mdmc.cpp
++++ b/source/elektron/md/mdLib/mdmc.cpp
+@@ -21,6 +21,7 @@
+ 
+ namespace md
+ {
++	bool g_mdCfTraceOn = false;
+ 	namespace
+ 	{
+ 		// The SFX-60 MKII stores user DigiPRO waves in the uniform-sector portion
+@@ -610,11 +611,43 @@ namespace md
+ 		return mc68k::memoryOps::readU16(r.data, r.offset);
+ 	}
+ 
++	void Microcontroller::traceHdiWrite(const uint32_t _addr, const uint32_t _val, const uint32_t _size)
++	{
++		// mpc-vst-machinedrum tracing (local only): ColdFire PC + registers for each HI08 write.
++		extern bool g_mdCfTraceOn;
++		if(!g_mdCfTraceOn) return;
++		std::fprintf(stderr, "CF dsp%d off=%u sz=%u val=%04x pc=%07x a=", memorymap::g_dsp2Hdi08.contains(_addr) ? 1 : 0,
++			_addr & 7, _size, _val, getPC());
++		for(uint32_t i = 0; i < 8; ++i) std::fprintf(stderr, "%08x ", getAReg(i));
++		std::fprintf(stderr, "d=");
++		for(uint32_t i = 0; i < 8; ++i) std::fprintf(stderr, "%08x ", getDReg(i));
++		std::fprintf(stderr, "\n");
++	}
++
++	uint32_t g_mdWatchBegin = 0, g_mdWatchEnd = 0;
++
++	void Microcontroller::traceWatch(const uint32_t _addr, const uint32_t _val, const uint32_t _size)
++	{
++		// mpc-vst-machinedrum tracing (local only): log writes into [g_mdWatchBegin, g_mdWatchEnd).
++		if(_addr < g_mdWatchBegin || _addr >= g_mdWatchEnd) return;
++		std::fprintf(stderr, "CFW addr=%08x sz=%u val=%04x pc=%07x a=", _addr, _size, _val, getPC());
++		for(uint32_t i = 0; i < 8; ++i) std::fprintf(stderr, "%08x ", getAReg(i));
++		std::fprintf(stderr, "d=");
++		for(uint32_t i = 0; i < 8; ++i) std::fprintf(stderr, "%08x ", getDReg(i));
++		std::fprintf(stderr, "\n");
++	}
++
+ 	void Microcontroller::write8(const uint32_t _addr, const uint8_t _val)
+ 	{
+ 		if(memorymap::g_sim.contains(_addr))		{ m_sim.write8(memorymap::g_sim.offset(_addr), _val); return; }
+ 		if(memorymap::g_dsp1Hdi08.contains(_addr))	{ m_hdi08Dsp1.write8(static_cast<mc68k::PeriphAddress>(memorymap::g_dsp1Hdi08.offset(_addr)), _val); return; }
+-		if(memorymap::g_dsp2Hdi08.contains(_addr))	{ m_hdi08Dsp2.write8(static_cast<mc68k::PeriphAddress>(memorymap::g_dsp2Hdi08.offset(_addr)), _val); return; }
++		if(memorymap::g_dsp2Hdi08.contains(_addr) || memorymap::g_dsp1Hdi08.contains(_addr))
++		{
++			// mpc-vst-machinedrum tracing (local only): ColdFire PC + call chain for each HI08 byte write.
++			traceHdiWrite(_addr, _val, 1);
++			if(memorymap::g_dsp1Hdi08.contains(_addr))	{ m_hdi08Dsp1.write8(static_cast<mc68k::PeriphAddress>(memorymap::g_dsp1Hdi08.offset(_addr)), _val); return; }
++			m_hdi08Dsp2.write8(static_cast<mc68k::PeriphAddress>(memorymap::g_dsp2Hdi08.offset(_addr)), _val); return;
++		}
+ 		const bool patchRam = memorymap::isPatchRam(_addr);
+ 		std::unique_lock patchLock(m_patchRamMutex, std::defer_lock);
+ 		if(patchRam)
+@@ -622,6 +655,7 @@ namespace md
+ 		const auto r = resolve(_addr);
+ 		if(r.peripheral)								{ logPeripheral(_addr, _val, 1, true); return; }
+ 		if(!r.writable || !r.data || r.offset >= r.size)	return;
++		traceWatch(_addr, _val, 1);
+ 		r.data[r.offset] = _val;
+ 	}
+ 
+@@ -674,6 +708,7 @@ namespace md
+ 			}
+ 		}
+ 		if(memorymap::g_sim.contains(_addr))		{ m_sim.write16(memorymap::g_sim.offset(_addr), _val); return; }
++		if(memorymap::g_dsp1Hdi08.contains(_addr) || memorymap::g_dsp2Hdi08.contains(_addr)) traceHdiWrite(_addr, _val, 2);
+ 		if(memorymap::g_dsp1Hdi08.contains(_addr))	{ m_hdi08Dsp1.write16(static_cast<mc68k::PeriphAddress>(memorymap::g_dsp1Hdi08.offset(_addr)), _val); return; }
+ 		if(memorymap::g_dsp2Hdi08.contains(_addr))	{ m_hdi08Dsp2.write16(static_cast<mc68k::PeriphAddress>(memorymap::g_dsp2Hdi08.offset(_addr)), _val); return; }
+ 		if(m_monomachineFlash && (memorymap::g_flashFull.contains(_addr)
+@@ -697,6 +732,7 @@ namespace md
+ 		const auto r = resolve(_addr);
+ 		if(r.peripheral)										{ logPeripheral(_addr, _val, 2, true); return; }
+ 		if(!r.writable || !r.data || (r.offset + 1) >= r.size)	return;
++		traceWatch(_addr, _val, 2);
+ 		mc68k::memoryOps::writeU16(r.data, r.offset, _val);
+ 	}
+ 
+diff --git a/source/elektron/md/mdLib/mdmc.h b/source/elektron/md/mdLib/mdmc.h
+index 2666e3c2..283f387f 100644
+--- a/source/elektron/md/mdLib/mdmc.h
++++ b/source/elektron/md/mdLib/mdmc.h
+@@ -70,6 +70,8 @@ namespace md
+ 		uint16_t read16(uint32_t _addr) override;
+ 		void     write8 (uint32_t _addr, uint8_t  _val) override;
+ 		void     write16(uint32_t _addr, uint16_t _val) override;
++		void     traceHdiWrite(uint32_t _addr, uint32_t _val, uint32_t _size);	// mpc-vst-machinedrum tracing
++		void     traceWatch(uint32_t _addr, uint32_t _val, uint32_t _size);	// mpc-vst-machinedrum tracing
+ 
+ 		uint32_t getResetPC() override;
+ 		uint32_t getResetSP() override;
 diff --git a/source/elektron/md/mdLibTest/CMakeLists.txt b/source/elektron/md/mdLibTest/CMakeLists.txt
 index ef2797e4..f280c8b7 100644
 --- a/source/elektron/md/mdLibTest/CMakeLists.txt

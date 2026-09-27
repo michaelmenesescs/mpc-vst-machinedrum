@@ -125,6 +125,42 @@ Measured with `mdProbe prof` (PC histogram + instruction counters):
 Monomodule's one Monomachine track is ~21 M instructions/s and needed the static recompiler to fit
 58% of one Force core. Emulating both MD DSPs is roughly 5-7× that.
 
+## Host model: the ColdFire side (decoded)
+
+Found by watching the ColdFire (68k) code that writes DSP2's host port (`tools/mdtrace`: `cf:on`,
+`watch:`), then reading the OS image (section 0 of the `.syx`, load base `$200000`; the running RAM
+matches the file byte for byte) with Capstone (`tools/mdtrace/analysis/dis68.py`).
+
+- **Pump.** An interrupt handler in the ColdFire's internal SRAM (`$1000760-$100077c`) streams a
+  staging buffer of 32-bit words (`$010015b4 + …` per voice) to DSP2's HI08. It only transports.
+- **Machine descriptor table** at `$24ef54`: 135 records of 86 bytes = `[coefficient function
+  pointer][machine id][5-char name][8 × 4-char parameter names][8 defaults][flags…]`. It covers
+  every MD UW machine: GND, TRX, EFM, E12, P-I, INP, MID, CTR, ROM, RAM
+  (`tools/mdtrace/analysis/machines.py` lists it from your own OS file). MID/CTR point at a stub;
+  ROM/RAM machines share two functions.
+- **Machine coefficient functions are pure.** Each is compiled C, called as
+  `count = fn(uint32_t *out, const uint16_t *params)`: it reads the 8 SYN parameters as 16-bit
+  values, computes `out[1..12]` with arithmetic and lookup tables that live in the OS image, and
+  returns the word count. No other OS state. Example: TRX-B2 (`$201fd2`) is ~70 straight-line
+  instructions. **So Machinedrum One can call the original functions in a 68k emulator (Musashi,
+  already in md-mm) for exact results at negligible cost** (worst case 16 voices × every 192-sample
+  tick ≈ 3,700 calls/s ≈ 0.3 M 68k instructions/s).
+- **Caller** (`$20b394`, inside the per-voice tick routine): `jsr` through a per-voice function
+  pointer array in RAM (`$29f27c`), passing the voice's staging slot and `a6`. **`a6` is the track's
+  current parameter array: 24 16-bit values** (`$0-$e` SYN1-8, `$10-$20` AMD..DIST, `$22-$28`
+  VOL/PAN/sends, …), i.e. the kit values after the OS's own modulation. The same routine turns the
+  non-SYN part into DSP1's per-track values (with velocity/accent handling).
+
+What the host model must reproduce exactly, by translating the OS code (like Monomodule's
+`HostModel.cpp` for the Monomachine):
+
+1. How `a6` is built each tick from the kit's 0-127 values: scaling (`<<7` plus fraction?), the
+   per-track LFO (LFOS/LFOD/LFOM and its destination), any parameter smoothing, and pitch/note
+   input.
+2. The per-voice tick routine's DSP1-facing arithmetic (volume with velocity/accent, pan, sends) and
+   the trigger word (machine id + 1, bit 7 for the UW table).
+3. The tick schedule: 96-sample control tick, DSP2 slots every other tick.
+
 ## Design consequences
 
 - **All voices from one instance: yes.** One DSP2 renders all 16 voices; the host drives 16 slots.
@@ -145,12 +181,7 @@ Monomodule's one Monomachine track is ~21 M instructions/s and needed the static
 
 ## Open
 
-- **Coefficient generation (host model).** The ColdFire turns SYN1-8 (+ LFO, pitch, tune) into the
-  12 slot words per machine. Options: reverse-engineer each machine's 68k routine (~50 machines);
-  run the ColdFire's own coefficient routine on demand in Musashi (find it by logging the 68k PC at
-  the HI08 writes to `$600000`); or tabulate per (machine, parameter) by sweeping in the emulator at
-  first run, from the user's own ROM. Sweeps suggest most words depend on one parameter each, which
-  favours tables, but LFO and pitch interaction need checking.
+- **Building `a6`** (see "Host model: the ColdFire side"): LFO, smoothing, pitch.
 - The rest of DSP2's 64-word slot (words 13-63: DSP-side voice state?) and where pitch/note enters.
 - DSP1's global blocks (`$150-$18c`): master FX parameters and per-tick modulation.
 - Whether DSP1 keeps per-track processed blocks in memory before the pan/mix (for per-track outs
