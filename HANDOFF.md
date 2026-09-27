@@ -225,6 +225,116 @@ Steps:
     recompiler's discovery step (`libs/dsp56300`'s `tools/arm32jit_prototype/recomp/`, ~3.8-3.9x
     over the interpreter for Monomachine machines) against DSP2's program, once on-device.
 
+- **2026-09-27: real Force timing, first number, and cross-arch bit-exactness confirmed on
+  hardware.** `mdrender_arm` copied to the Force and run against the user's OS `.syx`: **8.0 s of the
+  6-track demo kit rendered in 23.6 s (294% of real time)**, interpreter only, no static recompiler —
+  and it produced the exact same WAV as an x86 build of the same commit forced onto the plain
+  interpreter (`-DDSP56K_NO_JIT_RUNTIME`, same trick as the earlier qemu check): both `md5
+  bcaf9ded0bc6ea4659a6eacb939f0cf1`. So the ARM port's determinism claim (previously only checked
+  under qemu) now holds on the real device too.
+
+  294% is ~3x too slow for 6 of 16 tracks, but expected at the interpreter-only stage: HANDOFF's own
+  plan was always interpreter-for-correctness-first, static-recompiler-for-speed-second. If DSP2/DSP1
+  get a similar speedup to the ~3.8-3.9x the recompiler measured for Monomachine machines, that's
+  ~77% of real time — inside budget. Confirming this is now the load-bearing next step, not a
+  nice-to-have.
+
+  One build wrinkle worth keeping: `tools/build_proto.sh`'s x86 reference build links against
+  md-mm's *own* dsp56300 fork, which predates `setInterpreterEnabled`/the ARM port's other API
+  additions — building the current `engine/` sources against it fails to compile. The x86 side of
+  this check instead built `libs/dsp56300` (our arm32 fork, the same one `mdrender_arm` used) natively
+  for x86, with the JIT forced off. `build_proto.sh` itself still targets md-mm's fork and hasn't been
+  updated; do that (or note the split) before relying on it again for anything touching `VoiceEngine`.
+
+  **Next:** static recompiler discovery pass (`libs/dsp56300/tools/arm32jit_prototype/recomp/`)
+  against DSP2's program from the user's `.syx`, then measure the recompiled version on the Force the
+  same way.
+
+- **2026-09-27: recompiler discovery pipeline adapted to Machinedrum; generated program crashes at
+  DSP init, not yet root-caused.**
+  - New `tools/mdrecomp/mdrecomp_discover.cpp`: a discovery tracer for DSP2 (`VoiceEngine` alone,
+    same generic `DSP::s_recompTraceHook`/`getRecompInfo` infrastructure `arm32jit_prototype/recomp`
+    already provides — it isn't Monomodule-specific). Drives every machine in the OS's descriptor
+    table (skipping id 0/1, never rendered) through 6 coefficient sweeps each, with a mid-decay
+    retrigger, to exercise parameter-dependent branches. `recomp_gen2.py` on the trace: **1527
+    blocks, 98.4% instruction coverage, 264 whole-loop blocks**, from a 6.7 s x86 run.
+  - Built a gated x86 gate build (`-DDSP56K_RECOMP -I<dir with dsp56k_recomp.inl>
+    -DDSP56K_NO_JIT_RUNTIME`, our own `libs/dsp56300` fork — see the build-split note two entries
+    up). **It segfaults before rendering anything**, inside `VoiceEngine`'s constructor/`reset()`
+    (program init, not even the demo pattern): `op_ResolveCache` dereferences a null
+    `OpcodeInfo*` for a bogus opcode word (`0x000800`) at PC `$65`. The generated `.inl` has no
+    `recompBlock<$65>` (the block before it, at `$64`, is one word and should fall through to `$65`
+    normally) — so `$65` must be running the plain interpreter, reading a P-memory word that isn't
+    what's really there at that point in execution. Not yet resolved; candidates not yet checked:
+    whether the opcode-cache entry struct's layout changes size under `DSP56K_RECOMP` in a way one
+    translation unit doesn't agree with (ODR/ABI mismatch), or whether `VoiceEngine::installHarness`'s
+    P-memory patching interacts with the recompiled-block dispatch's word-verification differently
+    than plain interpretation.
+  - **Not a dead end**: the discovery pipeline itself (tracer, generator, coverage) worked correctly
+    and is reusable; the bug is in what runs after, specific to enabling `DSP56K_RECOMP` for this
+    program. Needs isolating (bisect which of the 1527 blocks is actually active near PC $64-$70;
+    or try recomp with a trimmed `.inl` containing only later, more-exercised blocks, to check
+    whether the whole mechanism or just this early one is broken) before it's safe to cross-compile
+    and try on the Force.
+  - Housekeeping: this session downloaded `gdb` + its runtime deps as loose `.deb`s (via
+    `apt-get download` + `dpkg-deb -x`, no root) into `/tmp/gdbroot`, since apt/dpkg needs root and
+    wasn't available interactively. Not installed system-wide, nothing added to the repo.
+
+  **Next:** root-cause the segfault (see candidates above) before re-measuring on the Force.
+
+- **2026-09-27: recompiler segfault root-caused and fixed (two real bugs, both in shared
+  `libs/dsp56300`, not Machinedrum-specific) — recompiled DSP2 verified bit-exact and measured on
+  the Force: 294% → 141% of real time.**
+  - **Bug 1**: `Opcodes::getFieldInfo()`'s backing table (`g_runtimeFieldInfos`, `opcodes.cpp`) was a
+    namespace-scope global. Any translation unit that also constructs its own `Opcodes` object at
+    global/static-init scope (our discovery tracer does, mirroring `mnm_recomp_discover.cpp`) races
+    it: C++ doesn't order dynamic initialization between TUs, so which one runs first is an
+    accident of link order. When ours ran first, every opcode field lookup silently failed and the
+    tracer misclassified real instructions as invalid. Root-caused by writing a ~10-line minimal
+    repro (`Opcodes g_ops;` at namespace scope, one lookup) that reproduced with the library alone,
+    no engine code involved — confirming it wasn't Machinedrum-specific. **Fixed**: made
+    `g_runtimeFieldInfos` a function-local static in `getFieldInfo()` (construct-on-first-use,
+    immune to cross-TU ordering).
+  - **Bug 2, the actual crash**: the DSP56300 boot-protocol program loader (`dspBootCode.cpp`, used
+    to stream DSP2's program in over HI08 — see "Runtime protocol" above) writes P memory directly
+    and invalidates only the JIT's block-chain cache (`Jit::notifyProgramMemWrite`), never the
+    static recompiler's per-block verification cache (`DSP::notifyProgramMemWrite` →
+    `recompInvalidate`) — because it bypasses `memWriteP`, the one path that calls both. A block
+    that verified true against not-yet-fully-streamed P words then stayed cached as "verified"
+    forever, since nothing ever invalidated it once the rest of the boot transfer overwrote those
+    same words with the real program — so the recompiled dispatch ran stale, wrong code, corrupting
+    execution until it landed on a bogus opcode and crashed. **Fixed**: the boot loader's per-word
+    write now also calls `DSP::notifyProgramMemWrite` (made public for this; was private, only
+    reached internally via `memWriteP`). Likely latent in `libs/dsp56300` generally, not just for
+    Machinedrum — anything whose program load goes through this exact boot-protocol path and then
+    gets recompiled could hit it; Monomodule's tooling apparently loads differently (or never
+    revisited the affected addresses before boot fully finished) and never tripped it.
+  - Both fixes are in `libs/dsp56300` (this repo's fork; not yet pushed anywhere, unlike the earlier
+    MERGE-op fix branch — do that before anyone else builds against this).
+  - **Verified**: rebuilt discovery (`tools/mdrecomp/mdrecomp_discover.cpp`, still 8228 distinct
+    instructions, now with correct lengths — 840 blocks instead of 1527, 97.3% coverage, since
+    correct lengths merge more instructions per block), rebuilt `mdrender` x86 with `-DDSP56K_RECOMP`:
+    **byte-identical WAV** (md5 `bcaf9ded...`) to the plain-interpreter x86 build. Cross-compiled for
+    armhf and ran on the real Force: same md5 there too, and **8.0 s rendered in 11.3 s — 141% of
+    real time**, down from the interpreter-only 294% measured two entries up. Roughly a 2.1x
+    speedup on-device (less than the ~3.8-3.9x Monomachine measured; DSP2's program/instruction mix
+    differs, and only 97.3% of instructions got recompiled here).
+  - Still 41% over budget for this 6-of-16-track demo kit; a full 16-track pattern needs more. Not
+    yet tried: whether coverage or block quality improves with a broader discovery sweep (more
+    machines' edge cases, or ROM/RAM machines once flash sample data is available), or whether the
+    remaining 2.7% uncovered instructions are concentrated in something hot.
+
+  **Next:**
+  1. Push both `libs/dsp56300` fixes to a branch (like the earlier MERGE fix) so this state is
+     recoverable/shareable, and consider upstreaming bug 2 (boot-protocol invalidation gap) since
+     it's a real, generally-applicable correctness bug, not Machinedrum-specific.
+  2. Try to close the gap to real-time: wider discovery coverage, and/or measure where the
+     remaining time actually goes (per-machine cost, same as the interpreter-only breakdown earlier
+     in this doc) now that the recompiled build is trustworthy to profile.
+  3. DSP1 (mixer/FX) is already native C++, not part of this — this was all DSP2 (voice engine).
+  4. ROM/RAM machines: still need the user's flash sample data.
+  5. The plugin itself (wrapper, skin, `vst.json`).
+
 ## Relationship between the projects
 
 Monomodule (Shnolk) and gearmulator-md-mm (Joe Landers) share no code and neither credits the other. md-mm is
