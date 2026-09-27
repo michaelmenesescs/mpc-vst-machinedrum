@@ -469,6 +469,29 @@ Steps:
     or this repo's own CMake + `MPC_VST_DIR`; run the skill's `tools/test_port.sh` (ASan/UBSan host
     test) and `tools/bench.sh` before any device step; expose per-track FX/LFO params; then a skin.
 
+- **2026-09-28: `machinedrum_one.so` built for the Force, verified offline under QEMU.**
+  `vst/build_so.sh` (+ `tools/Dockerfile.armhf-builder`, `tools/armhf.cmake`) mirrors
+  `mpc-vst-monomodule`'s own armhf cross-build: `debian:bookworm`'s `crossbuild-essential-armhf`
+  (glibc ~2.36, staying below the Force's 2.39) rather than this session's own local
+  `arm-linux-gnueabihf` toolchain, which is too new for a *shared* library that must dynamically
+  link against the device's already-loaded glibc (fine for the static standalone test binaries
+  built with it earlier, wrong for this).
+  - Found and fixed a real bug this surfaced: `libs/gearmulator-md-mm/source/mc68k` was a PUBLIC
+    include dir on `mdcore`, leaking into `vst2_wrap.c`'s plain-C compile and shadowing the
+    sysroot's real `<endian.h>` with mc68k's own (C++-only) one. Now PRIVATE.
+  - Verified: one exported symbol (`VSTPluginMain`), highest `GLIBC_2.36` (device has 2.39),
+    libstdc++ statically linked (matches the skill's `-fvisibility=hidden`/`-Bsymbolic`/
+    `--exclude-libs` setup for multiple plugin instances sharing MPC's process). Ran the `.so` +
+    `md-vst-smoke` under Docker's QEMU-backed `--platform linux/arm/v7` against the user's own
+    `.syx`: real audio (peak 14578/32767), no crash — a functional check only, not a timing
+    measurement (QEMU emulation speed says nothing about the real device).
+  - **Still nothing touching the physical Force**: no deploy, no `MPC.settings` edit, no restart.
+    Per the skill's own rules and the reboot incident two entries up, that step needs the user
+    present.
+  - **Next:** the skill's `tools/test_port.sh` (ASan/UBSan) if it can be adapted to this repo's
+    CMake-based build rather than its own generic `sources` compile step; per-track FX/LFO params;
+    a skin; then, with the user present, `tools/bench.sh` and the actual device deploy/register.
+
 ## Relationship between the projects
 
 Monomodule (Shnolk) and gearmulator-md-mm (Joe Landers) share no code and neither credits the other. md-mm is
