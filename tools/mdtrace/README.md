@@ -60,6 +60,7 @@ after about 20 emulated seconds of `Hardware::advance()`. Driving it any shorter
 | `sysex:HEX` | e.g. `sysex:f000203c02005b001000f7` (assign machine: track, machine, table) |
 | `panel:NAME` | tap Kit, Enter, Exit, Up, Down, Left, Right, Play, Stop, Function, Record |
 | `lcd` | print the LCD as ASCII |
+| `lcdpng:PATH.ppm` | the real emulated LCD framebuffer (`FrontPanel::getLcdPixel`, 128x64, 1-bit) as a binary PGM (`P5`) — bit-exact reference art for the plugin's skin, the same idea as Monomodule's `mnm_artdump.cpp` but via full-system emulation rather than a reverse-engineered font/icon decoder. **Never commit the output**: it's Elektron's own LCD art (see docs/FIRMWARE.md, same policy as the ROM/flash image itself). Convert to PNG with any tool (ImageMagick's `convert`, PIL, or a few lines of `zlib`) for viewing. |
 | `prof:N` | N frames with a PC histogram and instruction counts for both DSPs |
 | `cf:on` / `cf:off` | log ColdFire PC + registers on every HI08 write |
 | `watch:BEGIN:END` | log ColdFire writes into [BEGIN, END) (hex); `watch:0:0` off |

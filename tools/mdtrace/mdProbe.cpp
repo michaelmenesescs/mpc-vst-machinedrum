@@ -213,6 +213,23 @@ int main(int argc, char** argv)
 			}
 			continue;
 		}
+		if(kind == "lcdpng")	// lcdpng:PATH.ppm -- the real emulated LCD framebuffer as a bit-exact bitmap,
+		{	// for skin reference art (never commit: it's Elektron's own LCD art, see docs/FIRMWARE.md).
+			const auto fp = hw.getFrontPanelSnapshot();
+			std::FILE* f = std::fopen(s.substr(7).c_str(), "wb");
+			if(f)
+			{
+				std::fprintf(f, "P5\n%u %u\n255\n", md::FrontPanel::g_lcdWidth, md::FrontPanel::g_lcdHeight);
+				for(uint32_t y = 0; y < md::FrontPanel::g_lcdHeight; ++y)
+					for(uint32_t x = 0; x < md::FrontPanel::g_lcdWidth; ++x)
+					{
+						const uint8_t v = fp.getLcdPixel(x, y) ? 0 : 255;	// ink on = dark, matching the real backlit LCD
+						std::fwrite(&v, 1, 1, f);
+					}
+				std::fclose(f);
+			}
+			continue;
+		}
 		if(kind == "wav") { g_wav = std::fopen(s.substr(4).c_str(), "wb"); continue; }
 		if(kind == "prof")
 		{

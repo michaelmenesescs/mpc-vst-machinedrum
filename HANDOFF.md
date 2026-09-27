@@ -492,6 +492,38 @@ Steps:
     CMake-based build rather than its own generic `sources` compile step; per-track FX/LFO params;
     a skin; then, with the user present, `tools/bench.sh` and the actual device deploy/register.
 
+- **2026-09-28: the skin's foundation — bit-exact real LCD capture, confirmed working, following the
+  same idea as Monomodule's skin but a more direct route for this project.** Monomodule's
+  `mnm_artdump.cpp` gets pixel-exact LCD art by calling upstream Monomodule's own reverse-engineered
+  font/icon decoders (`RomArt.cpp`/`SpecData.cpp`) on the user's OS file — years of prior community
+  work this project doesn't have an equivalent of for the Machinedrum. But `gearmulator-md-mm`
+  *full-system emulates the real LCD controller*, so the real ColdFire OS's own UI code, running in
+  Musashi exactly as on hardware, produces real pixels we can just read
+  (`md::FrontPanel::getLcdPixel(x,y)`, 128x64, 1-bit) — no font reverse-engineering needed at all.
+  - Confirmed end to end: built `mdProbe` (`tools/mdtrace`, needs only `mdLib` — no RmlUi/freetype/
+    cpp-terminal despite the full project needing those submodules present to configure) against
+    the user's full flash image, and added a new `lcdpng:PATH.ppm` action (alongside the existing
+    ASCII `lcd` action) that writes the real framebuffer as a binary PGM. Converted to PNG (a few
+    lines of `zlib`, no ImageMagick/PIL needed) and viewed: **a pixel-perfect capture of the real
+    Machinedrum's home/track screen** — BPM readout, LEV/PTCH/DEC/RAMP/HOLD column labels, kit
+    number, track name, pattern name, exactly as real hardware renders it.
+  - **Never commit captured LCD art** (this session's test screen was viewed then deleted, never
+    added to the repo) — same policy as the ROM/flash image and the recompiler's `.inl`: it's
+    Elektron's own content, per-user build data only. A real skin-generation script (this project's
+    analog of Monomodule's `mk_skin.py`) would call `mdProbe` with `panel:`/`sysex:` actions to
+    reach each screen it needs (track select, parameter pages, kit browser, ...) and `lcdpng:` to
+    capture each one, at build time, from the user's own firmware — never bundling the images
+    themselves.
+  - **Not yet done** (the actual `mk_skin.py`-equivalent is real, scoped work, not attempted this
+    session): enumerating which MD screens the plugin's `TUI.json` needs, the `panel:`/`sysex:`
+    sequences to reach each one, and the Python generator that composites captured LCD crops (plus
+    the skin's own knob/button chrome, likely via the `mpc-vst-plugin` skill's
+    `layout.conf`/`shadow_skin.py` path) into `TUI.json` + PNGs.
+  - Housekeeping: this needed the user's full 8 MB flash `.bin` (not just the `.syx`), already on
+    disk from the earlier tracing session (`/home/sam/roms/machinedrum/`), and a flash-cache file
+    (`mdProbe`'s second argument) that `mdProbe` generates on first run and reuses after — also
+    derived-from-firmware, also never committed.
+
 ## Relationship between the projects
 
 Monomodule (Shnolk) and gearmulator-md-mm (Joe Landers) share no code and neither credits the other. md-mm is
