@@ -55,3 +55,37 @@ means — the Machinedrum's equivalent of Monomodule's 52-word parameter block �
 - Sample data: DSP2's program includes ~233K external P words backing the E12/ROM/RAM machines;
   whether that's baked into section 1 itself (looks likely, given the full word-for-word match) or
   loaded separately is not yet checked.
+
+## Design goal: all voices in one plugin instance, not one voice at a time
+
+Machinedrum One should play all voices at once from one plugin instance (a drum map: MIDI note
+number -> voice), the way Monomodule's "Six" plugin plays all 6 Monomachine tracks at once — not
+one voice per instance. This is very likely achievable, and more naturally than the Monomachine
+case, because on real hardware DSP2 (the voice producer) already renders every voice inside a
+single audio block on one chip: it isn't 12/16 physical DSPs, it's one, time-multiplexed. Monomachine
+does this the same way for its 6 tracks (Monomodule's kernel comment: `jsr $0092` per track, once per
+track per block, each track its own 52-word parameter block and its own struct in DSP memory at
+$500/$600/$700) — modeled in Monomodule as 6 separate `DspEngine` instances only because Monomachine
+tracks are large plugin *products* (One vs. Six), not because the hardware needs 6 chips.
+
+Two things the runtime-protocol tracing should specifically establish, so the engine design covers
+multi-voice play from the start rather than as a later rework:
+
+1. **The per-voice dispatch pattern on DSP2.** Find the DSP2 equivalent of Monomachine's per-track
+   struct array and render-entry call: how many voice slots exist, where their state lives, and
+   whether one host-side parameter block feeds one call per voice per audio block (expected, by
+   analogy) or something else. This settles whether "all voices, one engine instance" is a
+   straightforward per-voice loop like Monomodule's per-track one.
+2. **Whether per-voice audio is separable before DSP2's internal mix.** Real hardware only exposes
+   a single mixed bus to DSP1 over ESSI (voices are summed before leaving DSP2). We are not limited
+   to that: if each voice writes to its own accumulator before a final sum step (plausible, by
+   analogy with Monomachine's per-track render-then-mix), we can read that DSP memory directly and
+   expose real per-voice/per-track outputs from Machinedrum One, the way Monomodule reads
+   `Y:$0..$1F` for L/R rather than waiting on a physical output. Worth checking, since it decides
+   whether the plugin can offer individual outs for per-voice routing/processing in the host, or
+   only a summed stereo bus like the hardware's own.
+
+MIDI note-to-voice mapping itself is not a hardware question at all: the real MD maps tracks to
+MIDI channels, but we are writing the host model from scratch (not re-emulating the ColdFire's MIDI
+parser), so the mapping is entirely our own design choice — a note-number drum map, as requested,
+is fine.

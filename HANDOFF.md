@@ -17,9 +17,18 @@ Steps:
    image. Log which OS program is booted into which DSP, then every HI08 word and host command to each DSP
    while triggering one track with known machines and parameters. Output: the MD's parameter protocol (its
    equivalent of Monomodule's 52-word block) and the voice-DSP/FX-DSP roles. **This step decides feasibility.**
+   **Done for the DSP-role half; the runtime protocol half is next** (see Status and `docs/PROTOCOL.md`).
+   That next pass should also settle the per-voice dispatch pattern and whether per-voice audio is
+   separable before DSP2's internal mix — see "Design goal: all voices in one plugin instance" in
+   `docs/PROTOCOL.md`. Goal: **Machinedrum One plays all voices at once from one instance** (a MIDI
+   note-number drum map), the way Monomodule's Six plays all 6 Monomachine tracks — not one voice per
+   plugin instance. Real hardware already renders every voice inside one audio block on the single
+   voice-producer DSP, so this should fall out of the per-voice dispatch pattern rather than need
+   redesigning later.
 2. **Engine.** `md::DspEngine`: load the voice program from the `.syx` (`tools/mdfw`), stub the main loop, and
-   drive one voice. Check sample-for-sample against gearmulator-md-mm.
-3. **Measure.** Instruction rate per voice and for all 16 voices, on x86 and on the Force. The MD may need
+   drive all voices per audio block (not just one — see step 1's goal). Check sample-for-sample against
+   gearmulator-md-mm.
+3. **Measure.** Instruction rate for all voices together, on x86 and on the Force. The MD may need
    voice subsets or the static recompiler (`libs/dsp56300`, `arm32` branch) to fit a core.
 4. **FX engine** from the mixer program, the same way.
 5. **Port**: VST wrapper, skin and `vst.json`, following `mpc-vst-monomodule` and `mpc-vst-plugins`.
