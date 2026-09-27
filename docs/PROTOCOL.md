@@ -255,10 +255,24 @@ that sends the voice's 32 samples out over HI08 and continues at `$d5`; `$e2` �
 - **Internal SRAM** `$1000000-$1000a2a` is the OS's copy of image `$2622f4`, apart from a few bytes
   of variables near the start; everything after is zero-initialised state.
 
+- **LFO settings and trigger.** LFO k belongs to track k; its struct (`$1000f8c + $24·k`) starts with
+  the kit's LFO settings: byte 0 destination track, 1 destination parameter, 2 shape 1, 3 shape 2,
+  4 type; byte 5 is the trigger flag, `+$20` the phase. The OS's track trigger (`$20cdf0`) sets the
+  track's own LFO flag (and the trigger-group track's). The tick's trigger path then calls the
+  waveform routine `$204c94(k)` (type bit 0 TRIG: phase reset; bit 1 HOLD: output only taken at a
+  trigger; FREE = 0) and applies that LFO immediately (`$10001e8(k)`), before the machine function.
+  Speed, depth and mix are track parameters 21-23. Sysex `0x62 [track<<3|setting] [value]` sets
+  settings 0-4 on the hardware.
+- **Slot transport can drop a state.** md-mm computes a slot every tick but its pump runs on other
+  interrupts, so a computed slot is occasionally overwritten before it is sent (seen at an LFO
+  peak). The host model writes every tick's slot.
+
 `engine/HostModel` implements this with the OS's routines in `MachineRunner` (which now holds the
 OS's main RAM and internal SRAM). **End to end** (assign machine, set 24 parameters, trigger →
 MachineRunner → VoiceEngine): TRX-B2 on track 1 and TRX-SD on track 2 are each **6,400/6,400
-samples identical** to gearmulator-md-mm.
+samples identical** to gearmulator-md-mm. **With an LFO** (TRX-B2, LFO → PTCH, triangle, TRIG,
+speed 80, depth 100): the per-tick voice arrays md-mm passed to the machine function give exactly
+the slot sequence the host model produces, 20/20 ticks.
 
 ## Design consequences
 

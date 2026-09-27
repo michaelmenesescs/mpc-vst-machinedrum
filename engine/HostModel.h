@@ -3,8 +3,7 @@
 // $10002e0, LFO oscillator $1000088, LFO apply $1000332, machine coefficient functions); this class does what
 // the OS's tick routine ($20ad9a) and slot pump ($10004d0) do around them. See docs/PROTOCOL.md.
 //
-// Not yet modelled: LFO routing/shape/trigger configuration (LFO depth 0, the kit default, is exact),
-// parameter locks, the mixer DSP's per-track values.
+// Not yet modelled: parameter locks and trigger groups (sequencer features), the mixer DSP's per-track values.
 #pragma once
 #include <array>
 #include <cstdint>
@@ -29,6 +28,11 @@ namespace md::engine
 		int param(int _track, int _param) const { return m_raw[_track][_param]; }
 		void setTempo(double _bpm);							// tempo factor for tempo-synced LFOs and E12/ROM retrig
 		void trigger(int _track);
+
+		// A track's LFO (LFO k belongs to track k; its speed, depth and mix are track parameters 21-23):
+		// destination track and parameter (0-23), two shapes, type (bit 0 TRIG: restart on the track's trigger,
+		// bit 1 HOLD: output only updated at a trigger; 0 = FREE).
+		void setLfo(int _track, int _destTrack, int _destParam, int _shape1, int _shape2, int _type);
 
 		// Control ticks: the MD runs its tick as fast as the ColdFire gets through it (~120 Hz measured in
 		// gearmulator-md-mm, varying with load). Default: one tick every 11 blocks of 32 samples (125.3 Hz).

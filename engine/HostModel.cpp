@@ -13,6 +13,9 @@ namespace md::engine
 		constexpr uint32_t kVoiceParams = 0x10011cc;	// per-voice arrays (a6): 16 x 24 words, after LFO
 		constexpr uint32_t kTempo = 0x100150c;		// BPM x 24
 		constexpr uint32_t kSmooth = 0x10002e0, kLfoOsc = 0x1000088, kLfoApply = 0x1000332;
+		constexpr uint32_t kLfo = 0x1000f8c, kLfoStride = 0x24;	// 16 LFO structs: bytes 0-4 settings, 5 = trigger flag
+		constexpr uint32_t kLfoWave = 0x204c94;		// waveform/restart for one LFO (in the tick routine's trigger path)
+		constexpr uint32_t kLfoApplyOne = 0x10001e8;	// apply one LFO to its destination in the voice arrays
 		constexpr uint32_t kTrackStride = 0x30;
 
 		bool isAudioMachine(const uint8_t _id) { return !(_id >= 0x60 && _id <= 0x7b); }	// MID/CTR: no audio
@@ -26,6 +29,7 @@ namespace md::engine
 		{
 			m_machine[t] = 0;
 			setMachine(t, 0);
+			setLfo(t, t, 0, 0, 0, 0);
 		}
 	}
 
@@ -48,9 +52,21 @@ namespace md::engine
 		m_os.poke32(kTempo, static_cast<uint32_t>(std::lround(std::clamp(_bpm, 30.0, 300.0) * 24.0)));
 	}
 
+	void HostModel::setLfo(const int _track, const int _destTrack, const int _destParam, const int _shape1, const int _shape2, const int _type)
+	{
+		const uint32_t base = kLfo + kLfoStride * static_cast<uint32_t>(_track);
+		m_os.poke8(base + 0, static_cast<uint8_t>(std::clamp(_destTrack, 0, kTracks - 1)));
+		m_os.poke8(base + 1, static_cast<uint8_t>(std::clamp(_destParam, 0, kParams - 1)));
+		m_os.poke8(base + 2, static_cast<uint8_t>(std::clamp(_shape1, 0, 7)));
+		m_os.poke8(base + 3, static_cast<uint8_t>(std::clamp(_shape2, 0, 7)));
+		m_os.poke8(base + 4, static_cast<uint8_t>(std::clamp(_type, 0, 3)));
+	}
+
 	void HostModel::trigger(const int _track)
 	{
 		m_trigger[_track] = true;
+		// The OS's track trigger ($20cdf0) flags the track's own LFO; the tick's trigger path acts on it.
+		m_os.poke8(kLfo + kLfoStride * static_cast<uint32_t>(_track) + 5, 1);
 		// The tick routine's trigger path: a pending machine is applied now, loading the kit values straight into
 		// the smoothing targets, the smoothed array and the voice array (no glide).
 		if(m_pendingMachine[_track] >= 0)
@@ -79,6 +95,13 @@ namespace md::engine
 	{
 		// As the tick routine's voice loop: the machine function on the voice's current array; word 0 = trigger
 		// flag, which the slot pump turns into machine id + 1. MID/CTR machines have no audio and are not sent.
+		// The tick routine's trigger path, before the machine function: the LFO's restart/hold for this
+		// trigger, then this track's LFO applied to its destination straight away.
+		if(m_trigger[_track])
+		{
+			m_os.call(kLfoWave, {static_cast<uint32_t>(_track)});
+			m_os.call(kLfoApplyOne, {static_cast<uint32_t>(_track)});
+		}
 		const auto id = m_machine[_track];
 		if(isAudioMachine(id))
 		{

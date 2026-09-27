@@ -143,9 +143,8 @@ Steps:
   synced (see `docs/PROTOCOL.md`, "Host model: tick scheduling"). Tool: `mdhost`.
 
   **Next:**
-  1. LFO configuration and trigger restart: LFO struct layout (`$1000f8c + $24·k`: destination
-     track/param, shapes, update mode) and how the tick routine restarts an LFO on trigger
-     (`$204c94` trigger path, `$1001510` flags). Verify against md-mm with LFO depth > 0.
+  1. ~~LFO configuration and trigger restart~~ done 2026-09-27: `HostModel::setLfo()`, trigger
+     flag + the tick's trigger path; tick-by-tick identical to md-mm with an LFO on PTCH.
   2. Measure DSP2 cost per machine family (loop over the machine table with defaults).
   3. Mixer DSP: translate the `Y:$100+5·k` computation (volume/velocity/accent, pan, sends); then
      the bit-exact C++ translation of DSP1's per-track chain.
