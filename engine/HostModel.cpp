@@ -1,4 +1,5 @@
 #include "HostModel.h"
+#include "ParallelVoiceEngine.h"
 
 #include <algorithm>
 #include <cmath>
@@ -24,7 +25,8 @@ namespace md::engine
 		bool isAudioMachine(const uint8_t _id) { return !(_id >= 0x60 && _id <= 0x7b); }	// MID/CTR: no audio
 	}
 
-	HostModel::HostModel(MachineRunner& _os, VoiceEngine& _voices) : m_os(_os), m_voices(_voices)
+	template<class TVoices>
+	HostModel<TVoices>::HostModel(MachineRunner& _os, TVoices& _voices) : m_os(_os), m_voices(_voices)
 	{
 		setTempo(125.0);
 		m_pendingMachine.fill(-1);
@@ -39,7 +41,8 @@ namespace md::engine
 		}
 	}
 
-	void HostModel::setMachine(const int _track, const uint8_t _machineId)
+	template<class TVoices>
+	void HostModel<TVoices>::setMachine(const int _track, const uint8_t _machineId)
 	{
 		const auto* m = m_os.machine(_machineId);
 		if(!m) return;
@@ -48,17 +51,20 @@ namespace md::engine
 			m_raw[_track][p] = m->defaults[p];
 	}
 
-	void HostModel::setParam(const int _track, const int _param, const int _value)
+	template<class TVoices>
+	void HostModel<TVoices>::setParam(const int _track, const int _param, const int _value)
 	{
 		m_raw[_track][_param] = static_cast<uint8_t>(std::clamp(_value, 0, 127));
 	}
 
-	void HostModel::setTempo(const double _bpm)
+	template<class TVoices>
+	void HostModel<TVoices>::setTempo(const double _bpm)
 	{
 		m_os.poke32(kTempo, static_cast<uint32_t>(std::lround(std::clamp(_bpm, 30.0, 300.0) * 24.0)));
 	}
 
-	void HostModel::setLfo(const int _track, const int _destTrack, const int _destParam, const int _shape1, const int _shape2, const int _type)
+	template<class TVoices>
+	void HostModel<TVoices>::setLfo(const int _track, const int _destTrack, const int _destParam, const int _shape1, const int _shape2, const int _type)
 	{
 		const uint32_t base = kLfo + kLfoStride * static_cast<uint32_t>(_track);
 		m_os.poke8(base + 0, static_cast<uint8_t>(std::clamp(_destTrack, 0, kTracks - 1)));
@@ -68,12 +74,14 @@ namespace md::engine
 		m_os.poke8(base + 4, static_cast<uint8_t>(std::clamp(_type, 0, 3)));
 	}
 
-	void HostModel::setLevel(const int _track, const int _level)
+	template<class TVoices>
+	void HostModel<TVoices>::setLevel(const int _track, const int _level)
 	{
 		m_os.poke8(kLevelTarget + static_cast<uint32_t>(_track), static_cast<uint8_t>(std::clamp(_level, 0, 127)));
 	}
 
-	void HostModel::trigger(const int _track, const int _velocity, const bool _accent)
+	template<class TVoices>
+	void HostModel<TVoices>::trigger(const int _track, const int _velocity, const bool _accent)
 	{
 		m_trigger[_track] = true;
 		m_velocity[_track] = static_cast<uint8_t>(std::clamp(_velocity, 1, 127));
@@ -96,7 +104,8 @@ namespace md::engine
 		}
 	}
 
-	const uint16_t* HostModel::voiceParams(const int _track) const
+	template<class TVoices>
+	const uint16_t* HostModel<TVoices>::voiceParams(const int _track) const
 	{
 		auto* self = const_cast<HostModel*>(this);
 		for(int p = 0; p < kParams; ++p)
@@ -104,7 +113,8 @@ namespace md::engine
 		return m_scratch.data();
 	}
 
-	void HostModel::updateVoice(const int _track)
+	template<class TVoices>
+	void HostModel<TVoices>::updateVoice(const int _track)
 	{
 		// As the tick routine's voice loop: the machine function on the voice's current array; word 0 = trigger
 		// flag, which the slot pump turns into machine id + 1. MID/CTR machines have no audio and are not sent.
@@ -123,14 +133,15 @@ namespace md::engine
 			if(n > 0)
 			{
 				out[0] = m_trigger[_track] ? static_cast<uint32_t>(id) + 1 : 0;
-				m_voices.setSlot(_track, out, std::min(n, VoiceEngine::kSlotWords));
+				m_voices.setSlot(_track, out, std::min(n, TVoices::kSlotWords));
 			}
 		}
 		updateMixer(_track);
 		m_trigger[_track] = false;
 	}
 
-	void HostModel::updateMixer(const int _track)
+	template<class TVoices>
+	void HostModel<TVoices>::updateMixer(const int _track)
 	{
 		// The tick routine's DSP1 block ($20b1e2-$20b302). MID/CTR machines send nothing.
 		auto& m = m_mixer[_track];
@@ -156,7 +167,8 @@ namespace md::engine
 		m.mix[4] = sq(a6[19]) >> 5;	// DEL
 	}
 
-	void HostModel::tick()
+	template<class TVoices>
+	void HostModel<TVoices>::tick()
 	{
 		for(int t = 0; t < kTracks; ++t)
 			for(int p = 0; p < kParams; ++p)
@@ -173,7 +185,8 @@ namespace md::engine
 		++m_tickCount;
 	}
 
-	bool HostModel::renderBlock(VoiceEngine::Block& _out)
+	template<class TVoices>
+	bool HostModel<TVoices>::renderBlock(typename TVoices::Block& _out)
 	{
 		// Ticks on a fixed block schedule; a trigger between ticks updates just its voice, so it starts on this
 		// block rather than waiting for the next tick.
@@ -185,4 +198,7 @@ namespace md::engine
 					updateVoice(t);
 		return m_voices.renderBlock(_out);
 	}
+
+	template class HostModel<VoiceEngine>;
+	template class HostModel<ParallelVoiceEngine>;
 }

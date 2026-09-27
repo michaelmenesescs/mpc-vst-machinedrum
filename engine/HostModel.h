@@ -17,13 +17,16 @@
 
 namespace md::engine
 {
+	// TVoices: VoiceEngine (default) or any type with the same setSlot/renderBlock/Block/kSlotWords surface
+	// (e.g. ParallelVoiceEngine, which splits the 16 slots across threads - see its header).
+	template<class TVoices = VoiceEngine>
 	class HostModel
 	{
 	public:
 		static constexpr int kTracks = 16;
 		static constexpr int kParams = 24;	// SYN1-8, AMD AMF EQF EQG FLTF FLTW FLTQ SRR DIST, VOL PAN DEL REV, LFOS LFOD LFOM
 
-		HostModel(MachineRunner& _os, VoiceEngine& _voices);
+		HostModel(MachineRunner& _os, TVoices& _voices);
 
 		// Assign a machine (0-191, MachineInfo::id). SYN1-8 take the machine's defaults. As on the MD, the voice
 		// switches machine at its next trigger, where all 24 parameters take effect immediately (no glide).
@@ -59,7 +62,7 @@ namespace md::engine
 		void setBlocksPerTick(int _n) { m_blocksPerTick = _n; }
 
 		// Render one 32-sample block of the 16 voices (runs a tick first when due).
-		bool renderBlock(VoiceEngine::Block& _out);
+		bool renderBlock(typename TVoices::Block& _out);
 		void tick();
 		void updateVoice(int _track);	// machine function on the voice's current array -> voice slot
 		void updateMixer(int _track);	// the track's DSP1 words from its current array, level and velocity
@@ -68,7 +71,7 @@ namespace md::engine
 
 	private:
 		MachineRunner& m_os;
-		VoiceEngine& m_voices;
+		TVoices& m_voices;
 		std::array<std::array<uint8_t, kParams>, kTracks> m_raw{};
 		std::array<uint8_t, kTracks> m_machine{};
 		std::array<int, kTracks> m_pendingMachine{};	// -1 = none

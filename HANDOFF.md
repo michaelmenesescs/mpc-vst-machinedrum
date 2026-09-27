@@ -380,6 +380,38 @@ Steps:
     engine instances, per-block thread sync, merging each instance's 8 real + 8 silent-slot outputs
     into one), worth its own planning session rather than rushing unsupervised.
 
+- **2026-09-28: multi-core voice split prototyped (`engine/ParallelVoiceEngine`); real hardware
+  test possibly caused the Force to reboot — treat this as unconfirmed but concerning, not as a
+  working result.**
+  - Implemented `ParallelVoiceEngine` (splits the 16 voice slots round-robin across N
+    `VoiceEngine` instances, one `std::thread` per group per block, merged by voice index — silent
+    voices in a group are free, same as the existing single-engine harness optimization) and
+    templated `HostModel`/`Engine` on the voice-engine type (`HostModel<TVoices>`, `EngineT<TVoices>`,
+    with `Engine = EngineT<VoiceEngine>` and `ParallelEngine = EngineT<ParallelVoiceEngine>` aliases)
+    so both the existing single-engine path and this one share all the code above VoiceEngine.
+    Verified on x86: output is bit-identical regardless of group count (1/2/4), confirming the
+    split/merge logic is correct; not a speed win on x86 (that dev box is fast enough that
+    per-block thread spawn overhead exceeds the compute saved).
+  - **The Force has 2 cores, not the 3-4 this project's early docs guessed** (`nproc` = 2) — so at
+    most a 2-way split is possible here, not 4-way.
+  - Cross-compiled and copied to the device to measure `groups=1` (238% — consistent with the
+    231% measured earlier, same workload) and `groups=2`. **The device rebooted during or right
+    after the `groups=2` run** (`uptime` showed ~1 minute afterward; no persistent journal survived
+    the reboot to show a cause). MPC came back up and was running normally afterward, and this
+    session's files were cleaned off `/tmp`, but **the cause is not confirmed** — could be this
+    test (spawning extra threads once per 32-sample/725µs block, ~11,000 times over the 8 s test,
+    on a `PREEMPT_RT` kernel that may be running the audio path at real-time priority — thread
+    creation at that rate on that kernel is a real suspect) or an unrelated device event. **Do not
+    re-run `groups=2` (or any multi-threaded variant) against the physical Force without the user
+    present and aware of this**, and don't treat the x86 groups=1/2/4 numbers above as informative
+    for the real device — they were never meaningfully compared on-device before the reboot.
+  - Before trying this on hardware again: per-block `std::thread` creation is the wrong design
+    regardless of the reboot question — at 725µs/block, spawn+join overhead alone is likely a
+    meaningful fraction of budget on this hardware. A real implementation needs a persistent
+    thread pool (threads created once, woken per block via a condition variable or similar), not
+    threads spawned fresh every block. `ParallelVoiceEngine::renderBlock` as written now is a
+    correctness prototype only, not close to production-ready.
+
 ## Relationship between the projects
 
 Monomodule (Shnolk) and gearmulator-md-mm (Joe Landers) share no code and neither credits the other. md-mm is
