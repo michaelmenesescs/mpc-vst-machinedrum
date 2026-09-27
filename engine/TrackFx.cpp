@@ -19,7 +19,7 @@ namespace md::engine
 		}
 	}
 
-	TrackFx::Tables::Tables(const fw::Firmware& _fw) : m_ext(0x10000, 0)
+	TrackFx::Tables::Tables(const fw::Firmware& _fw) : m_ext(0x10000, 0), m_xInt(0x800, 0)
 	{
 		for(const auto& r : _fw.dspB.records)
 			for(size_t k = 0; k < r.words.size(); ++k)
@@ -27,6 +27,8 @@ namespace md::engine
 				const uint32_t a = r.addr + static_cast<uint32_t>(k);
 				if(a >= kBase && a < kBase + 0x10000)
 					m_ext[a - kBase] = sx24(r.words[k]);
+				else if(r.space == fw::Space::X && a < 0x800)
+					m_xInt[a] = sx24(r.words[k]);
 			}
 
 		// The boot code's sine: s[n+1] = 2c s[n] - s[n-1] in 48-bit double precision, c = cos(2 pi / 32768).
@@ -216,6 +218,316 @@ namespace md::engine
 		y[0x16] = x0;
 	}
 
+	void TrackFx::storeL(const uint32_t _addr, const Acc _a)
+	{
+		if(_a > 0x7fffffffffffLL) { m_x[_addr] = 0x7fffff; m_y[_addr] = sx24(0xffffff); return; }
+		if(_a < -0x800000000000LL) { m_x[_addr] = -0x800000; m_y[_addr] = 0; return; }
+		m_x[_addr] = a1(_a);
+		m_y[_addr] = sx24(a0(_a));
+	}
+
+	Acc TrackFx::loadL(const uint32_t _addr) const { return acc48(m_x[_addr], u24(m_y[_addr])); }
+
+	// P:$134-$19f. Filter, first section (high-pass at y[$24] = FLTF + FLTW, resonance y[$26]): coefficients
+	// from the OS tables, ramped linearly across the block (X:$648 / X:$668 ramp shapes, rising or falling
+	// cutoff), then a 2-pole recursion with 48-bit state (y[$17]/y[$27], y[$18], y[$a]/y[$b], y[$c]).
+	void TrackFx::filter1(State& _s)
+	{
+		auto& y = _s.y;
+		auto& x = m_x;
+		auto& ys = m_y;
+
+		uint32_t r2 = u24(y[0x26]);
+		Acc a = acc(y[0x24]);
+		int32_t x0 = m_t[r2 + 0x141f00];
+		int32_t x1 = m_t[r2 + 0x141f80];
+		Acc b;
+		{ const Acc oa = a; a = add(a, acc(x0)); b = acc(a1(oa)); }
+		b = add(b, acc(x1));
+		uint32_t r3 = u24(a1(a));
+		r2 = u24(a1(b));
+		x1 = m_t[r3 + 0x1402aa];
+		int32_t y1 = m_t[r2 + 0x141700];
+		int32_t y0;
+		{ const int32_t oy1 = y1; a = mpy(y1, x1); x0 = oy1; }
+		b = wrap(-mpy(x0, y1));
+		r3 = 6;
+		{ const Acc ob = b; a = asl(a, 1); x1 = lim(ob); }
+		a = add(a, acc(-0x800000));
+		y1 = y[0x18];
+		x[r3++] = y1;
+		{ const Acc oa = a; a = add(a, acc(x1)); x0 = lim(oa); }
+		a = wrap(-a);
+		x[0x35] = x0;
+		y0 = y[0x2b];
+		{ const Acc ob = b; b = sub(b, acc(y0)); x0 = lim(ob); }
+		y[0x2b] = x0;
+		x[0x36] = y0;
+		y1 = y[0x2c];
+		{ const Acc oa = a; a = sub(a, acc(y1)); x0 = lim(oa); }
+		y[0x2c] = x0;
+		x[0x37] = y1;
+		x[0x32] = lim(b);
+		x[0x33] = lim(a);
+		a = acc(x[0x35]);
+		x1 = y[0x2a];
+		{ const Acc oa = a; a = sub(a, acc(x1)); x0 = lim(oa); }
+		y[0x2a] = x0;
+		x[0x38] = x1;
+		x[0x34] = lim(a);
+
+		// coefficient ramps into Y:$80, $a0, $c0
+		uint32_t r4 = 0x80, r5 = 0xa0, r7 = 0xc0;
+		uint32_t r0 = 0x648;
+		if(acc(y[0x24]) < acc(y[0x29])) r0 = 0x668;
+		a = acc(x[0x36]); b = acc(x[0x37]); y0 = x[0x32]; y1 = x[0x33];
+		uint32_t r1 = r0;
+		x0 = m_t.xInternal(r0++);
+		for(int i = 0; i < kBlock; ++i)
+		{
+			{ const Acc oa = a; a = add(a, mpy(y0, x0)); ys[r4++] = lim(oa); }
+			{ const Acc ob = b; b = add(b, mpy(x0, y1)); x0 = m_t.xInternal(r0++); ys[r5++] = lim(ob); }
+		}
+		a = acc(x[0x38]); x1 = x[0x34];
+		x0 = m_t.xInternal(r1++);
+		for(int i = 0; i < kBlock; ++i)
+		{
+			const Acc oa = a; a = add(a, mpy(x1, x0)); x0 = m_t.xInternal(r1++); ys[r7++] = lim(oa);
+		}
+
+		// the recursion
+		r0 = 6; r1 = 8; r4 = 0x80; r5 = 0xa0; r7 = 0xc0;
+		x0 = y[0x17];
+		x[r3++] = x0;
+		a = acc(x0);
+		a = acc48(a1(a), u24(y[0x27]));
+		x0 = y[0xc]; x[r3++] = x0;
+		x0 = y[0xa]; x[r3++] = x0;
+		b = acc(x0);
+		b = acc48(a1(b), u24(y[0xb]));
+		r2 = 8;
+		x0 = x[r0++]; y0 = ys[r4];
+		{ a = add(a, mpy(y0, x0)); x0 = x[r0++]; y0 = ys[r7]; }
+		for(int i = 0; i < kBlock; ++i)
+		{
+			{ a = add(a, mpy(y0, x0)); x0 = x[r0--]; y0 = ys[r5]; }
+			{ a = add(a, mpy(y0, x0)); x0 = x[r1++]; y0 = ys[r4++]; }
+			{ b = add(b, mpy(y0, x0)); x0 = x[r1++]; y0 = ys[r7++]; }
+			storeL(r2++, a);
+			{ b = add(b, mpy(y0, x0)); x0 = x[r1--]; y0 = ys[r5++]; }
+			{ b = add(b, mpy(y0, x0)); x0 = x[r0++]; y0 = ys[r4]; }
+			{ a = add(a, mpy(y0, x0)); x0 = x[r0++]; y0 = ys[r7]; }
+			storeL(r3++, b);
+		}
+		a = loadL(--r3);
+		y1 = x[--r3];
+		y[0xc] = y1;
+		y[0xa] = a1(a);
+		y[0xb] = sx24(a0(a));
+		a = loadL(--r2);
+		y1 = x[--r2];
+		y[0x18] = y1;
+		y[0x17] = a1(a);
+		y[0x27] = sx24(a0(a));
+	}
+
+	// P:$1a0-$21e. Filter, second section (low-pass at y[$22] = FLTF, resonance y[$23]): coefficients ramped
+	// into Y:$a0, $c0 and $60, then a 2-pole recursion with 48-bit state (y[$d]/y[$e], y[$f], y[$19]/y[$1a],
+	// y[$1b], y[$10], y[$11]).
+	void TrackFx::filter2(State& _s)
+	{
+		auto& y = _s.y;
+		auto& x = m_x;
+		auto& ys = m_y;
+
+		uint32_t r2 = u24(y[0x23]);
+		Acc a = acc(y[0x22]);
+		int32_t x0 = m_t[r2 + 0x141f00];
+		int32_t x1 = m_t[r2 + 0x141f80];
+		Acc b;
+		{ const Acc oa = a; a = add(a, acc(x0)); b = acc(a1(oa)); }
+		uint32_t r0 = 0;
+		b = add(b, acc(x1));
+		uint32_t r1 = u24(a1(a));
+		x1 = y[0x1b];
+		x[r0++] = x1;
+		r2 = u24(a1(b));
+		x1 = m_t[r1 + 0x1402aa];
+		int32_t y1 = m_t[r2 + 0x141700];
+		int32_t y0;
+		{ const int32_t oy1 = y1; a = mpy(y1, x1); x0 = oy1; }
+		b = wrap(-mpy(x0, y1));
+		{ const Acc oa = a; a = asl(a, 1); x1 = lim(oa); }
+		a = sub(a, b);
+		a = sub(a, acc(-0x800000));
+		a = asr(a, 3);
+		x[0x3c] = lim(a);
+		a = acc(x1);
+		a = add(a, acc(sx24(0xc00000)));
+		y0 = y[0x2f];
+		{ const Acc ob = b; b = sub(b, acc(y0)); x0 = lim(ob); }
+		y[0x2f] = x0;
+		x[0x36] = y0;
+		y1 = y[0x2e];
+		{ const Acc oa = a; a = sub(a, acc(y1)); x0 = lim(oa); }
+		y[0x2e] = x0;
+		x[0x37] = y1;
+		x[0x32] = lim(b);
+		x[0x33] = lim(a);
+
+		uint32_t r5 = 0xa0, r7 = 0xc0;
+		r1 = 0x648;
+		if(acc(y[0x22]) < acc(y[0x2d])) r1 = 0x668;
+		a = acc(x[0x36]); b = acc(x[0x37]); y0 = x[0x32]; y1 = x[0x33];
+		r2 = r1;
+		x0 = m_t.xInternal(r1++);
+		for(int i = 0; i < kBlock; ++i)
+		{
+			{ const Acc oa = a; a = add(a, mpy(y0, x0)); ys[r5++] = lim(oa); }
+			{ const Acc ob = b; b = add(b, mpy(x0, y1)); x0 = m_t.xInternal(r1++); ys[r7++] = lim(ob); }
+		}
+		a = acc(x[0x3c]);
+		y1 = y[0x30];
+		{ const Acc oa = a; a = sub(a, acc(y1)); x0 = lim(oa); }
+		y[0x30] = x0;
+		b = acc(y1);
+		{ const Acc oa = a; a = wrap(-a); y1 = lim(oa); }
+		a = asl(a, 1);
+		r7 = 0x60;
+		{ const Acc oa = a; a = b; y0 = lim(oa); }
+		a = wrap(-a);
+		a = asl(a, 1);
+		x0 = m_t.xInternal(r2++);
+		for(int i = 0; i < kBlock; ++i)
+		{
+			{ const Acc ob = b; b = add(b, mpy(x0, y1)); ys[r7++] = lim(ob); }
+			{ const Acc oa = a; a = add(a, mpy(y0, x0)); x0 = m_t.xInternal(r2++); ys[r7++] = lim(oa); }
+		}
+
+		// the recursion
+		x0 = y[0xf];
+		x1 = y[0x11];
+		b = acc(y[0x19]);
+		a = acc(y[0xd]);
+		b = acc48(a1(b), u24(y[0x1a]));
+		a = acc48(a1(a), u24(y[0xe]));
+		x[r0++] = lim(b);
+		x[r0++] = x0;
+		x[r0++] = lim(a);
+		x[r0++] = x1;
+		x1 = y[0x10];
+		x[r0] = x1;
+		r0 = 2;
+		const int32_t n0 = -3;
+		r1 = 0;
+		r2 = 4;
+		uint32_t r3 = 2;
+		r5 = 0xa0; r7 = 0xc0;
+		x1 = x[0x25]; y[0x10] = x1;
+		x1 = x[0x24]; y[0x11] = x1;
+		uint32_t r4 = 0x60;
+		x0 = x[r0++]; y0 = ys[r5];
+		{ a = add(a, mpy(y0, x0)); x0 = x[r0++]; y0 = ys[r7]; }
+		a = add(a, mpy(y0, x0));
+		for(int i = 0; i < kBlock; ++i)
+		{
+			{ a = add(a, mpy(y0, x0)); x0 = x[r0++]; y1 = ys[r4++]; }
+			{ a = add(a, mpy(x0, y1)); x0 = x[r0++]; y0 = ys[r4]; }
+			{ a = add(a, mpy(y0, x0)); x0 = x[r0]; r0 = static_cast<uint32_t>(static_cast<int32_t>(r0) + n0); }
+			{ a = add(a, mpy(x0, y1)); x0 = x[r1++]; y0 = ys[r5++]; }
+			{ b = add(b, mpy(y0, x0)); x0 = x[r1++]; y0 = ys[r7++]; }
+			{ b = add(b, mpy(y0, x0)); storeL(r2++, a); }
+			{ b = add(b, mpy(y0, x0)); x0 = x[r1++]; }
+			{ b = add(b, mpy(x0, y1)); x0 = x[r1++]; y0 = ys[r4++]; }
+			{ b = add(b, mpy(y0, x0)); x0 = x[r1]; r1 = static_cast<uint32_t>(static_cast<int32_t>(r1) + n0); }
+			{ b = add(b, mpy(x0, y1)); x0 = x[r0++]; y0 = ys[r5]; }
+			{ a = add(a, mpy(y0, x0)); x0 = x[r0++]; y0 = ys[r7]; }
+			{ a = add(a, mpy(y0, x0)); storeL(r3++, b); }
+		}
+		--r2; x1 = x[r2]; x0 = ys[r2];
+		y[0xd] = x1; y[0xe] = x0;
+		x0 = x[--r2]; y[0xf] = x0;
+		--r2; x1 = x[r2]; x0 = ys[r2];
+		y[0x19] = x1; y[0x1a] = x0;
+		x0 = x[--r2]; y[0x1b] = x0;
+	}
+
+	// P:$21f-$233. SRR: sample and hold on a phase accumulator (y[$1c]; held sample y[$1d]) whose period comes
+	// from SRR^2. Input X:$2-$21 (the filter's output), output Y:$3-$22.
+	void TrackFx::srr(State& _s)
+	{
+		auto& y = _s.y;
+		auto& ys = m_y;
+		Acc a = add(acc(y[7]), acc(0x4000));
+		Acc b = acc(y[0x1c]);
+		int32_t x0 = lim(a);
+		const int32_t y1 = y[0x1d];
+		a = mpy(x0, x0);
+		x0 = 0x10;
+		a = sub(a, acc(0x20));
+		a = asl(a, 2);
+		a = add(a, acc(x0));
+		uint32_t r4 = 2;
+		const int32_t x1 = lim(a);
+		a = acc(y1);
+		for(int i = 0; i < kBlock; ++i)
+		{
+			b = add(b, acc(x0));
+			const int32_t in = m_x[r4];
+			const bool ge = b >= acc(x1);
+			ys[r4++] = lim(a);
+			if(ge) { a = acc(in); b = sub(b, acc(x1)); }
+		}
+		ys[r4] = lim(a);
+		y[0x1c] = lim(b);
+		m_held = lim(a);	// stored to y[$1d] by the distortion's prologue, as on the DSP
+	}
+
+	// P:$234-$25d. Distortion: the sample times a DIST-dependent gain, shifted left 9 and saturated by the
+	// limiter, then a first-order filter (coefficients from the OS tables and constants; state y[$1e]-$21).
+	// Input Y:$3-$22, output the track's 32 samples.
+	void TrackFx::dist(State& _s, int32_t* _out)
+	{
+		auto& y = _s.y;
+		auto& x = m_x;
+		auto& ys = m_y;
+		Acc b = asr(acc(y[8]), 6);				// DIST x 2
+		uint32_t r4 = 3;
+		const int32_t n0 = lim(b);
+		y[0x1d] = m_held;
+		uint32_t r2 = 0x3c;
+		int32_t x1 = m_t[static_cast<uint32_t>(0x143777 + n0)];
+		x[r2++] = x1;
+		x1 = m_t[static_cast<uint32_t>(0x143878 + n0)];
+		b = mpy(x1, 0x7fdf3b);
+		int32_t y0 = y[0x1e];
+		y[0x1e] = lim(b);
+		x1 = sx24(0xffbe77);
+		int32_t x0 = y[0x1f];
+		x[r2--] = x1;
+		Acc a = acc48(y[0x20], u24(y[0x21]));
+		int32_t y1;
+		x1 = x[r2++]; y1 = ys[r4++];
+		{ const Acc ob = b; b = mpy(y1, x1); x1 = x[r2--]; y1 = lim(ob); }
+		b = asl(b, 9);
+		{ const Acc oa = a; a = add(a, wrap(-mpy(y0, x0))); x0 = lim(oa); }
+		{ const int32_t ox0 = x0; x0 = lim(b); a = add(a, mpy(x1, ox0)); }
+		{ a = add(a, mpy(x0, y1)); x1 = x[r2++]; y0 = ys[r4++]; }
+		int o = 0;
+		for(int i = 0; i < kBlock - 1; ++i)
+		{
+			{ b = mpy(x1, y0); x1 = x[r2--]; }
+			b = asl(b, 9);
+			{ const Acc oa = a; a = add(a, wrap(-mpy(x0, y1))); _out[o++] = lim(oa); y0 = lim(oa); }
+			{ const int32_t oy0 = y0; x0 = lim(b); a = add(a, mpy(x1, oy0)); }
+			{ a = add(a, mpy(x0, y1)); x1 = x[r2++]; y0 = ys[r4++]; }
+		}
+		y[0x1f] = lim(b);
+		y[0x20] = lim(a);
+		y[0x21] = sx24(a0(a));
+		_out[o] = lim(a);
+	}
+
 	void TrackFx::process(State& _s, const int32_t* _in, int32_t* _out)
 	{
 		prepFilter(_s);
@@ -225,6 +537,15 @@ namespace md::engine
 		eq(_s);
 		if(stopAfter == Stop::AfterEq)
 			return;
-		(void)_out;
+		filter1(_s);
+		if(stopAfter == Stop::AfterFilter1)
+			return;
+		filter2(_s);
+		if(stopAfter == Stop::AfterFilter2)
+			return;
+		srr(_s);
+		if(stopAfter == Stop::AfterSrr)
+			return;
+		dist(_s, _out);
 	}
 }

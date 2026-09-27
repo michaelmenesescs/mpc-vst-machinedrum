@@ -14,10 +14,14 @@ Planned products:
 
 ## Layout
 
-- `engine/`: `VoiceEngine` (the voice DSP alone, from the user's OS file; 16 voice outputs) and
-  `MachineRunner` (the OS's own machine coefficient functions in a 68k emulator). Prototype stage,
-  verified bit-exact against gearmulator-md-mm; built for x86 by `tools/build_proto.sh`.
-- `tools/mdvoice`, `tools/mdmachine`: command-line drivers for the two.
+- `engine/`: `VoiceEngine` (the voice DSP alone, from the user's OS file; 16 voice outputs),
+  `MachineRunner` (the OS's own machine coefficient functions in a 68k emulator), `HostModel` (the OS
+  tick: parameters, LFOs, triggers, voice slots and mixer inputs) and `TrackFx` (the mixer DSP's
+  per-track effects page as native C++, with `Dsp56.h`'s DSP56300 arithmetic). Prototype stage,
+  verified bit-exact; built for x86 by `tools/build_proto.sh`.
+- `tools/mdvoice`, `tools/mdmachine`, `tools/mdhost`: command-line drivers.
+- `tools/mdmix`: the mixer DSP's own per-track code in the emulator (reference) and `mdfxtest`, which
+  checks `TrackFx` against it.
 
 - `tools/mdfw`: decodes a Machinedrum OS `.syx` (sysex, flash container, aPLib sections, DSP records). Adapted
   from Monomodule's decoder.

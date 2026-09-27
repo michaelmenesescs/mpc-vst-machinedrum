@@ -172,6 +172,28 @@ int main(int argc, char** argv)
 				md::g_mdCount[0] / sec, md::g_mdCount[1] / sec, md::g_mdCount[2] / sec, md::g_mdCount[3] / sec);
 			continue;
 		}
+		if(kind == "dspregs")	// dspregs:N - DSP N peripheral/state words
+		{
+			auto& dsp = hw.traceDsp(static_cast<uint32_t>(v.at(0)));
+			auto* periph = dsp.getPeriph(0);
+			std::fprintf(stderr, "   pc=%06x sr=%06x omr=%06x", dsp.getPC().toWord(), dsp.getSR().toWord(), dsp.regs().omr.var);
+			for(uint32_t a : {0xfffff9u, 0xfffff8u, 0xfffff7u, 0xfffff6u, 0xfffffeu, 0xffffffu, 0xfffffdu})
+				std::fprintf(stderr, " X:%06x=%06x", a, periph->read(a, dsp56k::Nop));
+			for(uint32_t a : {0x147fffu, 0x140u, 0x141u, 0x142u, 0x7ffu})
+				std::fprintf(stderr, " Y:%06x=%06x", a, dsp.memory().get(dsp56k::MemArea_Y, a));
+			std::fprintf(stderr, "\n");
+			continue;
+		}
+		if(kind == "dumpmem")	// dumpmem:FROM:TO:PATH - raw ColdFire memory to a file
+		{
+			const auto p1 = s.find(':'), p2 = s.find(':', p1 + 1), p3 = s.find(':', p2 + 1);
+			const auto from = static_cast<uint32_t>(std::strtoul(s.substr(p1 + 1, p2 - p1 - 1).c_str(), nullptr, 16));
+			const auto to = static_cast<uint32_t>(std::strtoul(s.substr(p2 + 1, p3 - p2 - 1).c_str(), nullptr, 16));
+			std::FILE* f = std::fopen(s.substr(p3 + 1).c_str(), "wb");
+			for(uint32_t a = from; a < to; a += 2) { const uint16_t w = hw.traceUc().read16(a); const uint8_t b[2] = {static_cast<uint8_t>(w >> 8), static_cast<uint8_t>(w)}; std::fwrite(b, 1, 2, f); }
+			std::fclose(f);
+			continue;
+		}
 		if(s == "cf:on") { md::g_mdCfTraceOn = true; continue; }
 		if(s == "cf:off") { md::g_mdCfTraceOn = false; continue; }
 		if(s == "essi:on") { md::g_mdEssiDumpOn = true; continue; }

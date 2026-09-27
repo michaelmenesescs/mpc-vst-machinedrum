@@ -65,10 +65,19 @@ after about 20 emulated seconds of `Hardware::advance()`. Driving it any shorter
 | `watch:BEGIN:END` | log ColdFire writes into [BEGIN, END) (hex); `watch:0:0` off |
 | `bp:PC[,PC…][:REG:LEN]` | log registers at 68k PCs, plus LEN bytes at REG (0-7 d0-d7, 8-15 a0-a7); `bp:0` off |
 | `count:N` | 68k instructions/s by region (param/LFO code, LFO shapes, machine fns, total) |
+| `dspregs:N` | DSP N's PC, SR, OMR, memory map (AAR0-3) and a few state words |
+| `dumpmem:FROM:TO:PATH` | raw ColdFire memory to a file (firmware-derived: keep out of git) |
 | `dis68k:FROM:TO`, `peek32:FROM:TO` | ColdFire memory (the disassembler needs Musashi's read callbacks; use `analysis/dis68.py` / `isram.py` instead) |
 
 Track parameters by CC on channel 0 (track 1): 16-23 SYN1-8, 24-32 AMD AMF EQF EQG FLTF FLTW FLTQ SRR
 DIST, 33-36 VOL PAN DEL REV, 37-39 LFOS LFOD LFOM, 8 level.
+
+## mdmix (mixer DSP reference)
+
+`tools/mdmix/MixerRef` runs the mixer DSP's program from the `.syx` in dsp56300 and calls its per-track
+effect function (`P:$a4-$25d`) directly, one track and block at a time; `mdfxtest OS.syx STAGE [TRIALS]
+[BLOCKS] [walk]` compares `engine/TrackFx` against it word for word (stages `amd eq f1 f2 srr all`;
+`walk` moves the parameters every block). Built by `tools/build_proto.sh`.
 
 ## mddis
 

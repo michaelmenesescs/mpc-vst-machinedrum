@@ -263,8 +263,7 @@ address sent the DSP to an invalid PC. `jeq`/`jmp`, the absolute forms, are corr
   (no glide), and the voice's function pointer switches.
 - **DSP1 per-track effects slot** (`Y:$200+$40·k`, 9 words) is sent by `$1000702` as `a6` words 8-16
   unchanged (AMD..DIST after smoothing and LFO). The 5-word block at `Y:$100+5·k` is computed in the
-  tick routine (`$20b1f6-$20b302`): VOL² with velocity/accent scaling, PAN `<<9`, REV² `>>5`,
-  DEL² `>>5` (translation pending).
+  tick routine (`$20b1f6-$20b302`), decoded below ("Mixer DSP inputs").
 - **Internal SRAM** `$1000000-$1000a2a` is the OS's copy of image `$2622f4`, apart from a few bytes
   of variables near the start; everything after is zero-initialised state.
 
@@ -330,3 +329,60 @@ core with the static recompiler.
 - Whether DSP1 keeps per-track processed blocks in memory before the pan/mix (for per-track outs
   with effects).
 - Sample data for E12/ROM machines (DSP2's ~233K external P words).
+
+## Mixer DSP inputs (decoded, verified)
+
+Per track, each tick, from the tick routine `$20b1e2-$20b302` (MID/CTR machines send nothing):
+
+| Y:$100+5k word | Value |
+|---|---|
+| 0 | output routing byte (`$10014fc+k`); **6 = main outs** (the default); DSP1 sends other values to the individual-output buffers |
+| 1 | **VOL gain** = `((LEV² >> 8) · VEL >> 17) · (VOL² >> 17)`; 0 when the track is muted |
+| 2 | **PAN** = `(a6 PAN << 9) & $1fffe00` (= pan value `<< 16`) |
+| 3 | **REV** send = `a6 REV² >> 5` |
+| 4 | **DEL** send = `a6 DEL² >> 5` |
+
+`a6` values are the smoothed + LFO'd parameters (value `<< 7`). **LEV** is the track level, smoothed
+separately by `$100029e` at the end of each tick: 48 halfwords at `$1000d7c` (16 track levels, then 32
+master-FX parameters) slew towards byte targets at `$1000f5c` as `new = (3·old + target<<7) >> 2`.
+**VEL** is the last trigger's velocity byte (`$100154c+k`; 0 until the track is first triggered), or
+`128 + 2·accent amount` on an accented sequencer step. The tick order is: LFO oscillator → parameter
+smoothing → LFO apply → level smoothing.
+
+Checked against md-mm's DSP1 writes (level 90, velocity 77, VOL 100, PAN 30, DEL 50, REV 70):
+`000006 05cc60 1e0000 264800 138800` from both. `HostModel` now computes these
+(`mixerInput(track)`), with `trigger(track, velocity, accent)`, `setLevel`, `setMute`, `setRouting`.
+
+## Mixer DSP per-track chain: translated to C++, bit-exact
+
+DSP1's main loop (`$6f-$a3`) calls one function per track (`P:$a4-$25d`, `r6 = Y:$200+$40k`, input
+`Y:$600+$20k` from the voice link, output `X:$200+$20k` for tracks routed to the main outs, or
+downwards from `X:$3e0` for the others). It runs the whole effects page in this order:
+
+| Stage | P | What it does |
+|---|---|---|
+| prep | `$a4-$ba` | cutoffs/resonances: `y[$22]` = FLTF·16, `y[$23]` = FLTQ (0 if FLTF = 0), `y[$24]` = min(FLTF·16 + FLTW·16, $7ff), `y[$26]` = FLTQ (0 if FLTW = 127) |
+| AMD | `$bb-$d1` | `out = (1−d)·in + d·(in·sin)`, d = AMD/128, sine phase step AMF·16 through a 32768-word sine (`$148000`, built at boot by a 48-bit recursion), phase in `y[$25]` |
+| EQ | `$d2-$133` | peaking biquad: coefficients from OS tables indexed by EQG and EQF, gain normalised with `clb`/`normf` and a 24-step `div`; history in `y[$12-$16]` |
+| filter 1 | `$134-$19f` | 2-pole section at `y[$24]`/`y[$26]` (high-pass side), coefficients from OS tables, **ramped linearly across the block** (ramp shapes `X:$648`/`$668`), 48-bit state |
+| filter 2 | `$1a0-$21e` | 2-pole section at `y[$22]`/`y[$23]` (low-pass side), same scheme |
+| SRR | `$21f-$233` | sample-and-hold on a phase accumulator, period from `SRR²` (`y[$1c]`, held `y[$1d]`) |
+| DIST | `$234-$25d` | `in · gain[DIST] << 9` **saturated by the limiter** (the distortion), then a first-order filter (`y[$1e-$21]`) |
+
+`engine/TrackFx` is a translation of this function, instruction by instruction where the DSP code
+is software-pipelined, with the DSP56300's arithmetic (`engine/Dsp56.h`: 56-bit accumulators, the
+move limiter, fractional multiply, `dmac`, `div`, `clb`, `normf`, modulo addressing). The OS tables
+(`$1402aa $141700 $141f00/80 $14221d $142c76 $143476-$1435f6 $143777 $143878`, and `X:$648-$687`) are
+read from the user's OS file at load time; the sine table is recomputed with the boot code's own
+arithmetic (all 32,768 words identical). Per-track state is the same 64-word block as the DSP's.
+
+**Verification** (`tools/mdmix`: the DSP's own function in the emulator, `mdfxtest`): every stage
+compared separately, then the whole chain: **3,200,000 samples and every state word identical**,
+1,000 trials × 100 blocks on random tracks, parameters (with 0/127 extremes) and signals (saw, noise,
+sine, silence, full-scale square), both with parameters fixed per trial and moving every block.
+
+**Cost:** 16 tracks ≈ 2.9% of one x86 core, against ~1,830 DSP instructions per track per block
+(~40 M instr/s for 16 tracks) if emulated.
+
+Not yet translated: the mix (`$294+`: routing, pan law tables at `$148000`/`$14a000`, VOL gain, the
+reverb/delay sends; it generates part of its own code at `P:$9e2`) and the master FX.

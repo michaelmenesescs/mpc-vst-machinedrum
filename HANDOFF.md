@@ -163,10 +163,29 @@ Steps:
   address) in `docs/PROTOCOL.md`.
 
   **Next:**
-  1. Mixer DSP: translate the `Y:$100+5·k` computation (volume/velocity/accent, pan, sends); then
-     the bit-exact C++ translation of DSP1's per-track chain (filter, EQ, SRR, distortion, AMD).
+  1. ~~Mixer DSP: translate the `Y:$100+5·k` computation~~ done; ~~bit-exact C++ translation of DSP1's
+     per-track chain~~ done (see the next entry).
   2. ROM/RAM machines: sample data from the user's flash (not in the `.syx`).
   3. Port `VoiceEngine` to `libs/dsp56300` (arm32) and measure on the Force.
+
+- **2026-09-27: mixer DSP per-track chain translated, bit-exact; host model sends the mixer words.**
+  - `HostModel` computes each track's DSP1 inputs as the OS tick does: the 9 effect words and the 5
+    mix words (route; VOL gain from level, velocity/accent and VOL; PAN; REV; DEL), with the OS's own
+    level slew (`$100029e`) and new `trigger(track, velocity, accent)`, `setLevel`, `setMute`,
+    `setRouting`. Identical to md-mm's DSP1 writes.
+  - `engine/TrackFx` (+ `engine/Dsp56.h`, DSP56300 fixed-point helpers): AMD, EQ, both filter
+    sections, SRR, distortion, translated from DSP1's per-track function. **3.2 M samples and all
+    state identical** to the DSP's own code in the emulator (`tools/mdmix`: `MixerRef` reference,
+    `mdfxtest`), fixed and moving parameters. 16 tracks ≈ 3% of one x86 core.
+  - Details in `docs/PROTOCOL.md`, "Mixer DSP inputs" and "Mixer DSP per-track chain".
+
+  **Next:**
+  1. The mix (`P:$294+`, `$9de`): routing, pan law, VOL gain, sends, individual outputs; translate
+     the same way (extend `MixerRef` to run the main loop's mix, compare with md-mm's DSP1 output).
+  2. Wire it together: `HostModel` → `VoiceEngine` (DSP2) → `TrackFx` ×16 → mix, and an end-to-end
+     comparison with md-mm's audio output.
+  3. ROM/RAM machines: sample data from the user's flash (not in the `.syx`).
+  4. Port `VoiceEngine` to `libs/dsp56300` (arm32) and measure on the Force.
 
 ## Relationship between the projects
 

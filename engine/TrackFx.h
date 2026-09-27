@@ -30,9 +30,11 @@ namespace md::engine
 		public:
 			explicit Tables(const fw::Firmware& _fw);
 			int32_t operator[](const uint32_t _addr) const { return m_ext[(_addr - kBase) & 0xffff]; }
+			int32_t xInternal(const uint32_t _addr) const { return m_xInt[_addr & 0x7ff]; }	// X:$000-$7ff as loaded
 			static constexpr uint32_t kBase = 0x140000;
 		private:
 			std::vector<int32_t> m_ext;
+			std::vector<int32_t> m_xInt;
 		};
 
 		explicit TrackFx(const Tables& _tables) : m_t(_tables) {}
@@ -45,17 +47,27 @@ namespace md::engine
 
 		// Scratch as the DSP's X:$000-$0ff, for stage-by-stage comparison with the DSP.
 		const std::array<int32_t, 256>& scratch() const { return m_x; }
-		void resetScratch() { m_x.fill(0); }
+		const std::array<int32_t, 256>& scratchY() const { return m_y; }
+		void resetScratch() { m_x.fill(0); m_y.fill(0); }
 
-		enum class Stop { None, AfterAmd, AfterEq };
+		enum class Stop { None, AfterAmd, AfterEq, AfterFilter1, AfterFilter2, AfterSrr };
 		Stop stopAfter = Stop::None;
 
 	private:
 		void prepFilter(State& _s);
 		void amd(State& _s, const int32_t* _in);
 		void eq(State& _s);
+		void filter1(State& _s);
+		void filter2(State& _s);
+		void srr(State& _s);
+		void dist(State& _s, int32_t* _out);
+		// l: moves (X high word, Y low word), through the limiter
+		void storeL(uint32_t _addr, int64_t _a);
+		int64_t loadL(uint32_t _addr) const;
 
 		const Tables& m_t;
 		std::array<int32_t, 256> m_x{};
+		std::array<int32_t, 256> m_y{};	// the DSP's Y:$000-$0ff scratch
+		int32_t m_held = 0;
 	};
 }
