@@ -16,3 +16,7 @@ $CXX -std=c++17 -O2 $DSP_INC "$R/tools/mdvoice/mdvoice.cpp" "$R/engine/VoiceEngi
 $CXX -std=c++17 -O2 -I"$MM/source" -I"$MM/source/mc68k" "$R/tools/mdmachine/mdmachine.cpp" "$R/engine/MachineRunner.cpp" "$R/tools/mdfw/Firmware.cpp" "$B/mc68k/lib68kEmu.a" "$B/baseLib/libbaseLib.a" -lpthread -o "$OUT/mdmachine"
 $CXX -std=c++17 -O2 $DSP_INC -I"$MM/source/mc68k" "$R/tools/mdhost/mdhost.cpp" "$R/engine/HostModel.cpp" "$R/engine/MachineRunner.cpp" "$R/engine/VoiceEngine.cpp" "$R/tools/mdfw/Firmware.cpp" "$B/mc68k/lib68kEmu.a" $DSP_LIBS -lpthread -ldl -o "$OUT/mdhost"
 echo "built: $OUT/mdfw $OUT/mdvoice $OUT/mdmachine $OUT/mdhost"
+$CXX -std=c++17 -O2 $DSP_INC "$R/tools/mdmix/mdmix.cpp" "$R/tools/mdmix/MixerRef.cpp" "$R/tools/mdfw/Firmware.cpp" $DSP_LIBS -lpthread -ldl -o "$OUT/mdmix"
+echo "built: $OUT/mdmix"
+$CXX -std=c++17 -O2 $DSP_INC "$R/tools/mdmix/mdfxtest.cpp" "$R/tools/mdmix/MixerRef.cpp" "$R/engine/TrackFx.cpp" "$R/tools/mdfw/Firmware.cpp" $DSP_LIBS -lpthread -ldl -o "$OUT/mdfxtest"
+echo "built: $OUT/mdfxtest"

@@ -17,6 +17,9 @@ namespace md::engine
 		constexpr uint32_t kLfoWave = 0x204c94;		// waveform/restart for one LFO (in the tick routine's trigger path)
 		constexpr uint32_t kLfoApplyOne = 0x10001e8;	// apply one LFO to its destination in the voice arrays
 		constexpr uint32_t kTrackStride = 0x30;
+		constexpr uint32_t kLevel = 0x1000d7c;		// smoothed track levels: 16 words (value << 7); then 32 master FX
+		constexpr uint32_t kLevelTarget = 0x1000f5c;	// their targets: 48 bytes (0-127)
+		constexpr uint32_t kLevelSmooth = 0x100029e;	// new = (3 old + target << 7) >> 2, all 48
 
 		bool isAudioMachine(const uint8_t _id) { return !(_id >= 0x60 && _id <= 0x7b); }	// MID/CTR: no audio
 	}
@@ -25,8 +28,11 @@ namespace md::engine
 	{
 		setTempo(125.0);
 		m_pendingMachine.fill(-1);
+		m_route.fill(6);
 		for(int t = 0; t < kTracks; ++t)
 		{
+			m_os.poke8(kLevelTarget + static_cast<uint32_t>(t), 100);
+			m_os.poke16(kLevel + 2 * static_cast<uint32_t>(t), 100 << 7);
 			m_machine[t] = 0;
 			setMachine(t, 0);
 			setLfo(t, t, 0, 0, 0, 0);
@@ -62,9 +68,16 @@ namespace md::engine
 		m_os.poke8(base + 4, static_cast<uint8_t>(std::clamp(_type, 0, 3)));
 	}
 
-	void HostModel::trigger(const int _track)
+	void HostModel::setLevel(const int _track, const int _level)
+	{
+		m_os.poke8(kLevelTarget + static_cast<uint32_t>(_track), static_cast<uint8_t>(std::clamp(_level, 0, 127)));
+	}
+
+	void HostModel::trigger(const int _track, const int _velocity, const bool _accent)
 	{
 		m_trigger[_track] = true;
+		m_velocity[_track] = static_cast<uint8_t>(std::clamp(_velocity, 1, 127));
+		m_accent[_track] = _accent;
 		// The OS's track trigger ($20cdf0) flags the track's own LFO; the tick's trigger path acts on it.
 		m_os.poke8(kLfo + kLfoStride * static_cast<uint32_t>(_track) + 5, 1);
 		// The tick routine's trigger path: a pending machine is applied now, loading the kit values straight into
@@ -113,7 +126,34 @@ namespace md::engine
 				m_voices.setSlot(_track, out, std::min(n, VoiceEngine::kSlotWords));
 			}
 		}
+		updateMixer(_track);
 		m_trigger[_track] = false;
+	}
+
+	void HostModel::updateMixer(const int _track)
+	{
+		// The tick routine's DSP1 block ($20b1e2-$20b302). MID/CTR machines send nothing.
+		auto& m = m_mixer[_track];
+		if(!isAudioMachine(m_machine[_track]))
+			return;
+		const uint16_t* a6 = voiceParams(_track);
+		for(int k = 0; k < 9; ++k)
+			m.fx[k] = a6[8 + k];	// sent unchanged by $1000702
+		m.mix[0] = m_route[_track];
+		if(m_mute[_track])
+		{
+			m.mix[1] = m.mix[2] = m.mix[3] = m.mix[4] = 0;
+			return;
+		}
+		// VOL gain = ((LEV^2 >> 8) x VEL >> 17) x (VOL^2 >> 17); VEL = the trigger's velocity, or 128 + 2 x accent
+		const int32_t lev = m_os.peek16(kLevel + 2 * static_cast<uint32_t>(_track));
+		const int32_t vel = m_accent[_track] ? 128 + 2 * m_accentAmount : m_velocity[_track];
+		const auto sq = [](const uint16_t _v) { return static_cast<uint32_t>(_v) * _v; };
+		const int32_t gain = static_cast<int32_t>((((lev * lev) >> 8) * vel) >> 17) * static_cast<int32_t>(sq(a6[17]) >> 17);
+		m.mix[1] = static_cast<uint32_t>(gain) & 0xffffff;
+		m.mix[2] = (static_cast<uint32_t>(a6[18]) << 9) & 0x1fffe00;
+		m.mix[3] = sq(a6[20]) >> 5;	// REV
+		m.mix[4] = sq(a6[19]) >> 5;	// DEL
 	}
 
 	void HostModel::tick()
@@ -129,6 +169,7 @@ namespace md::engine
 		m_os.call(kSmooth, {});
 		m_os.call(kLfoOsc, {});
 		m_os.call(kLfoApply, {});
+		m_os.call(kLevelSmooth, {});
 		++m_tickCount;
 	}
 
