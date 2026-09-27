@@ -354,6 +354,32 @@ Steps:
     investigation in its own right, not a quick follow-up — left for the next session rather than
     rushed here.
 
+- **2026-09-28: per-machine cost profiled on the recompiled build (x86) — no single hot machine;
+  costs are fairly uniform, so the fix isn't "avoid machine X."** Single voice active, others
+  silent (already near-free per the harness), 2000 blocks/machine, several coefficient sweeps:
+  **baseline (all 16 silent) 24.3 µs/block; cheapest active machine ~24.6-24.7 µs (+0.3, matches
+  "inactive/settled voices are nearly free"); most expensive (P-IRC, P-IMT, P-IHH, P-ISD, EFMHH,
+  P-ICC, TRXMA — all ~40-42 µs) only ~1.7x the baseline.** A block's real-time budget is 32/44100 s
+  = 725.6 µs; even 16 simultaneous worst-case machines wouldn't come close to that on this x86 box
+  (~307 µs), yet the real 16-track pattern measured 231% (~1676 µs/block-equivalent) **on the
+  Force** — consistent with the Force's interpreter being roughly 6.5-8x slower than this x86 dev
+  machine for the same workload (matches the ratio between every x86/Force pair measured so far:
+  45%→294% and 19%→141% for the 6-track kit, 29%→231% for the 16-track kit). That's an ARM-vs-x86
+  raw-speed gap, not a code hotspot — no amount of "which machines are cheaper" analysis closes it
+  by itself.
+  - **Concrete next lever, not yet attempted**: split the 16 voice slots across the Force's multiple
+    CPU cores. DSP2 is one emulated chip processing all 16 slots per call, but nothing prevents
+    running *two or more `VoiceEngine` instances* in parallel, each fed only a subset of the 16
+    slots (the rest left silent, which the existing silent-voice harness optimization already makes
+    nearly free in that instance) — each thread's cost ≈ baseline + its own subset's active-voice
+    cost, on separate cores. This was flagged as a possibility from the very start of this project
+    (see "The plan", step 3: "The MD may need voice subsets... to fit a core") and the profiling
+    here confirms per-voice costs are additive and roughly independent, which is exactly what a
+    split like this needs to be worth doing. Splitting 16 into 2-4 groups could plausibly close most
+    or all of the 231%→100% gap. Not implemented: this is a real architecture change (multiple
+    engine instances, per-block thread sync, merging each instance's 8 real + 8 silent-slot outputs
+    into one), worth its own planning session rather than rushing unsupervised.
+
 ## Relationship between the projects
 
 Monomodule (Shnolk) and gearmulator-md-mm (Joe Landers) share no code and neither credits the other. md-mm is
