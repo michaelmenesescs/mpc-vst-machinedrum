@@ -412,6 +412,38 @@ Steps:
     threads spawned fresh every block. `ParallelVoiceEngine::renderBlock` as written now is a
     correctness prototype only, not close to production-ready.
 
+- **2026-09-28: adjustable voice cap added (`HostModel::setMaxActiveVoices`), as a lower-risk
+  alternative to the multi-core split above — real 16-simultaneous-voice patterns are unlikely in
+  practice, so bounding worst-case load this way avoids the threading/reboot question entirely.**
+  - `HostModel<TVoices>::setMaxActiveVoices(int)` (1-`kTracks`; default `kTracks` = disabled,
+    identical to current behavior — verified bit-exact, same md5 as every prior render). Tracks the
+    N most-recently-triggered tracks; a new distinct trigger past the cap steals the
+    least-recently-triggered one by force-triggering it to the OS's own empty machine (id 0,
+    `GND--`, no params) — using the normal `MachineRunner::compute()` + `VoiceEngine::setSlot()`
+    path, not a raw memory hack, so it stays correct by construction. The victim's assigned machine
+    (`m_machine`/`m_pendingMachine`) is untouched, so its next real trigger plays normally; this is
+    a hard cut (no fade), which is the standard tradeoff for simple voice-stealing, not something
+    fixed here.
+  - **Measured and it's more nuanced than hoped**: on the stress-test 16-track pattern (all 16
+    tracks retriggering almost every 16th note — much busier than realistic use), lowering the cap
+    from 16 down to 2 plateaus around 19-20% of real time on x86 (was 29% uncapped) and doesn't go
+    lower, because capping only skips DSP2's *render* cost for stolen voices — it doesn't skip
+    `MachineRunner::compute()` (the 68k-emulated machine coefficient function), which still runs on
+    every trigger regardless of whether that voice ends up immediately silenced. For this
+    artificially dense pattern, that computation cost turns out to be comparable to DSP2's own
+    render cost.
+  - **Reframing the actual target**: this stress pattern (every track retriggering continuously) is
+    not how a real Machinedrum kit gets programmed. The original sparse 6-track demo pattern -
+    much more representative - is already comfortably inside budget on the recompiled build (45%→19%
+    on x86; by the established ~6.5-8x x86/Force ratio, likely 50-60% on the Force, i.e. real-time
+    with headroom, not yet directly re-measured on-device since the last hardware session ended out
+    of caution after the reboot). So for realistic use, the voice cap is insurance against pathological
+    edge cases, not a required fix.
+  - **Next, if pushing the stress-test number further matters**: profile `MachineRunner::compute()`'s
+    cost per call (already known aggregate, ~1 M 68k instructions/s total, from "Host model: first
+    version" above, but not broken out per-trigger under heavy simultaneous-retrigger load) and
+    consider skipping it for voices already marked for stealing before computing, not just after.
+
 ## Relationship between the projects
 
 Monomodule (Shnolk) and gearmulator-md-mm (Joe Landers) share no code and neither credits the other. md-mm is

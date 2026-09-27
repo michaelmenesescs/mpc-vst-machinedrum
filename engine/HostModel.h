@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <vector>
 
 #include "MachineRunner.h"
 #include "VoiceEngine.h"
@@ -37,6 +38,14 @@ namespace md::engine
 		// velocity 1-127; accent: the sequencer's accented step (velocity becomes 128 + 2 x accent amount)
 		void trigger(int _track, int _velocity = 100, bool _accent = false);
 		void setAccentAmount(int _amount) { m_accentAmount = std::clamp(_amount, 0, 127); }
+
+		// Caps how many tracks can be simultaneously active (most-recently-triggered N; a new distinct
+		// trigger past the cap steals the least-recently-triggered one, hard-cutting it to silence - not a
+		// real MD behavior, which always runs all 16 track slots, but a performance safety valve for patterns
+		// that never actually need all 16 at once). Default kTracks = disabled (every track its own voice, as
+		// on real hardware). 1-kTracks; out-of-range clamps.
+		void setMaxActiveVoices(int _n) { m_maxActive = std::clamp(_n, 1, kTracks); }
+		int maxActiveVoices() const { return m_maxActive; }
 
 		// Track level (kit LEV, 0-127; smoothed by the OS's level slew $100029e), mute, output routing
 		// (DSP1's per-track route word; 6 = the main outputs, the MD's default).
@@ -70,6 +79,8 @@ namespace md::engine
 		const uint16_t* voiceParams(int _track) const;	// the per-voice 24-value array after smoothing and LFO
 
 	private:
+		void silenceVoice(int _track);	// forces a voice to the OS's empty machine (GND--), for voice stealing
+
 		MachineRunner& m_os;
 		TVoices& m_voices;
 		std::array<std::array<uint8_t, kParams>, kTracks> m_raw{};
@@ -86,5 +97,7 @@ namespace md::engine
 		int m_blocksPerTick = 11;
 		int m_blockCount = 0;
 		uint32_t m_tickCount = 0;
+		int m_maxActive = kTracks;
+		std::vector<int> m_activeOrder;	// least- to most-recently-triggered; only used when m_maxActive < kTracks
 	};
 }

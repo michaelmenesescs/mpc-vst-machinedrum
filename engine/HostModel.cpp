@@ -81,8 +81,34 @@ namespace md::engine
 	}
 
 	template<class TVoices>
+	void HostModel<TVoices>::silenceVoice(const int _track)
+	{
+		uint32_t out[32];
+		const uint16_t params[8] = {};	// GND-- (OS machine id 0) takes none
+		const int n = m_os.compute(0, params, out, 32);
+		if(n > 0)
+		{
+			out[0] = 1;	// trigger code for machine id 0
+			m_voices.setSlot(_track, out, std::min(n, TVoices::kSlotWords));
+		}
+	}
+
+	template<class TVoices>
 	void HostModel<TVoices>::trigger(const int _track, const int _velocity, const bool _accent)
 	{
+		if(m_maxActive < kTracks)
+		{
+			auto it = std::find(m_activeOrder.begin(), m_activeOrder.end(), _track);
+			if(it != m_activeOrder.end())
+				m_activeOrder.erase(it);
+			else if(static_cast<int>(m_activeOrder.size()) >= m_maxActive)
+			{
+				const int victim = m_activeOrder.front();
+				m_activeOrder.erase(m_activeOrder.begin());
+				silenceVoice(victim);
+			}
+			m_activeOrder.push_back(_track);
+		}
 		m_trigger[_track] = true;
 		m_velocity[_track] = static_cast<uint8_t>(std::clamp(_velocity, 1, 127));
 		m_accent[_track] = _accent;
