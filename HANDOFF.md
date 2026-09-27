@@ -524,6 +524,35 @@ Steps:
     (`mdProbe`'s second argument) that `mdProbe` generates on first run and reuses after — also
     derived-from-firmware, also never committed.
 
+- **2026-09-28: real screen navigation confirmed; a reusable capture tool committed.**
+  `mdProbe`'s `panel:` action only recognized 11 hand-picked button names; rebuilt its map from the
+  full `PanelControl` enum via `panelControlName()`, so every real MD button (`Track1`-`6`,
+  `BankGroup`/`A`-`D`, `Tempo`, `SynthesisEffectsRouting`, `DataPageForward`/`Backward`, `Scale`,
+  `PatternSong`, `TrigSelect`, `SongEnable`, `ClassicExtended`, plus the ones already there) is
+  reachable by name. Verified `panel:SynthesisEffectsRouting` cycles the real parameter page and
+  captured it: **AMD EQF EQG FLTF FLTW FLTQ** — exactly `HostModel`'s own per-track FX param order
+  (params 8-14). The default (SYN) page's real layout is confirmed too: LEV + the current machine's
+  8 SYN param names (e.g. TRXB2: PTCH DEC RAMP HOLD TICK NOIS DIRT DIST), matching
+  `MachineRunner`'s per-machine descriptor table exactly — real, independent confirmation that the
+  host-model translation lines up with what the actual hardware shows the user.
+  - `tools/mdtrace/capture_screens.py`: drives `mdProbe` through a named list of screens (each a
+    list of `panel:` actions replayed from a fresh boot, so screens don't depend on each other or
+    capture order) and saves each as a PNG (a small pure-Python PGM→PNG conversion, no PIL/
+    ImageMagick dependency, since neither is guaranteed available). Verified end to end: 3 screens
+    (home, syn_page, amp_fx_page) captured and visually confirmed correct. Never commits its own
+    output, same policy as everything else derived from the user's firmware.
+  - **This is capture infrastructure, not the skin itself.** The actual generator (this project's
+    `mk_skin.py` equivalent — deciding which screens the plugin needs, where on each real capture
+    the touch/Q-Link regions go, and writing `TUI.json`) is real, separately-scoped work, not
+    started. Also not yet done: exposing the AMP/EFX page's 9 params (only VOL/PAN are in
+    `vst/engine.cpp`'s V1 param set today; AMD/AMF/EQF/EQG/FLTF/FLTW/FLTQ/SRR/DIST are wired in
+    `HostModel` already but not surfaced as VST params yet) and the SYN1-8 params (trickier: their
+    real names change per machine, unlike everything else).
+  - **Next:** decide the skin's actual screen set and layout (a design step, best done with the
+    user looking at real captures rather than guessed at), then build the compositor; separately,
+    extend `vst/gen_params.py`/`engine.cpp` with the AMP/EFX and SYN1-8 params now that their real
+    layout is confirmed.
+
 ## Relationship between the projects
 
 Monomodule (Shnolk) and gearmulator-md-mm (Joe Landers) share no code and neither credits the other. md-mm is
