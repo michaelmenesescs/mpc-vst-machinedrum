@@ -22,7 +22,8 @@ add_library(mdcore STATIC
   engine/VoiceEngine.cpp
   tools/mdfw/Firmware.cpp
 )
-target_include_directories(mdcore PUBLIC engine tools/mdfw
+target_include_directories(mdcore PUBLIC engine tools/mdfw)
+target_include_directories(mdcore PRIVATE
   libs/gearmulator-md-mm/source libs/gearmulator-md-mm/source/mc68k)
 target_link_libraries(mdcore PUBLIC dsp56kEmu 68kEmu)
 
