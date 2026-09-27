@@ -17,7 +17,7 @@ Steps:
    image. Log which OS program is booted into which DSP, then every HI08 word and host command to each DSP
    while triggering one track with known machines and parameters. Output: the MD's parameter protocol (its
    equivalent of Monomodule's 52-word block) and the voice-DSP/FX-DSP roles. **This step decides feasibility.**
-   **Done for the DSP-role half; the runtime protocol half is next** (see Status and `docs/PROTOCOL.md`).
+   **Done** (see Status and `docs/PROTOCOL.md`).
    That next pass should also settle the per-voice dispatch pattern and whether per-voice audio is
    separable before DSP2's internal mix — see "Design goal: all voices in one plugin instance" in
    `docs/PROTOCOL.md`. Goal: **Machinedrum One plays all voices at once from one instance** (a MIDI
@@ -63,6 +63,29 @@ Steps:
   machine/parameter changes (driven via sysex or the front panel, see md-mm's `mdautomation.cpp`/
   `mdsysexautomation.cpp` for how to script that) against the word stream, the way Monomodule's
   `HostModel.cpp` was worked out for the Monomachine.
+
+- **2026-09-27: runtime protocol decoded (step 1 complete).** Details in `docs/PROTOCOL.md`
+  "Runtime protocol". In short:
+  - The ColdFire drives both DSPs by **writing fixed-layout structures in their Y memory** (host
+    command `P:$12` = DMA block write, `P:$10` = peek), on a 96-sample control tick.
+  - **DSP2 = 16 voice slots** at `Y:$800+$40·k`: word 0 = trigger/machine code on the trigger tick,
+    words 1-12 = machine coefficients the ColdFire computes from SYN1-8 (+LFO).
+  - **DSP2 sends DSP1 16 separate dry mono voice streams** (32-sample blocks per voice). So all
+    voices from one instance and per-voice outs are both possible.
+  - **DSP1 runs each track's effects page** (AMD, EQ, filter, SRR, distortion; raw params at
+    `Y:$200+$40·k`), vol/pan/sends (`Y:$100+5·k`), the mix and the master FX. So Machinedrum One
+    needs DSP1's per-track section, not just DSP2.
+  - **Load:** DSP2 ~35-60 M instr/s with voices playing (inactive voices ~free); DSP1 ~79 M instr/s
+    always. That's roughly 5-7× Monomodule's one track: ~3-4 Force cores if both are emulated.
+
+  **Decisions needed from the user before step 2** (see `docs/PROTOCOL.md` "Design consequences"):
+  (1) how to generate the 12 per-machine coefficient words (tables swept from the user's ROM at first
+  run, running the ColdFire's own routine in Musashi, or per-machine reverse engineering), and
+  (2) the CPU strategy for the Force (native C++ reimplementation of DSP1's per-track chain/mixer vs.
+  emulating both DSPs, and whether to target desktop first).
+
+  Tools: `tools/mdtrace` (patches + `mdProbe` scripted driver + analysis scripts; see its README) and
+  `tools/mddis` (disassembler for the `.syx` DSP programs).
 
 ## Relationship between the projects
 

@@ -11,6 +11,8 @@
 #include <iostream>
 #include <memory>
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 int main(int argc, char** argv)
 {
@@ -78,7 +80,26 @@ int main(int argc, char** argv)
 	// Let the boot/init sequence run to completion before the note.
 	process(frames, "boot+idle");
 
-	if(note != 0)
+	// Optional script: argv[4..] = "on:NOTE:VEL:FRAMES", "off:NOTE:FRAMES", "cc:CH:CC:VAL:FRAMES",
+	// "wait:FRAMES". Each event is sent, then FRAMES frames are processed. Channel is 0-based.
+	for(int a = 4; a < argc; ++a)
+	{
+		const std::string s = argv[a];
+		std::vector<int> v;
+		std::string kind = s.substr(0, s.find(':'));
+		for(size_t p = s.find(':'); p != std::string::npos; p = s.find(':', p + 1))
+			v.push_back(std::atoi(s.c_str() + p + 1));
+		uint32_t wait = v.empty() ? 0u : static_cast<uint32_t>(v.back());
+		if(kind == "on" && v.size() >= 3)
+			plugin.addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, static_cast<uint8_t>(v[0]), static_cast<uint8_t>(v[1]), 0});
+		else if(kind == "off" && v.size() >= 2)
+			plugin.addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEOFF, static_cast<uint8_t>(v[0]), 0, 0});
+		else if(kind == "cc" && v.size() >= 4)
+			plugin.addMidiEvent({synthLib::MidiEventSource::Host, static_cast<uint8_t>(synthLib::M_CONTROLCHANGE | (v[0] & 15)), static_cast<uint8_t>(v[1]), static_cast<uint8_t>(v[2]), 0});
+		process(wait, s.c_str());
+	}
+
+	if(note != 0 && argc <= 4)
 	{
 		plugin.addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, static_cast<uint8_t>(note), 100, 0});
 		process(frames, "note-on");

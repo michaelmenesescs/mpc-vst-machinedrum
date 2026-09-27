@@ -1,0 +1,20 @@
+diff --git a/source/dsp56kEmu/dma.cpp b/source/dsp56kEmu/dma.cpp
+index f330d0e..c043264 100644
+--- a/source/dsp56kEmu/dma.cpp
++++ b/source/dsp56kEmu/dma.cpp
+@@ -522,9 +522,15 @@ namespace dsp56k
+ 		return dsp.memory().get(_area, _addr);
+ 	}
+ 
++	// mpc-vst-machinedrum tracing hook (local investigation only): called for every DMA word whose source is
++	// the HI08 receive register (HORX, X:$FFFFC6), i.e. every word a host wrote into DSP memory via DMA.
++	void (*g_hostDmaWriteHook)(const DSP&, EMemArea, TWord, TWord) = nullptr;
++
+ 	void DmaChannel::memWrite(EMemArea _area, TWord _addr, TWord _value) const
+ 	{
+ 		auto& dsp = m_peripherals.getDSP();
++		if(g_hostDmaWriteHook && m_dsr == 0xffffc6)
++			g_hostDmaWriteHook(dsp, _area, _addr, _value);
+ 		if (isPeripheralAddr(_area, _addr))
+ 			dsp.getPeriph(_area)->write(_addr | 0xff0000, _value);
+ 		else if (_area == MemArea_P)

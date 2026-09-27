@@ -38,54 +38,121 @@ guessed. It's two stages:
    words. The trace matched the section byte-for-byte from the first data word (`$24`, the shared
    vector-table load address both programs start at) for as far as compared (see below).
 
-Once a DSP's own header+data record stream is exhausted, the traffic changes character: the
-`RUN dspN` count for each DSP in the 5-second capture (352,603 for DSP1, 285,133 for DSP2)
-comfortably exceeds each program's word count (18,823 / 250,123), so both DSPs finish loading and
-reach real runtime operation inside the capture window. The excess words are genuine runtime
-traffic; 36,390 host-command IRQs also occurred in the same window. What that runtime traffic
-means — the Machinedrum's equivalent of Monomodule's 52-word parameter block — is not decoded yet.
+Once a DSP's record stream is exhausted, the traffic changes character: both DSPs finish loading and
+reach runtime operation, and the rest of the traffic is the runtime protocol below.
 
-## What's still open
+## Runtime protocol (decoded)
 
-- The runtime (post-boot) word/IRQ protocol: which words are parameters, how often they're sent,
-  and their layout. This is the next tracing step, and the hard part — the Machinedrum equivalent
-  of what Monomodule's `HostModel.cpp` reverse-engineered for the Monomachine.
-- Whether DSP1 and DSP2 talk to each other only over ESSI (as `mdhardware.h`'s comments say) or
-  also exchange anything over their own host ports.
-- Sample data: DSP2's program includes ~233K external P words backing the E12/ROM/RAM machines;
-  whether that's baked into section 1 itself (looks likely, given the full word-for-word match) or
-  loaded separately is not yet checked.
+Captured with `tools/mdtrace` (`mdProbe`) on a properly booted machine: first-run flash
+initialisation, then 20 emulated seconds of `advance()`, then scripted triggers, MIDI CCs and sysex.
+The DMA log records every word the host writes into DSP memory, so the tables below are exact, not
+inferred from the host-side word order.
 
-## Design goal: all voices in one plugin instance, not one voice at a time
+### Host commands: the ColdFire just writes DSP memory
 
-Machinedrum One should play all voices at once from one plugin instance (a drum map: MIDI note
-number -> voice), the way Monomodule's "Six" plugin plays all 6 Monomachine tracks at once — not
-one voice per instance. This is very likely achievable, and more naturally than the Monomachine
-case, because on real hardware DSP2 (the voice producer) already renders every voice inside a
-single audio block on one chip: it isn't 12/16 physical DSPs, it's one, time-multiplexed. Monomachine
-does this the same way for its 6 tracks (Monomodule's kernel comment: `jsr $0092` per track, once per
-track per block, each track its own 52-word parameter block and its own struct in DSP memory at
-$500/$600/$700) — modeled in Monomodule as 6 separate `DspEngine` instances only because Monomachine
-tracks are large plugin *products* (One vs. Six), not because the hardware needs 6 chips.
+Both DSPs expose the same small command set on their HI08 port (`vba` = vector address):
 
-Two things the runtime-protocol tracing should specifically establish, so the engine design covers
-multi-voice play from the start rather than as a later rework:
+| Vector | DSP2 handler | DSP1 handler | Does |
+|---|---|---|---|
+| `P:$12` | `$e8` | `$9aa` | **Block write.** Handler reads a destination address and a count from HRX, then programs DMA channel 5 (source HORX, request = host receive, destination space **Y**) to copy `count+1` words from the host port into `Y:dest`. |
+| `P:$10` | `$f4` | `$9b6` | **Peek.** Reads an address, replies with one word (DSP2 `X:(addr)`, DSP1 `Y:(addr)`). The ColdFire polls a few DSP1 words (`Y:$1be/$1bf`, meters) this way. |
+| `P:$14` | `$fd` | — | Batched table lookup (DSP2 only; not seen at runtime). |
 
-1. **The per-voice dispatch pattern on DSP2.** Find the DSP2 equivalent of Monomachine's per-track
-   struct array and render-entry call: how many voice slots exist, where their state lives, and
-   whether one host-side parameter block feeds one call per voice per audio block (expected, by
-   analogy) or something else. This settles whether "all voices, one engine instance" is a
-   straightforward per-voice loop like Monomodule's per-track one.
-2. **Whether per-voice audio is separable before DSP2's internal mix.** Real hardware only exposes
-   a single mixed bus to DSP1 over ESSI (voices are summed before leaving DSP2). We are not limited
-   to that: if each voice writes to its own accumulator before a final sum step (plausible, by
-   analogy with Monomachine's per-track render-then-mix), we can read that DSP memory directly and
-   expose real per-voice/per-track outputs from Machinedrum One, the way Monomodule reads
-   `Y:$0..$1F` for L/R rather than waiting on a physical output. Worth checking, since it decides
-   whether the plugin can offer individual outs for per-voice routing/processing in the host, or
-   only a summed stereo bus like the hardware's own.
+So there is no "parameter block protocol" as such: the ColdFire keeps a set of fixed-layout structures
+in each DSP's Y memory up to date, and the DSP code reads them. Our host model can do the same by
+writing DSP memory directly — no HI08 emulation needed.
 
-MIDI note-to-voice mapping itself is not a hardware question at all: the real MD maps tracks to
-MIDI channels, but we are writing the host model from scratch (not re-emulating the ColdFire's MIDI
-parser), so the mapping is entirely our own design choice — a note-number drum map, as requested,
-is fine.
+### Update rate
+
+Everything runs on a fixed control tick of **96 samples** (2.18 ms): DSP1's structures are rewritten
+every tick, DSP2's voice slots every other tick (192 samples).
+
+### DSP2 (voice producer): 16 voice slots
+
+`Y:$800 + $40·k` for voice k = 0..15 (track 1..16), 64 words each; the host writes the first 13.
+
+| Word | Content |
+|---|---|
+| 0 | **Trigger/machine code.** Non-zero only on the tick a voice is triggered: machine index + 1, with bit 7 set for the UW (ROM/RAM) machine table (UW machine 16 → `$91`, 32 → `$a1`; classic-table default kit tracks gave `$1d`, `$12`). 0 on every other tick. |
+| 1..12 | **Machine coefficients**, precomputed by the ColdFire from the track's SYN1-8 parameters (plus LFO modulation). Re-sent every tick while the voice is active; idle voices only get words 0-1 = 0. |
+
+Parameter sweep on track 1 (TRX default kit machine), CC 16-23 = SYN1-8:
+
+| Param | Slot words changed |
+|---|---|
+| SYN1 | 1 |
+| SYN2 | 3 |
+| SYN3 | 2 |
+| SYN4 | 4 |
+| SYN5 | 12 |
+| SYN6 | 11 |
+| SYN7 | 9, 10 |
+| SYN8 | 5, 6, 7, 8 |
+| LFOD, LFOM (LFO depth/mode) | 1 (the LFO modulates word 1 over time) |
+
+The words are machine-specific coefficients, not the raw 0-127 values (e.g. SYN6 = 20 → `$140000`,
+100 → `$640000` is linear, but SYN8 changes four filter-style coefficients at once). **Computing
+these 12 words per machine is the core of the host model** — see "Open: coefficient generation".
+
+### DSP2 → DSP1: 16 separate voice streams
+
+The ESSI0 link carries 16 words per sample period, as 512-word superframes every 32 samples: **one
+32-sample mono block per voice**, voice k at block k (inactive voices send zeros). Triggering tracks
+1, 2 and 5 puts the audio in blocks exactly 1 and 4 apart. DSP2 does **not** mix: per-voice audio is
+fully separable at this link.
+
+### DSP1 (mixer): per-track effect chain, mix and master FX
+
+| Y address | Per | Content |
+|---|---|---|
+| `$200 + $40·k`, words 0-8 | track k | **AMD, AMF, EQF, EQG, FLTF, FLTW, FLTQ, SRR, DIST**, each the raw 0-127 value `<< 7` |
+| `$100 + 5·k`, words 0-4 | track k | word 1 VOL (a computed gain), 2 PAN (`value << 16`), 3 REV send, 4 DEL send |
+| `$150-$158`, `$170-$18c` | global | change every tick (master FX / modulation state); not decoded |
+
+So the whole **per-track effects page (amp modulation, EQ, filter, sample-rate reduction,
+distortion) runs on DSP1**, together with the volume/pan mix and the master effects. DSP2 only
+produces the raw machine voices.
+
+### DSP load
+
+Measured with `mdProbe prof` (PC histogram + instruction counters):
+
+| DSP | Idle | 16 voices / pattern playing |
+|---|---|---|
+| DSP2 (voices) | spins in a delay loop at `P:$100090` (~96% of samples): inactive voices cost ~nothing | ~45% in the link-DMA wait at `P:$cf` → roughly **35-60 M instructions/s** of work |
+| DSP1 (per-track FX, mix, master FX) | no wait loop in its hot spots: filter/MAC loops over 32-sample blocks | same: **~79 M instructions/s, always** |
+
+Monomodule's one Monomachine track is ~21 M instructions/s and needed the static recompiler to fit
+58% of one Force core. Emulating both MD DSPs is roughly 5-7× that.
+
+## Design consequences
+
+- **All voices from one instance: yes.** One DSP2 renders all 16 voices; the host drives 16 slots.
+  Note-number → voice mapping is our own host-model choice.
+- **Individual voice outputs: yes**, at the DSP2→DSP1 link — but those are *dry* voices. The MD's
+  per-track sound includes its effects page (filter, EQ, SRR, distortion, AMD), which runs on DSP1.
+  Per-track outputs *with* those effects need either DSP1's per-track buffers tapped before its
+  pan/mix, or the chain reimplemented natively.
+- **Machinedrum One needs DSP1's per-track section, not just DSP2.** "Voices only, no master FX" is
+  not "DSP2 only": the filter/EQ/distortion that define an MD track are on DSP1.
+- **CPU is the main risk on the Force.** Full emulation of both DSPs is ~3-4 Force cores at the
+  Monomodule port's efficiency. Options, cheapest first:
+  1. DSP2 emulated (machines are complex DSP code), DSP1's per-track chain + mixer **reimplemented
+     natively in C++** from its disassembly (standard filters/EQ/SRR/distortion; ~10× cheaper than
+     emulation, but "very close" rather than bit-exact), master FX likewise for the FX plugin.
+  2. Both emulated, with the static recompiler, plus polyphony limits.
+  3. Desktop first (full emulation is fine on a desktop CPU), Force later.
+
+## Open
+
+- **Coefficient generation (host model).** The ColdFire turns SYN1-8 (+ LFO, pitch, tune) into the
+  12 slot words per machine. Options: reverse-engineer each machine's 68k routine (~50 machines);
+  run the ColdFire's own coefficient routine on demand in Musashi (find it by logging the 68k PC at
+  the HI08 writes to `$600000`); or tabulate per (machine, parameter) by sweeping in the emulator at
+  first run, from the user's own ROM. Sweeps suggest most words depend on one parameter each, which
+  favours tables, but LFO and pitch interaction need checking.
+- The rest of DSP2's 64-word slot (words 13-63: DSP-side voice state?) and where pitch/note enters.
+- DSP1's global blocks (`$150-$18c`): master FX parameters and per-tick modulation.
+- Whether DSP1 keeps per-track processed blocks in memory before the pan/mix (for per-track outs
+  with effects).
+- Sample data for E12/ROM machines (DSP2's ~233K external P words).
