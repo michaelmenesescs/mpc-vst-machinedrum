@@ -988,7 +988,8 @@ Steps:
      once per subpage). **Not yet done**: the real Docker `html_art` build and an on-device test -
      the dry run proves the JSON is well-formed and internally consistent, not that it renders/behaves
      correctly on a real Force.
-  7. **Digit font gap - partially closed (2026-09-28), and a real correction to an earlier
+  7. **PARKED (2026-09-28, explicit user direction - same status as the LEV meter).** Digit font gap -
+     partially closed, and a real correction to an earlier
      assumption.** Tried the "compute the tap count to a target machine" lead from the note this
      replaces: **it doesn't work**, because `SoundSelection` does NOT cycle linearly through all 135
      machines the way `mdmachine`'s listing order would predict. Confirmed by direct testing: large
