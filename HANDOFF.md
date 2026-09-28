@@ -723,14 +723,31 @@ Steps:
     columns here. Reusing the name-entry atlas for header labels was an unverified assumption in the
     original Phase 1/3 plan text (which only ever explicitly needed the name-entry font for kit/track/
     pattern *names*, not dial labels) - now corrected.
-  - Not yet done, and the concrete next step: extract a **second, smaller font atlas** for this label
-    band, using the same diff-across-a-capture-sweep technique as `build_font_atlas.py` but sourced
-    from the AMP/EFX and SYN page label rows themselves (their content varies with which machine is
-    assigned - Phase 3 already showed `MachineInfo::params` gives real, varied label text for free, so
-    swapping machines and diffing the label band across several different machines' SYN pages should
-    reveal this small font's glyphs the same way the name-entry sweep did for the large one). Once
-    that exists, `compose_skin.py` should render clean, non-overlapping labels; the dial-icon half of
-    the compositor is already working and shouldn't need changes.
+  - **Small label font extracted and wired in (2026-09-28) - the gap above is closed.** Wrote
+    `tools/mdtrace/build_label_font_atlas.py`: sweeps `PanelEncoder::SoundSelection` (changes the
+    assigned machine, confirmed in Phase 3) across 10 known steps, using a hand-transcribed
+    `WORDS_BY_FRAME` (read off a 26-frame stacked strip by eye - these are short 3-4 letter real
+    machine SYN-param names, e.g. `PTCH DEC RAMP HOLD`, `CLPY TONE HARD RICH`), then auto-slices each
+    word into per-letter cells. Confirmed this font's pitch is exactly 4px by comparing the constant
+    word "DEC" (appears in every machine, so it's a free alignment check) against "PTCH" - both start
+    their letters 4px apart. Got 20 of 26 letters from the machine sweep alone; added a second capture
+    of the AMP/EFX page's own fixed labels (`AMD AMF EQF EQG FLTF FLTW FLTQ SRR`) to pick up the two
+    missing letters (Q, W) for free, since Phase 2 already established those labels are static.
+  - **Real bug found and fixed while wiring this up**: capturing the AMP/EFX page immediately after
+    the 22-step `SoundSelection` sweep (in the same mdProbe process) produced garbled, misaligned
+    letters - confirmed by direct pixel comparison, not guessed. Root cause: something about that much
+    encoder activity leaves the display in a subtly shifted state before the panel-switch settles.
+    Fixed by capturing the AMP/EFX labels in a **separate, fresh mdProbe invocation** (still reusing
+    the same flashcache, so no extra boot-time cost) rather than appending it to the sweep's action
+    list. **Lesson**: when composing many panel actions in one long mdProbe invocation, don't assume
+    a later capture is unaffected by unrelated earlier UI interactions - verify pixel-for-pixel against
+    an isolated capture before trusting it, the same discipline as the earlier off-by-10 font bug.
+  - `compose_skin.py` updated to use this new label font atlas instead of the name-entry one. Re-ran
+    the AMP/EFX composite test: **all 8 labels (AMD AMF EQF EQG FLTF FLTW FLTQ SRR) now render fully
+    and correctly**, matching the real capture - Phase 4's first working version is complete for this
+    screen. `docs/` note: 20-of-26-letters coverage (no J/K/X/Z yet) is enough for every currently
+    known screen's fixed labels; per-machine SYN names may need a longer sweep before Phase 4 can
+    render arbitrary machine names with full confidence.
 
   **Scope note**: this is genuinely comparable in size to Monomodule's own `mk_skin.py` (~800
   lines) plus the font/icon extraction Monomodule got for free from upstream and we don't have —

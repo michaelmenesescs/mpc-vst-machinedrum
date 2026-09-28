@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
-"""Phase 4 of the "Monomodule way" skin plan (HANDOFF.md): the compositor. Given the font atlas
-(build_font_atlas.py), a dial-pointer atlas per knob (build_dial_atlas.py), and the hand-authored
-layout (ui_spec.py), draws one screen's dial-grid region - labels + pointer icons - for a chosen set
-of live values, the same job Monomodule's own mk_skin.py does with its ROM-decoded assets.
+"""Phase 4 of the "Monomodule way" skin plan (HANDOFF.md): the compositor. Given the small label font
+atlas (build_label_font_atlas.py - NOT build_font_atlas.py's name-entry font; they're two different
+fonts at two different sizes, see HANDOFF.md), a dial-pointer atlas per knob (build_dial_atlas.py),
+and the hand-authored layout (ui_spec.py), draws one screen's dial-grid region - labels + pointer
+icons - for a chosen set of live values, the same job Monomodule's own mk_skin.py does with its
+ROM-decoded assets.
 
-This is a first working version, proving the three atlases compose into a recognizable screen. Not
-yet wired into vst/gen_layout.py's actual skin build (that's the next step once this is visually
-confirmed against a real capture) and doesn't draw any of the surrounding chrome (KIT name box, LEV
-meter - parked, breadcrumb) - just the dial-grid region this session's atlases actually cover.
+This is a first working version, proving the atlases compose into a recognizable screen. Not yet
+wired into vst/gen_layout.py's actual skin build (that's the next step once this is visually confirmed
+against a real capture) and doesn't draw any of the surrounding chrome (KIT name box, LEV meter -
+parked, breadcrumb) - just the dial-grid region this session's atlases actually cover.
 
-usage: compose_skin.py <font_atlas.json> <dial_atlas_dir with DataEntryA..H subdirs> <screen: amp_fx|syn>
-                        <label1,label2,...> <value1,value2,...> <out.png>
+usage: compose_skin.py <label_font_atlas.json> <dial_atlas_dir with DataEntryA..H subdirs>
+                        <screen: amp_fx|syn> <label1,label2,...> <value1,value2,...> <out.png>
   dial_atlas_dir/DataEntryX/dial_atlas.json is expected for X in A..H (matches how this session's
   build_dial_atlas.py runs were laid out - see HANDOFF.md).
 """
@@ -57,18 +59,18 @@ def blit(canvas, cw, ch, x0, y0, rows):
 
 
 def draw_text(canvas, cw, ch, x0, y0, text, font):
+    # This is the SMALL label font (build_label_font_atlas.py), not build_font_atlas.py's name-entry
+    # font - see HANDOFF.md Phase 4: they're two different fonts at two different sizes, found by
+    # this compositor's first version overlapping label columns using the wrong (larger) one.
+    pitch = font["glyph_w"]
     x = x0
     for label_char in text:
-        key = {
-            " ": "SPACE", "+": "PLUS", "-": "MINUS", "=": "EQUALS", "/": "SLASH",
-            "(": "LPAREN", ")": "RPAREN", ",": "COMMA", "!": "BANG", "?": "QUESTION",
-        }.get(label_char, label_char.upper())
-        glyph = font["glyphs"].get(key)
-        if glyph is None:
-            x += 4
+        glyph_rows = font["glyphs"].get(label_char.upper())
+        if glyph_rows is None:
+            x += pitch
             continue
-        blit(canvas, cw, ch, x, y0, glyph["rows"])
-        x += glyph["advance"] + 1  # +1px inter-glyph gap; not measured, a reasonable first guess
+        blit(canvas, cw, ch, x, y0, glyph_rows)
+        x += pitch
 
 
 def dial_state_for(dial_atlas, value):
