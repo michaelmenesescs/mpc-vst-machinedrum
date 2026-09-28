@@ -7,8 +7,8 @@ layout confirmed with the user against a real Monomodule VST screenshot"):
     see HANDOFF.md for what's still needed there).
   - A 2x2 grid of the Machinedrum's own real per-track pages, each its own native `frame title=`
     (baked by shadow_skin.py itself, real proportional text, no custom font atlas needed for these
-    fixed labels - see HANDOFF.md): SYN (top-left, no knobs yet - SYN1-8 aren't exposed as params,
-    blocked on "touched" tracking in engine.cpp), AMP/EFX (top-right, 8 knobs), ROUTE (bottom-left,
+    fixed labels - see HANDOFF.md): SYN (top-left, 8 knobs SYN1-8 whose native labels follow
+    the track's machine - params.json "dynamic_name", served by engine.cpp), AMP/EFX (top-right, 8 knobs), ROUTE (bottom-left,
     8 knobs: DIST VOL PAN DEL / REV LFOS LFOD LFOM - matches real hardware's own ROUTE page grouping,
     so VOL/PAN live here now instead of a separate top-level knob), and one reserved/blank quadrant
     (bottom-right - confirmed with the user: leave it, don't invent content for it).
@@ -23,11 +23,12 @@ FX_PARAMS = [("amd", "AMD"), ("amf", "AMF"), ("eqf", "EQF"), ("eqg", "EQG"),
              ("fltf", "FLTF"), ("fltw", "FLTW"), ("fltq", "FLTQ"), ("srr", "SRR")]
 ROUTE_PARAMS = [("dist", "DIST"), ("vol", "VOL"), ("pan", "PAN"), ("del", "DEL"),
                 ("rev", "REV"), ("lfos", "LFOS"), ("lfod", "LFOD"), ("lfom", "LFOM")]
+SYN_PARAMS = [("syn%d" % p, "SYN%d" % p) for p in range(1, 9)]
 ROUTE_STRIP_KEYS = {"dist", "del", "rev", "lfos", "lfod", "lfom"}  # vol/pan have no captured filmstrip
 FX_STRIP_KEYS = {k for k, _ in FX_PARAMS}  # all 8 AMP/EFX params have captured filmstrips
 
 lines = [
-    "# Machinedrum One skin layout: one tab per track, a MACHINE knob (picker not wired yet) and a",
+    "# Machinedrum One skin layout: one tab per track, a MACHINE knob (the picker is injected later) and a",
     "# 2x2 grid of the Machinedrum's own real per-track pages (SYN/AMP-EFX/ROUTE + one reserved) -",
     "# see HANDOFF.md, \"Tab layout confirmed with the user against a real Monomodule VST screenshot\".",
     "style=td3",
@@ -86,7 +87,10 @@ for t in range(16):
     amp_keys = ["track%d_machine" % t]
 
     lines += quadrant(*QUAD_XY["syn"], "SYN")
-    # SYN1-8 aren't exposed as params yet (blocked on "touched" tracking, engine.cpp) - frame only.
+    # The layout label is a placeholder: the device draws each knob's live param name (the machine's own
+    # SYN label, engine.cpp's "<key>_name"). No filmstrip: their dial icons differ per machine.
+    knobs, syn_keys = knob_grid(*QUAD_XY["syn"], SYN_PARAMS, "track%d_%s", t)
+    lines += knobs
 
     lines += quadrant(*QUAD_XY["amp_fx"], "AMP / EFX")
     knobs, ks = knob_grid(*QUAD_XY["amp_fx"], FX_PARAMS, "track%d_%s", t, strip_keys=FX_STRIP_KEYS)
@@ -105,6 +109,7 @@ for t in range(16):
     # this generated layout.conf against shadow_skin.build() directly - see HANDOFF.md).
     lines.append('qlinks "%s" = %s' % (tab, ",".join(amp_keys)))
     lines.append('qlinks "%s ROUTE" = %s' % (tab, ",".join(route_keys)))
+    lines.append('qlinks "%s SYN" = %s' % (tab, ",".join(syn_keys)))
     lines.append("")
 
 lines.append("[tab GLOBAL]")

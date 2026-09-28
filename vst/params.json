@@ -2336,6 +2336,1158 @@
    "default": 0,
    "display": "int",
    "popup_of": "track15_machine"
+  },
+  {
+   "key": "track0_syn1",
+   "name": "T1 SYN1",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track0_syn2",
+   "name": "T1 SYN2",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track0_syn3",
+   "name": "T1 SYN3",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track0_syn4",
+   "name": "T1 SYN4",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track0_syn5",
+   "name": "T1 SYN5",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track0_syn6",
+   "name": "T1 SYN6",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track0_syn7",
+   "name": "T1 SYN7",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track0_syn8",
+   "name": "T1 SYN8",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track1_syn1",
+   "name": "T2 SYN1",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track1_syn2",
+   "name": "T2 SYN2",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track1_syn3",
+   "name": "T2 SYN3",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track1_syn4",
+   "name": "T2 SYN4",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track1_syn5",
+   "name": "T2 SYN5",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track1_syn6",
+   "name": "T2 SYN6",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track1_syn7",
+   "name": "T2 SYN7",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track1_syn8",
+   "name": "T2 SYN8",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track2_syn1",
+   "name": "T3 SYN1",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track2_syn2",
+   "name": "T3 SYN2",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track2_syn3",
+   "name": "T3 SYN3",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track2_syn4",
+   "name": "T3 SYN4",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track2_syn5",
+   "name": "T3 SYN5",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track2_syn6",
+   "name": "T3 SYN6",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track2_syn7",
+   "name": "T3 SYN7",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track2_syn8",
+   "name": "T3 SYN8",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track3_syn1",
+   "name": "T4 SYN1",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track3_syn2",
+   "name": "T4 SYN2",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track3_syn3",
+   "name": "T4 SYN3",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track3_syn4",
+   "name": "T4 SYN4",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track3_syn5",
+   "name": "T4 SYN5",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track3_syn6",
+   "name": "T4 SYN6",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track3_syn7",
+   "name": "T4 SYN7",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track3_syn8",
+   "name": "T4 SYN8",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track4_syn1",
+   "name": "T5 SYN1",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track4_syn2",
+   "name": "T5 SYN2",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track4_syn3",
+   "name": "T5 SYN3",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track4_syn4",
+   "name": "T5 SYN4",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track4_syn5",
+   "name": "T5 SYN5",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track4_syn6",
+   "name": "T5 SYN6",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track4_syn7",
+   "name": "T5 SYN7",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track4_syn8",
+   "name": "T5 SYN8",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track5_syn1",
+   "name": "T6 SYN1",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track5_syn2",
+   "name": "T6 SYN2",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track5_syn3",
+   "name": "T6 SYN3",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track5_syn4",
+   "name": "T6 SYN4",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track5_syn5",
+   "name": "T6 SYN5",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track5_syn6",
+   "name": "T6 SYN6",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track5_syn7",
+   "name": "T6 SYN7",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track5_syn8",
+   "name": "T6 SYN8",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track6_syn1",
+   "name": "T7 SYN1",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track6_syn2",
+   "name": "T7 SYN2",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track6_syn3",
+   "name": "T7 SYN3",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track6_syn4",
+   "name": "T7 SYN4",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track6_syn5",
+   "name": "T7 SYN5",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track6_syn6",
+   "name": "T7 SYN6",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track6_syn7",
+   "name": "T7 SYN7",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track6_syn8",
+   "name": "T7 SYN8",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track7_syn1",
+   "name": "T8 SYN1",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track7_syn2",
+   "name": "T8 SYN2",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track7_syn3",
+   "name": "T8 SYN3",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track7_syn4",
+   "name": "T8 SYN4",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track7_syn5",
+   "name": "T8 SYN5",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track7_syn6",
+   "name": "T8 SYN6",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track7_syn7",
+   "name": "T8 SYN7",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track7_syn8",
+   "name": "T8 SYN8",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track8_syn1",
+   "name": "T9 SYN1",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track8_syn2",
+   "name": "T9 SYN2",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track8_syn3",
+   "name": "T9 SYN3",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track8_syn4",
+   "name": "T9 SYN4",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track8_syn5",
+   "name": "T9 SYN5",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track8_syn6",
+   "name": "T9 SYN6",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track8_syn7",
+   "name": "T9 SYN7",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track8_syn8",
+   "name": "T9 SYN8",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track9_syn1",
+   "name": "T10 SYN1",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track9_syn2",
+   "name": "T10 SYN2",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track9_syn3",
+   "name": "T10 SYN3",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track9_syn4",
+   "name": "T10 SYN4",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track9_syn5",
+   "name": "T10 SYN5",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track9_syn6",
+   "name": "T10 SYN6",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track9_syn7",
+   "name": "T10 SYN7",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track9_syn8",
+   "name": "T10 SYN8",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track10_syn1",
+   "name": "T11 SYN1",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track10_syn2",
+   "name": "T11 SYN2",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track10_syn3",
+   "name": "T11 SYN3",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track10_syn4",
+   "name": "T11 SYN4",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track10_syn5",
+   "name": "T11 SYN5",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track10_syn6",
+   "name": "T11 SYN6",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track10_syn7",
+   "name": "T11 SYN7",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track10_syn8",
+   "name": "T11 SYN8",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track11_syn1",
+   "name": "T12 SYN1",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track11_syn2",
+   "name": "T12 SYN2",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track11_syn3",
+   "name": "T12 SYN3",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track11_syn4",
+   "name": "T12 SYN4",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track11_syn5",
+   "name": "T12 SYN5",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track11_syn6",
+   "name": "T12 SYN6",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track11_syn7",
+   "name": "T12 SYN7",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track11_syn8",
+   "name": "T12 SYN8",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track12_syn1",
+   "name": "T13 SYN1",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track12_syn2",
+   "name": "T13 SYN2",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track12_syn3",
+   "name": "T13 SYN3",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track12_syn4",
+   "name": "T13 SYN4",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track12_syn5",
+   "name": "T13 SYN5",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track12_syn6",
+   "name": "T13 SYN6",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track12_syn7",
+   "name": "T13 SYN7",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track12_syn8",
+   "name": "T13 SYN8",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track13_syn1",
+   "name": "T14 SYN1",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track13_syn2",
+   "name": "T14 SYN2",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track13_syn3",
+   "name": "T14 SYN3",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track13_syn4",
+   "name": "T14 SYN4",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track13_syn5",
+   "name": "T14 SYN5",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track13_syn6",
+   "name": "T14 SYN6",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track13_syn7",
+   "name": "T14 SYN7",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track13_syn8",
+   "name": "T14 SYN8",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track14_syn1",
+   "name": "T15 SYN1",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track14_syn2",
+   "name": "T15 SYN2",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track14_syn3",
+   "name": "T15 SYN3",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track14_syn4",
+   "name": "T15 SYN4",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track14_syn5",
+   "name": "T15 SYN5",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track14_syn6",
+   "name": "T15 SYN6",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track14_syn7",
+   "name": "T15 SYN7",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track14_syn8",
+   "name": "T15 SYN8",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track15_syn1",
+   "name": "T16 SYN1",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track15_syn2",
+   "name": "T16 SYN2",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track15_syn3",
+   "name": "T16 SYN3",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track15_syn4",
+   "name": "T16 SYN4",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track15_syn5",
+   "name": "T16 SYN5",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track15_syn6",
+   "name": "T16 SYN6",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track15_syn7",
+   "name": "T16 SYN7",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track15_syn8",
+   "name": "T16 SYN8",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
   }
  ],
  "sections": [

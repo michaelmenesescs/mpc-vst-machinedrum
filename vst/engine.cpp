@@ -8,12 +8,11 @@
 // only copies a finished block out, or outputs silence when the DSP thread is behind (counted, never
 // waited for).
 //
-// Parameters (V1, kept deliberately simple): per track (0-15), machine (a raw OS machine id - not a named
-// option list, since the id table is decoded from the user's own firmware at runtime, not something this
-// repo can commit; see docs/FIRMWARE.md), level and pan. Plus two globals: tempo (for LFO/E12 timing) and
-// max_voices (HostModel::setMaxActiveVoices - a voice cap safety valve, see HANDOFF.md "adjustable voice
-// cap"). Per-track FX (AMD/EQ/filter/SRR/DIST) and per-track LFOs are not yet exposed - a natural next
-// increment once this basic version is verified on the device.
+// Parameters: per track (0-15), machine (a raw OS machine id - not a named option list, since the id table
+// is decoded from the user's own firmware at runtime, not something this repo can commit; see
+// docs/FIRMWARE.md), the AMP/EFX and ROUTE pages' params and SYN1-8 (see the slot layout below). Plus two
+// globals: tempo (for LFO/E12 timing) and max_voices (HostModel::setMaxActiveVoices - a voice cap safety
+// valve, see HANDOFF.md "adjustable voice cap").
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -88,7 +87,7 @@ constexpr int kBaseNote = 36;					// MPC/GM kick; note 36 = track 0, 37 = track 
 // the ROUTE page's 6 not-otherwise-exposed params (DIST raw 16, DEL/REV/LFOS/LFOD/LFOM raw 19-23 -
 // VOL/PAN raw 17/18 are ROUTE-page params too on real hardware, but reuse the existing vol/pan keys
 // above rather than duplicating them - see HANDOFF.md, "found the third per-track page: ROUTE").
-// Not yet exposed: SYN1-8 - see gen_params.py's docstring.
+// Then SYN1-8 (raw 0-7), whose meaning and good defaults are per-machine: see "SYN1-8" below.
 constexpr const char* kFxKeys[] = {"amd", "amf", "eqf", "eqg", "fltf", "fltw", "fltq", "srr"};
 constexpr int kNumFx = sizeof(kFxKeys) / sizeof(kFxKeys[0]);
 constexpr int kFxRawParamBase = 8;	// HostModel raw param index of kFxKeys[0] ("amd")
@@ -98,7 +97,9 @@ constexpr int kRouteRawParam[] = {16, 19, 20, 21, 22, 23};	// not contiguous (17
 constexpr int kNumRoute = sizeof(kRouteKeys) / sizeof(kRouteKeys[0]);
 static_assert(sizeof(kRouteRawParam) / sizeof(kRouteRawParam[0]) == kNumRoute);
 
-constexpr int kSlotTrack = 0, kSlotsPerTrack = 3 + kNumFx + kNumRoute;	// machine, vol, pan, FX, ROUTE
+constexpr int kNumSyn = 8;
+constexpr int kSlotSyn = 3 + kNumFx + kNumRoute;	// within a track's slots
+constexpr int kSlotTrack = 0, kSlotsPerTrack = kSlotSyn + kNumSyn;	// machine, vol, pan, FX, ROUTE, SYN
 constexpr int kSlotTempo = kSlotTrack + kTracks * kSlotsPerTrack;
 constexpr int kSlotMaxVoices = kSlotTempo + 1;
 constexpr int kNumSlots = kSlotMaxVoices + 1;
@@ -123,16 +124,36 @@ int slotOf(const char* key)
 		for(int i = 0; i < kNumRoute; ++i)
 			if(!std::strcmp(fxKey, kRouteKeys[i]))
 				return kSlotTrack + t * kSlotsPerTrack + 3 + kNumFx + i;
+		int p = 0, c2 = 0;
+		if(std::sscanf(fxKey, "syn%d%n", &p, &c2) == 1 && fxKey[c2] == '\0' && p >= 1 && p <= kNumSyn)
+			return kSlotTrack + t * kSlotsPerTrack + kSlotSyn + p - 1;
 	}
 	return -1;
 }
 
 struct NoteEv { uint8_t track; uint8_t velocity; };
 
+// SYN1-8: each machine sets its own defaults for these (HostModel::setMachine), and what they mean
+// changes with the machine (their names come from the OS's machine table, served as "<key>_name" for
+// the wrapper's dynamic_name). So a machine change resets every SYN value the user hasn't set since to
+// the new machine's default, and the engine - not the host - is the source of truth for them
+// (getParameter reads eGet), so the knobs show those defaults. "Touched" = set by the host after the
+// last machine change: a project restore sends machine first (lower VST index) and then the saved SYN
+// values, which then win over the defaults.
+struct MachineTable
+{
+	std::atomic<bool> ready{false};
+	bool valid[256] = {};
+	uint8_t defaults[256][kNumSyn] = {};
+	char names[256][kNumSyn][8] = {};
+};
+
 struct Inst
 {
 	std::string osPath;
 	std::atomic<int> param[kNumSlots];
+	std::atomic<bool> synUntouched[kTracks][kNumSyn];
+	MachineTable machines;
 	std::atomic<bool> stop{false}, ready{false};
 	std::atomic<uint32_t> underruns{0}, blocks{0};
 	std::atomic<int> core{-1};
@@ -147,6 +168,7 @@ struct Inst
 	Inst()
 	{
 		for(auto& p : param) p.store(0);
+		for(auto& t : synUntouched) for(auto& u : t) u.store(true);
 		param[kSlotTempo].store(120);
 		param[kSlotMaxVoices].store(kTracks);
 		// Matches gen_params.py's declared defaults: the host normally pushes these via set_param right
@@ -176,6 +198,16 @@ void Inst::run()
 		auto c = md::fw::parseContainer(md::fw::parseSysex(md::fw::readFile(osPath)));
 		Engine eng(fwv, std::move(c.sections.at(0).data));
 		auto& h = eng.host();
+		for(const auto& m : eng.os().machines())
+		{
+			machines.valid[m.id] = true;
+			for(int p = 0; p < kNumSyn; ++p)
+			{
+				machines.defaults[m.id][p] = m.defaults[p];
+				std::snprintf(machines.names[m.id][p], sizeof machines.names[m.id][p], "%s", m.params[p].c_str());
+			}
+		}
+		machines.ready.store(true, std::memory_order_release);
 
 		// Real-time priority, above MPC's own AudioWorkers (SCHED_RR 20) - only once booted, so the boot
 		// itself doesn't hog the CPU at real-time priority. Without this the render thread is a plain
@@ -207,11 +239,13 @@ void Inst::run()
 		int appliedMachine[kTracks], appliedVol[kTracks], appliedPan[kTracks];
 		int appliedFx[kTracks][kNumFx];
 		int appliedRoute[kTracks][kNumRoute];
+		int appliedSyn[kTracks][kNumSyn];
 		for(int t = 0; t < kTracks; ++t)
 		{
 			appliedMachine[t] = appliedVol[t] = appliedPan[t] = -1;
 			for(int i = 0; i < kNumFx; ++i) appliedFx[t][i] = -1;
 			for(int i = 0; i < kNumRoute; ++i) appliedRoute[t][i] = -1;
+			for(int i = 0; i < kNumSyn; ++i) appliedSyn[t][i] = -1;
 		}
 
 		Engine::Output out;
@@ -234,7 +268,19 @@ void Inst::run()
 			for(int t = 0; t < kTracks; ++t)
 			{
 				const int m = std::clamp(param[kSlotTrack + t * kSlotsPerTrack + 0].load(std::memory_order_relaxed), 0, 191);
-				if(m != appliedMachine[t]) { appliedMachine[t] = m; h.setMachine(t, static_cast<uint8_t>(m)); }
+				if(m != appliedMachine[t])
+				{
+					appliedMachine[t] = m;
+					h.setMachine(t, static_cast<uint8_t>(m));	// raw SYN1-8 = the machine's defaults
+					for(int i = 0; i < kNumSyn; ++i)
+					{
+						// Untouched ones adopt the defaults (normally eSet already did this); touched ones are
+						// re-applied over them below.
+						if(synUntouched[t][i].exchange(false))
+							param[kSlotTrack + t * kSlotsPerTrack + kSlotSyn + i].store(h.param(t, i));
+						appliedSyn[t][i] = -1;
+					}
+				}
 				const int vol = std::clamp(param[kSlotTrack + t * kSlotsPerTrack + 1].load(std::memory_order_relaxed), 0, 127);
 				// VOL (param 17, read by the mixer's own gain formula) - not setLevel(), a separate kit LEV
 				// knob (HostModel.h) that also gates level but isn't what mdrender.cpp's working demo kit uses.
@@ -250,6 +296,11 @@ void Inst::run()
 				{
 					const int v = std::clamp(param[kSlotTrack + t * kSlotsPerTrack + 3 + kNumFx + i].load(std::memory_order_relaxed), 0, 127);
 					if(v != appliedRoute[t][i]) { appliedRoute[t][i] = v; h.setParam(t, kRouteRawParam[i], v); }
+				}
+				for(int i = 0; i < kNumSyn; ++i)
+				{
+					const int v = std::clamp(param[kSlotTrack + t * kSlotsPerTrack + kSlotSyn + i].load(std::memory_order_relaxed), 0, 127);
+					if(v != appliedSyn[t][i]) { appliedSyn[t][i] = v; h.setParam(t, i, v); }
 				}
 			}
 
@@ -325,7 +376,25 @@ void eSet(void* p, const char* key, const char* val)
 	auto* in = static_cast<Inst*>(p);
 	const int slot = slotOf(key);
 	if(slot < 0) return;
-	in->param[slot].store(std::atoi(val), std::memory_order_relaxed);
+	const int v = std::atoi(val);
+	const int t = (slot - kSlotTrack) / kSlotsPerTrack, s = (slot - kSlotTrack) % kSlotsPerTrack;
+	if(slot >= kSlotTempo)
+		in->param[slot].store(v, std::memory_order_relaxed);
+	else if(s == 0)	// machine: SYN1-8 go back to "untouched", taking the new machine's defaults
+	{
+		if(in->param[slot].exchange(v, std::memory_order_relaxed) == v) return;
+		const bool known = in->machines.ready.load(std::memory_order_acquire) && v >= 0 && v < 256 && in->machines.valid[v];
+		for(int i = 0; i < kNumSyn; ++i)
+		{
+			if(known) in->param[kSlotTrack + t * kSlotsPerTrack + kSlotSyn + i].store(in->machines.defaults[v][i], std::memory_order_relaxed);
+			in->synUntouched[t][i].store(true);
+		}
+	}
+	else
+	{
+		if(s >= kSlotSyn) in->synUntouched[t][s - kSlotSyn].store(false);
+		in->param[slot].store(v, std::memory_order_relaxed);
+	}
 }
 
 int eGet(void* p, const char* key, char* buf, int bufLen)
@@ -339,6 +408,18 @@ int eGet(void* p, const char* key, char* buf, int bufLen)
 		return std::snprintf(buf, static_cast<size_t>(bufLen), "%u", in->blocks.load(std::memory_order_relaxed)) > 0;
 	if(!std::strcmp(key, "core"))
 		return std::snprintf(buf, static_cast<size_t>(bufLen), "%d", in->core.load(std::memory_order_relaxed)) > 0;
+	// "track<N>_syn<P>_name": the current machine's label for that SYN knob (params.json dynamic_name)
+	{
+		int t = -1, p = 0, n = 0;
+		if(std::sscanf(key, "track%d_syn%d_name%n", &t, &p, &n) == 2 && key[n] == '\0' && t >= 0 && t < kTracks && p >= 1 && p <= kNumSyn)
+		{
+			const int m = in->param[kSlotTrack + t * kSlotsPerTrack].load(std::memory_order_relaxed);
+			if(!in->machines.ready.load(std::memory_order_acquire) || m < 0 || m >= 256 || !in->machines.valid[m]) return 0;
+			const char* name = in->machines.names[m][p - 1];
+			if(!*name) name = "-";
+			return std::snprintf(buf, static_cast<size_t>(bufLen), "%s", name) > 0;
+		}
+	}
 	const int slot = slotOf(key);
 	if(slot < 0) return 0;
 	return std::snprintf(buf, static_cast<size_t>(bufLen), "%d", in->param[slot].load(std::memory_order_relaxed)) > 0;

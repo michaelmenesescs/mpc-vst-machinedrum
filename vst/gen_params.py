@@ -14,9 +14,10 @@ duplicating them under ROUTE. FX_PARAMS' defaults give a clean, filter-open, EQ-
 leave every track's filter effectively closed; ROUTE_PARAMS default to 0 (matching real hardware's own
 send-level/LFO-off defaults).
 
-Not yet exposed: SYN1-8 (their good defaults are per-machine, set by HostModel::setMachine() itself;
-a flat VST default would stomp them the moment a machine is assigned - needs "has the user actually
-touched this knob" tracking in engine.cpp first, not done yet). Plus two globals, tempo and max_voices
+SYN1-8 (track%d_syn1..8, HostModel raw 0-7) come last (appended after the picker flags): their meaning
+and good defaults are per-machine, so engine.cpp resets untouched ones to the machine's own defaults on
+every machine change and serves each one's current label as "<key>_name" ("dynamic_name", read by the
+wrapper's effGetParamName) - their declared default here is only a placeholder. Plus two globals, tempo and max_voices
 (HostModel::setMaxActiveVoices, HANDOFF.md "adjustable voice cap")."""
 import json
 
@@ -70,6 +71,12 @@ for t in range(16):
     key = "track%d_machine" % t
     params.append({"key": "%s__open" % key, "name": "T%d Machine List" % (t + 1),
                     "min": 0, "max": 1, "default": 0, "display": "int", "popup_of": key})
+
+# SYN1-8, appended last (append-only rule). engine.cpp owns their values: see the docstring.
+for t in range(16):
+    for p in range(1, 9):
+        params.append({"key": "track%d_syn%d" % (t, p), "name": "T%d SYN%d" % (t + 1, p),
+                        "min": 0, "max": 127, "default": 0, "display": "int", "dynamic_name": True})
 
 json.dump({"name": "Machinedrum One", "params": params,
            "sections": [{"label": l, "keys": k} for l, k in sections]},
