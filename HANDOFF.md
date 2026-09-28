@@ -929,11 +929,60 @@ Steps:
     from the previous mockup. This is now the **confirmed target layout** for `gen_layout.py`'s next
     rewrite: top machine-bar pill (tap to open the big picker), 2x2 grid below with SYN/AMP-EFX/ROUTE
     quadrants (native `frame title=` bars) and one reserved quadrant.
-  - Not yet done: the live numeric value-under-knob text - need to check whether `shadow_skin.py`'s
-    `knob` widget already draws this natively (likely yes, matching the Monomodule screenshot) or needs
-    an explicit flag; actually rewriting `gen_layout.py` to the confirmed layout (still emits the old
-    flat 12-knob-per-track layout today); and everything already flagged above (digit font gap, picker
-    button wiring, ROUTE's own dial atlas, device build/test).
+  - **Confirmed the live numeric value-under-knob text is automatic**: read `shadow_skin.py`'s own
+    `knob` widget code directly - every knob always gets a native `Value` label below it
+    (`_value_label`), no flag needed. **Bigger finding while checking this**: knob labels
+    (`label="AMD"` etc.) are ALSO always real, native, device-rendered text (`_name_label`'s own
+    docstring: "genuinely proportional, device-rendered text... PARAMS[i].name", Titillium Web font) -
+    not baked bitmap art at all. So the custom label-font atlas work (Phase 1/4) was never actually
+    needed for AMP/EFX's or ROUTE's *fixed* labels - a generic `knob label="AMD"` already renders
+    clean text for free. The label font atlas remains genuinely necessary only for what native
+    `label=` can't do: the SYN page's per-machine-varying labels, and the machine picker's per-machine
+    name text - both cases where the text must change with a runtime parameter value, not a
+    compile-time param name.
+
+  **Full gap inventory taken and worked through (2026-09-28), per explicit user direction to "figure
+  out all gaps then proceed":**
+  1. ~~DIST placement bug~~ **FIXED** - `engine.cpp`'s `kFxKeys` no longer includes `dist`; a new
+     `kRouteKeys`/`kRouteRawParam` array (non-contiguous raw indices 16, 19-23) handles
+     `dist/del/rev/lfos/lfod/lfom`. Compiles and runs (`md-vst-smoke`: ready 322ms, peak 5643/32767, 0
+     underruns) with the corrected 17-slot-per-track layout (was implicitly 12).
+  2. ~~DEL/REV/LFOS/LFOD/LFOM not exposed~~ **FIXED** - `gen_params.py`'s new `ROUTE_PARAMS`, wired
+     through `engine.cpp`'s new route-key handling. 274 total params now (was fewer).
+  3. ~~ROUTE's own dial-pointer icon atlas not captured~~ **FIXED** - `build_route_knob_strips.py`
+     (mirrors `build_amp_fx_knob_strips.py`), using `build_dial_atlas.py`'s new `"+"`-joined
+     `screen_action` support for ROUTE's double-press navigation. Ran it for real: `dist`(36 states),
+     `del`(33), `rev`(36), `lfos`(7 - a real, narrow-range param like `fltw` was), `lfod`(36),
+     `lfom`(33). VOL/PAN reuse the generic knob look (no captured icon needed - see gen_layout.py's own
+     comment on why).
+  4. ~~gen_layout.py still emitting the old flat layout~~ **FIXED** - full rewrite to the confirmed
+     design: MACHINE knob at top, 2x2 grid (SYN frame-only / AMP-EFX 8 real knobs / ROUTE 8 knobs, 6
+     real + vol/pan generic / one reserved frame). Validated against the real toolchain code
+     (`shadow_skin.parse_layout` + `skin_assets.look_of`/`check`): 17 tabs, 224 strip knobs (14 keys x
+     16 tracks), zero errors.
+  5. **Live-value-text and native-label-text questions** - answered above, no work needed, both
+     automatic.
+  6. **Machine picker button wiring into layout.conf** - **NOT DONE**, still the single biggest
+     remaining piece. `build_machine_picker.py`/`build_machine_bar.py` only produce standalone image
+     assets; actually placing 131 per-machine toggle buttons with `IndexedEnabling` gating (matching
+     `mk_skin.py`'s hand-rolled approach, which calls `shadow_skin.py`'s internal `ss._local`/
+     `_placed`/`_button` primitives directly, bypassing the layout.conf DSL entirely) needs either a
+     bespoke Python generator script (mirroring `mk_skin.py`'s own architecture) or a new generic
+     widget kind added to `shadow_skin.py` itself (a separate repo, bigger commitment). Not started.
+  7. **Digit font gap** (label font missing `0 2 3 5 6 7 8 9`) - **NOT DONE**. Blocks the machine
+     picker/bar from showing fully legible machine names (e.g. "TRXB2" renders as "TRXB"). Needs its
+     own short capture pass; a promising unexplored lead is that `mdmachine`'s own listing could pick
+     an exact target machine name containing each missing digit, then compute (or just empirically
+     find) the `SoundSelection` tap count to reach it - not attempted yet.
+  8. **SYN1-8 params + "touched" tracking in `engine.cpp`** - **NOT DONE**, unchanged blocker, a real
+     engine feature (not skin work) needed before the SYN quadrant can show anything but an empty
+     frame.
+  9. **Real device build/test** - **NOT DONE** this whole session for any of the new work (params,
+     layout, engine.cpp changes, knob filmstrips). Only verified locally: x86 compile+link+smoke-test,
+     and the layout.conf's structural validity against the toolchain's own parser/checker. A real
+     `build_so.sh` Docker build and Force deploy is the natural next verification step whenever the
+     user is present for it.
+  10. **LEV bar-meter** - still parked, not investigated further.
 
   **Phase 1 progress (2026-09-28): rename mechanism confirmed empirically, unblocks capture.**
   - No sysex/data API sets a kit/pattern/track name (checked `mdautomation.cpp`/`mdsysexautomation.cpp`/
