@@ -32,7 +32,9 @@ import json
 import os
 import sys
 
-sys.path.insert(0, "/home/sam/mpc-vst/tools")
+# mpc-vst-plugins checkout's tools/ dir - MPC_VST_TOOLS env var (set this session's Docker runs to
+# /mv/tools, matching build_so.sh's own mount point) or the user's local checkout as a fallback.
+sys.path.insert(0, os.environ.get("MPC_VST_TOOLS", "/home/sam/mpc-vst/tools"))
 import shadow_skin as ss  # noqa: E402
 
 NUM_MACHINE_OPTIONS = 192  # track%d_machine's declared max (191) + 1, gen_params.py
@@ -118,10 +120,13 @@ def inject_machine_picker(comps, tabs, index, picker_manifest, bar_manifest, pan
 
 
 def main() -> int:
-    if len(sys.argv) < 7:
+    if len(sys.argv) < 9:
         print(__doc__, file=sys.stderr)
+        print("       (also needs <vendor> <name> - matches shadow_skin.write_skin()'s own args, "
+              "for version.xml/Q-Links.json)", file=sys.stderr)
         return 2
-    layout_path, params_path, skin_dir, art_bin, picker_manifest_path, bar_dir = sys.argv[1:7]
+    (layout_path, params_path, skin_dir, art_bin, picker_manifest_path, bar_dir,
+     vendor, name) = sys.argv[1:9]
     params = json.load(open(params_path))["params"]
     index = {p["key"]: i for i, p in enumerate(params)}
 
@@ -146,8 +151,24 @@ def main() -> int:
         "info": {"version": 1, "type": "CompleteDescription"},
         "tabs": tabs}}
     json.dump(tui, open(os.path.join(skin_dir, "TUI.json"), "w"), indent=1)
+
+    # The rest of what shadow_skin.write_skin() would normally produce alongside TUI.json - a
+    # deployable skin package needs these too, not just the page data (found missing the first time
+    # this script was run against the real html_art renderer end to end).
+    qlinks = {"version": 4, "info": {"version": 1, "type": "CompleteDescription"},
+              "Screen Mode Q-Links": {"version": 4, "map": qmap},
+              "Program Mode Q-Links": ss.program_qlinks(layout_path, params, qmap)}
+    d = os.path.dirname(skin_dir.rstrip("/"))  # skin_dir is "<d>/Plugin Skins"
+    open(os.path.join(d, "version.xml"), "w").write(
+        "<?xml version='1.0' encoding='utf-8'?>\n<plugincontent version=\"1.0\">\n"
+        "\t<identifier>%s.vst.%s</identifier>\n\t<version>1.0.0.0</version>\n</plugincontent>\n"
+        % (vendor, name.lower().replace(" ", "")))
+    for f, obj in (("Q-Links.json", qlinks), ("Q-Links - 8by1.json", qlinks)):
+        json.dump(obj, open(os.path.join(skin_dir, f), "w"), indent=4)
+
     print(f"wrote {os.path.join(skin_dir, 'TUI.json')} with machine picker injected "
-          f"({len(picker_manifest['machines'])} machines x {len(tabs)} tracks)", file=sys.stderr)
+          f"({len(picker_manifest['machines'])} machines x {len(tabs)} tracks), "
+          f"plus version.xml + Q-Links.json", file=sys.stderr)
     return 0
 
 
