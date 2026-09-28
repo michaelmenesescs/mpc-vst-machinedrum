@@ -708,6 +708,39 @@ Steps:
     screens exist beyond SYN/AMP-EFX (LFO page? routing page? - `panel:DataPageForward/Backward` had
     no visible effect when tried from the AMP/EFX page, logged under the parked LEV investigation).
 
+  **Found the third per-track page: ROUTE (2026-09-28), answering "what other Machinedrum pages are
+  there?"** The `SynthesisEffectsRouting` panel button isn't a single-destination button - its own
+  enum name was the clue, in hindsight. Pressing it a SECOND time (same button, not a different one)
+  cycles past AMP/EFX to a page whose breadcrumb reads "ROUT": `DIST VOL PAN DEL / REV LFOS LFOD
+  LFOM`, the same 4x2 `DIAL_GRID` geometry as SYN and AMP/EFX. A third press returns to a screen
+  pixel-identical to the true SYN home page - confirmed by direct capture comparison, not assumed.
+  Verified `DataEntryA` still maps to that page's first dial (DIST) the same way it does on the other
+  two pages (turned it and read the live numeric overlay "20"). So there are exactly **three** real
+  per-track pages - SYN, AMP/EFX ("TFX"), ROUTE ("ROUT") - not two, and the cycle wraps after three
+  presses (no further pages reachable this way).
+  - **This corrects a real placement mistake already shipped in `vst/gen_params.py`/`gen_layout.py`**:
+    `DIST` was modeled as an awkward 9th param wrapping onto AMP/EFX's grid (that file's own old
+    comment: "9th (dist) wraps to a 3rd row"), but real hardware's AMP/EFX page has only 8 dials
+    (`AMD AMF EQF EQG FLTF FLTW FLTQ SRR`, no DIST at all) - DIST is actually ROUTE's own first dial.
+    `SYN(8) + AMP/EFX(8) + ROUTE(8) = 24`, exactly matching `HostModel::kParams` - confirms the real
+    split is clean 3x8, not the 2-page-with-an-awkward-9th-slot shape currently coded. **Not fixed
+    yet** - `gen_params.py`'s `FX_PARAMS` list and `gen_layout.py`'s knob layout both need DIST moved
+    off the AMP/EFX tab; `vol`/`pan` are also real ROUTE-page citizens on hardware (shown alongside
+    DIST/DEL/REV/LFOS/LFOD/LFOM) rather than a separate top-of-tab area, though keeping them separate
+    in our own skin is a legitimate design choice, not a correctness bug the way DIST's placement is.
+  - `ui_spec.py` updated with a `SCREENS["route"]` entry (same `DIAL_GRID`, `reach:
+    ["SynthesisEffectsRouting", "SynthesisEffectsRouting"]`, fixed labels `DIST VOL PAN DEL REV LFOS
+    LFOD LFOM`). This is genuinely good news for the user's 2x2 tab-per-track design: **machine
+    picker, SYN, AMP/EFX, ROUTE is a clean, real 4-quadrant mapping** - three confirmed real hardware
+    pages plus the machine picker, no invented/placeholder quadrant needed.
+  - Not yet done: capturing ROUTE's own dial-pointer icon atlas (Phase 2's `build_dial_atlas.py` was
+    only ever run against AMP/EFX's 8 dials - ROUTE's dials likely need their own sweep per parameter,
+    since dial appearance is param-specific, not page-specific; VOL/PAN/DIST/DEL/REV/LFOS/LFOD/LFOM
+    each need their own `dial_atlas.json` the same way AMD/AMF/etc. did) and extracting ROUTE's label
+    text into the small label font - checked, and no new capture pass is needed: every letter in
+    `DIST VOL PAN DEL REV LFOS LFOD LFOM` (D I S T V O L P A N E R F M) is already in the current
+    24-letter set.
+
   **Phase 4 — Compositor. First working version 2026-09-28.**
   - Wrote `tools/mdtrace/compose_skin.py` (committed): given the font atlas, one dial-pointer atlas
     per knob, and `ui_spec.py`'s `DIAL_GRID`, it draws a screen's 8 dial icons + labels for a chosen
