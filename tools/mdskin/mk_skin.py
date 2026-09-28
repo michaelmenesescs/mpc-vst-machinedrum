@@ -30,8 +30,10 @@ import shadow_skin as ss  # noqa: E402  (TUI.json helpers shared with the other 
 
 args = dict(a.split("=", 1) for a in sys.argv[5:])
 PRESETS = {"default": ("000000", "ffffff"), "inverted": ("ffffff", "000000"), "lowcontrast": ("5c5c5c", "c4c4c4"),
+           # the Machinedrum's own LCD: near-black ink on its orange-red backlight (this port's default)
+           "md": ("1a0800", "ff5a1f"),
            "red": ("ff3b2e", "1c0403"), "blue": ("5ab0ff", "04112b"), "green": ("52ff70", "031608"), "orange": ("ffa11f", "1e1000")}
-_skin = args.get("skin", "default")
+_skin = args.get("skin", "md")
 _swap = _skin.endswith("-inverted") and _skin != "-inverted"
 _ink, _paper = PRESETS.get(_skin[:-9] if _swap else _skin, PRESETS["default"])
 if _swap:
