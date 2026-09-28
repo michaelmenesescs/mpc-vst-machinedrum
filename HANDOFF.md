@@ -686,16 +686,27 @@ Steps:
     page knobs, which Phase 3 will also need labels for).
 
   **Phase 3 — UI structure (hand-authored, not extracted — the one part with no ROM-derived
-  shortcut).**
-  - Unlike fonts/icons, page layout (which labels go where, which screens exist, which are
-    per-machine) has to be encoded by hand from what we observe navigating the real menus, the same
-    kind of manual encoding Monomodule's own `SpecData.cpp` represents for the Monomachine (that
-    file is also hand-written domain knowledge, not decoded from ROM). For the Machinedrum: enumerate
-    the screens the plugin needs (Kit/Track overview, SYN page, AMP/EFX page, ...; check what else
-    real navigation reaches - LFO page? routing?), and for each, its exact label positions. The one
-    part of this that *is* already programmatic: per-machine SYN1-8 label sets come straight out of
-    `MachineRunner`'s existing descriptor table (`MachineInfo::params`), no manual transcription
-    needed there.
+  shortcut). Started 2026-09-28.**
+  - Wrote `tools/mdtrace/ui_spec.py` (committed): the SYN page and the AMP/EFX page turned out to be
+    **the same physical 4x2 dial-grid widget** - confirmed by diffing the two captures, dial positions
+    are pixel-identical, only the label text and bound parameter differ. `DIAL_GRID` captures the one
+    shared geometry (dial crop per cell, label text band at y=3-7 above each dial); `SCREENS["amp_fx"]`
+    and `SCREENS["syn"]` each just reference it with their own label source.
+  - **Independently verified the "SYN1-8 labels are free from MachineRunner" claim against real
+    hardware ground truth** (not just trusted from reading the header comment): built a standalone
+    `mdmachine` tool (compiled `tools/mdmachine/mdmachine.cpp` directly against the existing
+    `build-vst-x86/libmdcore.a` + `mc68k`/`dsp56kEmu` static libs with a plain `g++` invocation -
+    faster than a full CMake reconfigure for a one-off tool check) and ran it against the user's OS
+    `.syx`. It lists every machine's name and 8 SYN param names, decoded from the OS's own machine
+    descriptor table. Machine 28, `TRXB2`, reports `PTCH DEC RAMP HOLD TICK NOIS DIRT DIST` - an
+    **exact match** to the SYN page capture from earlier this session (same 8 labels, same order) -
+    and `TRXB2` is exactly what the real LCD's breadcrumb showed split across two segments
+    (`TRX►B2►SYNT`). So `MachineInfo::params` is confirmed correct and sufficient for Phase 3/4's
+    per-machine SYN labels - no manual transcription needed, and now proven, not just assumed.
+  - Not yet done: pixel-verifying the label text band's column boundaries per-column (currently an
+    approximate `label_col_pitch=20`, not confirmed against a third page); confirming whether any
+    screens exist beyond SYN/AMP-EFX (LFO page? routing page? - `panel:DataPageForward/Backward` had
+    no visible effect when tried from the AMP/EFX page, logged under the parked LEV investigation).
 
   **Phase 4 — Compositor.**
   - A script (this project's `mk_skin.py` equivalent, not started) that, given the font/icon atlas
