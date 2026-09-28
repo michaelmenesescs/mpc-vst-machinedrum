@@ -988,29 +988,17 @@ Steps:
      once per subpage). **Not yet done**: the real Docker `html_art` build and an on-device test -
      the dry run proves the JSON is well-formed and internally consistent, not that it renders/behaves
      correctly on a real Force.
-  7. **PARKED (2026-09-28, explicit user direction - same status as the LEV meter).** Digit font gap -
-     partially closed, and a real correction to an earlier
-     assumption.** Tried the "compute the tap count to a target machine" lead from the note this
-     replaces: **it doesn't work**, because `SoundSelection` does NOT cycle linearly through all 135
-     machines the way `mdmachine`'s listing order would predict. Confirmed by direct testing: large
-     jumps (`encoder:SoundSelection:60`, even `:-1` x40) all land within the *same* small ~13-machine
-     loop (`TRXB2 TRXSD TRXXC TRXXT TRXCP TRXRS TRXCB TRXCH TRXOH TRXCY ROM14 ROM06 ROM29`, repeating
-     regardless of direction or magnitude) - this control is likely a bounded quick-select of some
-     kind, not the full machine browser. Also found: single-step taps chained immediately after a
-     large jump frequently don't register at all (several fully-identical consecutive frames in a
-     10-tap probe) - a real timing/debounce quirk, not a scripting mistake.
-     - **Digits captured and verified this session**: `2` and `9` (from "ROM29", breadcrumb capture,
-       R/O/M came out correctly shaped alongside them, so trusted) join the existing `1`/`4`. `6` is a
-       weaker capture (self-consistent shape, but its neighbor slot in the same capture showed
-       drift-corrupted output, so the surrounding context that would normally confirm it is suspect).
-       **`0` was attempted twice and rejected both times** - one attempt looked like a plausible
-       "slashed zero" but couldn't be independently confirmed, the other was clearly drift-corrupted
-       (identical to a neighboring digit, which can't be right). Better to leave `0` missing than ship
-       a guessed glyph.
-     - **Not yet done**: a *reproducible, fresh-boot* action sequence for `2`/`9`/`6` - they were found
-       via one-off exploratory sequences (large jumps, reverse sweeps) that aren't yet distilled into
-       a clean recipe `build_label_font_atlas.py` could re-run deterministically, so they are NOT yet
-       added to the committed script or its atlas output. Still fully missing: `0 3 5 7 8`.
+  7. ~~Digit font gap~~ **FIXED (2026-09-28).** `SoundSelection` turned out to be a dead end for
+     reaching arbitrary digits - confirmed by direct testing that it loops within a bounded
+     ~13-machine subset regardless of jump size or direction (a real, useful correction to the
+     original "compute the tap count" plan). The actual fix: the live numeric readout under a turned
+     ROUTE-page knob (e.g. "20" under DIST after `encoder:DataEntryA:20`) is the *same* 5px font, and
+     `DataEntryA` reliably reaches any value 0-127 (unlike `SoundSelection`). Captured `0 3 5 7 8` from
+     values 30/50/70/78/83 and `2 6 9` from 92/26 - every digit cross-confirmed across multiple frames
+     (e.g. "0" identical in all of 30/50/70). **All 10 digits are now in the committed
+     `build_label_font_atlas.py` and its atlas output**, fully reproducible from a clean run, not a
+     one-off capture. Only `J`/`Z` remain missing from the label font (24 of 26 letters, all 10
+     digits) - low priority, neither has come up in any real label/machine-name text yet.
   8. **SYN1-8 params + "touched" tracking in `engine.cpp`** - **NOT DONE**, unchanged blocker, a real
      engine feature (not skin work) needed before the SYN quadrant can show anything but an empty
      frame.
@@ -1027,11 +1015,21 @@ Steps:
        this run surfaced they were missing - `version.xml` + `Q-Links.json`/`Q-Links - 8by1.json`,
        which `build_skin_with_picker.py` hadn't been writing at all (only `write_skin()`'s `TUI.json`
        half was ported over initially; fixed to also emit the rest matching `write_skin()` exactly).
-     - **Still not done**: an actual on-device deploy. This confirms both halves produce complete,
-       well-formed real artifacts built by the real toolchain - not that they render or behave
-       correctly on a real Force. That's the natural next step whenever the user is present for it
-       (deploying + restarting MPC is a real-device action, not taken without being asked).
-  10. **LEV bar-meter** - still parked, not investigated further.
+     - **Deployed to the real Force (2026-09-28)**, via `mpc-vst`'s own `tools/release.py` +
+       generated `install.sh` (safe, tested installer: backs up `MPC.settings`, validates XML,
+       restarts MPC with an error trap) rather than hand-rolled scp/settings edits. md5-verified
+       identical to the local build; `MPC.settings` gained exactly one entry; MPC restarted cleanly
+       (new PID, device uptime unaffected - a service restart, not a reboot). This is an upgrade of an
+       already-once-deployed earlier build (the device already had the user's `.syx` at
+       `/sdcard/vst/machinedrum/` and a prior `machinedrum_one.so` from an earlier session). **Not yet
+       done**: actually loading the plugin onto a track and playing/exercising it in MPC's own UI -
+       the install put the new build in place, but exercising it interactively is the user's own
+       next step at the device.
+  10. **PARKED (2026-09-28, explicit user direction).** LEV bar-meter - not investigated further.
+      User suggested (2026-09-28) a lead for the still-missing J/Z label-font letters worth trying
+      next time this is picked up: MPC's/the Machinedrum's own on-screen keyboard when naming a file
+      (a hit, a project) may expose them - not yet tried, parked alongside LEV per explicit
+      direction to stop for now.
 
   **Phase 1 progress (2026-09-28): rename mechanism confirmed empirically, unblocks capture.**
   - No sysex/data API sets a kit/pattern/track name (checked `mdautomation.cpp`/`mdsysexautomation.cpp`/
