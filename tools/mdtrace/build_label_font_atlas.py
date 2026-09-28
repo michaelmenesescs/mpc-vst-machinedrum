@@ -35,6 +35,13 @@ WORDS_BY_FRAME = {
 }
 MAX_FRAME = max(WORDS_BY_FRAME)
 
+# The bottom breadcrumb ("TRX*XC*SYNT" - "*" is a placeholder for the "*" arrow glyph between
+# segments, kept so the pitch-4 slicer stays aligned; it's never extracted) is the SAME small font,
+# used here to pick up letters (X, K) this session's SYN-machine word sample never happened to hit.
+# Found by inspecting the same 26-frame sweep used for WORDS_BY_FRAME, at these two extra steps.
+BREADCRUMB_Y = (57, 62)
+BREADCRUMB_WORDS_BY_FRAME = {4: "TRX*XC*SYNT", 20: "ROM14*ATAK*S"}
+
 LABEL_Y = (3, 8)          # half-open row range within the LCD (see module docstring)
 COL_X0 = [48, 68, 88, 108]  # column left edges (same pitch as DIAL_GRID's label_col_pitch)
 COL_W = 20
@@ -117,11 +124,16 @@ def main() -> int:
 
     args = [str(mdprobe), str(flash), str(flashcache)]
     frame_paths = []
+    breadcrumb_paths = []
     for step in range(0, MAX_FRAME + 1):
         if step in WORDS_BY_FRAME:
             p = ppm_dir / f"f{step}.ppm"
             args.append(f"lcdpng:{p}")
             frame_paths.append((step, WORDS_BY_FRAME[step], p))
+        if step in BREADCRUMB_WORDS_BY_FRAME:
+            bp = ppm_dir / f"bc{step}.ppm"
+            args.append(f"lcdpng:{bp}")
+            breadcrumb_paths.append((BREADCRUMB_WORDS_BY_FRAME[step], bp))
         if step < MAX_FRAME:
             args.append("encoder:SoundSelection:1")
 
@@ -156,6 +168,15 @@ def main() -> int:
                 for letter, rows in slice_word_at(pix, w, col_x0, word, row1_y).items():
                     atlas.setdefault(letter, rows)
 
+    # The breadcrumb is a bright bar (white text on black), the opposite polarity of every other
+    # capture in this script - invert before reusing the same slicer.
+    for word, p in breadcrumb_paths:
+        w, h, pix = load_ppm(p)
+        inv = bytearray(255 - b for b in pix)
+        for letter, rows in slice_word_at(inv, w, 0, word, BREADCRUMB_Y).items():
+            if letter != "*":
+                atlas.setdefault(letter, rows)
+
     print(f"{len(atlas)} letters extracted: {''.join(sorted(atlas))}", file=sys.stderr)
 
     cols, gap = 10, 2
@@ -178,6 +199,8 @@ def main() -> int:
 
     import os
     if not os.environ.get("MD_KEEP_FRAMES"):
+        for _, p in breadcrumb_paths:
+            p.unlink()
         for _, _, p in frame_paths:
             p.unlink()
         ppm_dir.rmdir()
