@@ -754,6 +754,43 @@ Steps:
   a multi-session build. All four phases now have a working first pass; the small-label-font
   extraction above is the most concrete remaining gap before the compositor is presentation-ready.
 
+  **How the per-machine SYN labels actually become "dynamic" (2026-09-28) - answers the user's direct
+  question, "Monomodule was able to achieve this, how did they do it?".** They're not dynamic at all
+  in the sense of a live redraw: `mpc-vst-monomodule/vst/skin/mk_skin.py` bakes **one static overlay
+  image per machine** (`image_comp("SYN grid %s" % m["displayName"], ...)`) and places all of them as
+  layout components gated by MPC's own native `IndexedEnabling` skin feature -
+  `additionalInvalidatingHandles: ["IndexedEnabling/<i>/<N>/Parameter <p>"]` - which the *device's own
+  skin engine* uses to show exactly one of the N images based on the live value of parameter `p` (here,
+  the machine-select param), confirmed working for VST2 params on real Force hardware
+  (`/home/sam/mpc-vst/docs/NOTES.md`, "Conditional visibility works for VST2 params" / "Mode panels").
+  Our own toolchain (`mpc-vst-plugins`) already has a layout-level shorthand for exactly this:
+  `when=<param>:<option>` in `shadow_skin.py`'s layout.conf syntax, verified on a Force the same way.
+  So the plan is: bake N per-machine label images (same technique as this session's font/icon work),
+  and let `gen_layout.py` emit one `when=track%d_machine:<id>` component per machine per track,
+  reusing our existing dial-pointer filmstrips unchanged (those are value-driven, not machine-driven,
+  so Monomodule places them as ordinary components alongside the conditional label image, not
+  duplicated per machine).
+  - **This is tractable for 135 real Machinedrum machines (a scarier number than Monomachine's own,
+    much shorter machine list) because most of them share identical label text**: deduping by the
+    exact 8-label tuple across all 135 machines gives only **53 unique combinations** (e.g. 52 of the
+    135 - all the ROM/sample-player machine variants - show exactly the same `PTCH DEC HOLD BRR STRT
+    END RTRG RTIM`). So only 53 small PNGs need to exist; the `when=` layout entries multiply per
+    (track, machine id) - up to 16 x 135 = 2160 lines - but they all point at that same small set of
+    53 files, not 2160 separate images.
+  - Wrote `tools/mdtrace/gen_syn_label_overlays.py` (committed) and ran it for real: parses
+    `mdmachine`'s full listing (135 machines), dedupes by label tuple, renders each unique combo with
+    the Phase 4 label font, and writes a `manifest.json` (`machine id -> {name, params, overlay
+    filename}`). Confirmed **53 unique overlays produced**, and spot-checked machine 28 (`TRXB2`,
+    already independently verified earlier this session) - its overlay reads `PTCH DEC RAMP HOLD /
+    TIC NOIS DIRT DIST` correctly (only "TICK" short its K, since K isn't in the 22-letter label font
+    yet - a small, known, easily-closed gap, not a structural problem).
+  - **Not yet done - this is the real next phase of work, likely its own session**: wire
+    `gen_syn_label_overlays.py`'s output into `vst/gen_layout.py` as `when=track%d_machine:<id>`
+    components (one set per track, referencing the shared 53 PNGs), verify the resulting
+    `layout.conf`/skin actually builds and shows correctly on the Force, and extend the label font to
+    cover the handful of currently-missing letters (J, K, X, Z at minimum - check the full 53-combo
+    set for exactly which letters are actually needed first, rather than guessing).
+
   **Phase 1 progress (2026-09-28): rename mechanism confirmed empirically, unblocks capture.**
   - No sysex/data API sets a kit/pattern/track name (checked `mdautomation.cpp`/`mdsysexautomation.cpp`/
     `mdrom.cpp`/`mdromdata.cpp`/`mdflash.cpp`/`mdsim.cpp` — none). Confirmed real hardware behavior:
