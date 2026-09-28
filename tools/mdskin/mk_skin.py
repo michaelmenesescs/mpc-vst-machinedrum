@@ -320,7 +320,7 @@ def enabling(key, i, n):
 
 # ------------------------------------------------------------ page geometry (window coords -> skin px) --------------
 PAGE_POS = {"SYN": (0, 0), "AMP": (1, 0), "ROUTE": (0, 1), "TRACK": (1, 1)}
-PAGE_TITLE = {"SYN": "SYN", "AMP": "AMP/EFX", "ROUTE": "ROUTE", "TRACK": None}   # TRACK: the LFO page, "LFO <nn-XX>" per tab
+PAGE_TITLE = {"SYN": "SYN", "AMP": "AMP/EFX", "ROUTE": "ROUTE", "TRACK": "LFO"}   # TRACK: the track's LFO page
 
 
 def page_origin(name):
@@ -420,9 +420,9 @@ bgs = []
 for t in range(TRACKS):
     b_ = Image.new("RGB", (SKIN_W, SKIN_H), PAPER)
     px_text(b_, F["bold8"], "MD", OX + MARG + (LEV_W - text_width(F["bold8"], "MD") * 4) // 2, OY + 8 + (BAR_ROWS * S - F["bold8"].h * 4) // 2, 4, INK)
-    # the 4th quadrant: the track's LFO page (the MD's own, FUNCTION + SYN/EFX/ROUTE); its title names the track
+    # the 4th quadrant: the track's LFO page (the MD's own, FUNCTION + SYN/EFX/ROUTE)
     for name, cells in (("SYN", syn_cells(EMPTY_MACHINE)), ("AMP", AMP_CELLS), ("ROUTE", ROUTE_CELLS), ("TRACK", LFO_CELLS)):
-        cv = page_canvas(name, cells, "LFO %s" % TRACK_NAMES[t] if name == "TRACK" else None)
+        cv = page_canvas(name, cells, "LFO" if name == "TRACK" else None)
         b_.paste(cv.image(), page_origin(name))
     bgs.append(b_)
 for t, b_ in enumerate(bgs):
@@ -448,7 +448,7 @@ def touch_knob(name, index, x0, y0, tab):
 
 
 def cell_dials(page, cells, keys, t):
-    """the dial strips of a page's live cells (display only)"""
+    """the dial strips of a page's live cells (display only); the preview shows each param's declared default"""
     x0, y0 = page_origin(page)
     for k, p in enumerate(cells):
         if p.display == "blank":
@@ -456,7 +456,9 @@ def cell_dials(page, cells, keys, t):
         fn, fw, fh = strip_image(p)
         kx = x0 + ((k % 4) * CW + FR_X) * S
         ky = y0 + (GRID_Y + (k // 4) * CELL + FR_Y) * S
-        place(knob_def(fn, fw, fh, interactive=False), "%s %s" % (page, p.label or k), PIDX[keys[k]], kx, ky, fw, fh, t, img=fn, raw=p.default)
+        pd_ = params[PIDX[keys[k]]]
+        raw = int(round((pd_["default"] - pd_["min"]) * 127.0 / (pd_["max"] - pd_["min"]))) if pd_["max"] > pd_["min"] else 0
+        place(knob_def(fn, fw, fh, interactive=False), "%s %s" % (page, p.label or k), PIDX[keys[k]], kx, ky, fw, fh, t, img=fn, raw=raw)
 
 
 def cell_touch(page, cells, keys, t):
