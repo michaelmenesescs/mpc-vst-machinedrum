@@ -824,9 +824,56 @@ Steps:
     into `vst/gen_layout.py` as a `picture key=track%d_machine files=<192 entries from manifest.json>`
     line per track (or the expanded `when=` form directly); this SYN tab is separately blocked on
     exposing SYN1-8 params at all, which needs "touched" tracking in `engine.cpp` first (see
-    `gen_params.py`'s own docstring) - a real C++ engine change, not just skin generation; and extend
-    the label font to cover the handful of currently-missing letters (J, K, X, Z at minimum - check the
-    full 53-combo set for exactly which letters are actually needed first, rather than guessing).
+    `gen_params.py`'s own docstring) - a real C++ engine change, not just skin generation.
+  - **Label font extended to X and K (2026-09-28), via a new source: the bottom breadcrumb.** Same
+    26-frame `SoundSelection` sweep, but reading `TRX►XC►SYNT` and `ROM14►ATAK►S` at the bottom of the
+    screen (same small font, confirmed by shape) rather than the header label row - a bright bar
+    (white text on black), so the slicer needs its input inverted first. 24 of 26 letters now covered
+    (only J, Z missing).
+
+  **New skin design direction (2026-09-28, user-directed): one tab per track, a machine picker, then a
+  2x2 layout of the Machinedrum's own SYN/AMP/FX-style sub-pages** (mirroring Monomodule's own
+  SYN/AMP/FILT/EFX tab structure, adapted to the Machinedrum's actual 2 real pages - SYN and a combined
+  AMP/EFX - organized into 4 logical quadrants for the UI even though the real hardware only has 2
+  physical screens). Superseding the earlier flat "12 knobs in one page" `gen_layout.py` layout.
+
+  **Machine picker: duplicating Monomodule's own design (2026-09-28, user-directed), not the generic
+  layout `popup` widget.** The generic `popup` widget lays out every option as one flat, non-scrolling
+  grid - fine for Monomodule's shorter machine list, unusable for the Machinedrum's 135 real machines
+  (get the same page unusably tall). Real Elektron hardware itself groups machines into families for
+  exactly this reason. Wrote `tools/mdtrace/build_machine_picker.py` (committed), duplicating
+  Monomodule's actual `mk_skin.py` picker technique: one column per category, every row visible with no
+  scrolling, a dotted separator between rows (`mpc-vst-monomodule/vst/skin/mk_skin.py` lines ~1005-1050,
+  read directly, not guessed).
+  - **Categories found empirically from `mdmachine`'s real listing** (grouping by the name's first 3
+    characters, not guessed): `ROM(48) MID(16) E12(16) TRX(14) P-I(9) RAM(8) EFM(8) INP(6) CTR(6)` - 9
+    categories, 131 real voice machines (excludes ids 0-3, the internal GND-- utility entries). First
+    grouping attempt split ROM into two columns because its machines aren't contiguous by id - fixed by
+    grouping on prefix globally, not by adjacency.
+  - Ran it for real: generated `picker_panel.png` (1280x600, 9 column borders + headers + dotted rows)
+    and `manifest.json` (each machine id -> `{name, params, rect}`). All 131 rows fit **with no
+    scrolling needed** at `ROW_H=12` (Monomodule's own row height, 46px, assumed rich per-machine
+    description text we don't have - dropping the blurb and shrinking to 12px is what makes "every
+    category, no scroll" fit here). Visually verified at native res: category columns are clean and
+    correctly grouped, row text is legible.
+  - **Real gap found by looking at the actual output, not assumed**: many rows in the digit-heavy
+    categories (ROM, MID, RAM) render as visually IDENTICAL text (e.g. many "ROM" rows with no visible
+    suffix) because the label font is missing most digits - it only has `1` and `4` (picked up
+    incidentally from earlier captures). A machine picker where several rows look the same is a real
+    usability defect, not cosmetic. Also missing: `2` in the "E12" category header (cosmetic only, its
+    row content happens to use no digits at all - checked, not assumed). **Fix not done yet**: extract
+    the remaining digits (`0 2 3 5 6 7 8 9`) - checked one obvious opportunistic source (the tempo
+    readout "125.0" visible in every AMP/EFX and SYN capture) and it's a **third, different font size**
+    (8px tall, vs. 5px for labels and 13px for name-entry) - not directly reusable, would need its own
+    short extraction pass the same way as the other two fonts. This is the concrete next step before
+    the picker is actually usable, not merely presentable.
+  - Not yet done beyond the digit gap: the on/off row BUTTON images per machine (this pass only drew
+    static label text into the shared panel background, matching Monomodule's row layout, but not yet
+    the per-machine toggle image pair `mk_skin.py` places over each row); wiring any of this into
+    `vst/gen_layout.py` (the picker mechanism itself - `IndexedEnabling`/IndexedEnabling-driven kids,
+    matching how Monomodule's own "Machine list" panel is placed - see this session's earlier "How the
+    per-machine SYN labels actually become dynamic" note, same mechanism); and a real device
+    build/test.
 
   **Phase 1 progress (2026-09-28): rename mechanism confirmed empirically, unblocks capture.**
   - No sysex/data API sets a kit/pattern/track name (checked `mdautomation.cpp`/`mdsysexautomation.cpp`/
