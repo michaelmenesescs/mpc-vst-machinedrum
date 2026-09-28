@@ -285,9 +285,39 @@ Catalog* buildCatalog(const std::vector<std::string>& _dirs, uint64_t _sig)
 // samples aren't loaded yet), MID/CTR (no audio) or INP/RAM (no audio input, no sampling here)
 bool randomPoolMachine(int _id) { return (_id >= 16 && _id < 80); }
 
+// ROM machines: ROM01-32 are OS machine ids 128-159, ROM33-48 are 176-191; each plays sample slot 0-47.
+int romSlotOf(int _id) { return _id >= 128 && _id < 160 ? _id - 128 : _id >= 176 && _id < 192 ? _id - 176 + 32 : -1; }
+
+// The ROM machines' sample memory (tools/mdkits: the voice DSP's sample directory and sample data as the MD sets
+// them up from its sample flash at boot, extracted from the user's own flash image): "MDS1", then records
+// [u32 address][u32 count][count x u32 word], ending with count 0. Returns the words loaded.
+size_t loadSamples(md::engine::VoiceEngine& _voices, const std::string& _path)
+{
+	std::FILE* f = std::fopen(_path.c_str(), "rb");
+	if(!f) return 0;
+	char magic[4] = {};
+	size_t total = 0;
+	if(std::fread(magic, 1, 4, f) == 4 && !std::memcmp(magic, "MDS1", 4))
+	{
+		std::vector<uint32_t> words;
+		uint32_t head[2];
+		while(std::fread(head, 4, 2, f) == 2 && head[1] > 0 && head[1] < 0x800000)
+		{
+			words.resize(head[1]);
+			if(std::fread(words.data(), 4, head[1], f) != head[1]) break;
+			_voices.writeP(head[0], words.data(), words.size());
+			total += words.size();
+		}
+	}
+	std::fclose(f);
+	return total;
+}
+constexpr uint32_t kRomDirectory = 0x147e00;	// 4 words per sample slot: start, length, loop, flags
+
 struct Inst
 {
-	std::string osPath;
+	std::string osPath, dataDir;
+	bool romSlot[48] = {};	// which ROM sample slots hold a sample (set once the sample memory is loaded)
 	std::atomic<int> param[kNumSlots];
 	std::atomic<bool> synUntouched[kTracks][kNumSyn];
 	MachineTable machines;
@@ -417,7 +447,7 @@ struct Inst
 	{
 		std::vector<int> pool;
 		for(int id = 0; id < 256; ++id)
-			if(randomPoolMachine(id) && machines.valid[id]) pool.push_back(id);
+			if((randomPoolMachine(id) || (romSlotOf(id) >= 0 && romSlot[romSlotOf(id)])) && machines.valid[id]) pool.push_back(id);
 		if(pool.empty()) return;
 		for(int t = _first; t <= _last; ++t) setMachine(t, pool[static_cast<size_t>(std::rand()) % pool.size()]);
 	}
@@ -431,6 +461,10 @@ void Inst::run()
 		auto c = md::fw::parseContainer(md::fw::parseSysex(md::fw::readFile(osPath)));
 		Engine eng(fwv, std::move(c.sections.at(0).data));
 		auto& h = eng.host();
+		// ROM machines: their samples, if the installer put the extracted sample memory in place
+		if(loadSamples(eng.voices(), dataDir + "/factory/ROM_SAMPLES.bin") > 0)
+			for(int k = 0; k < 48; ++k)
+				romSlot[k] = eng.voices().readP(kRomDirectory + 4 * static_cast<uint32_t>(k) + 1) != 0;	// its length
 		for(const auto& m : eng.os().machines())
 		{
 			machines.valid[m.id] = true;
@@ -599,6 +633,7 @@ void* eCreate(const char* dataDir)
 	if(const char* p = std::getenv("MD_OS")) in->osPath = p;
 	else in->osPath = std::string(dataDir && *dataDir ? dataDir : ".") + "/Elektron_SPS1-1UW_OS1.63.syx";
 	const std::string base = dataDir && *dataDir ? dataDir : ".";
+	in->dataDir = base;
 	// factory: the installer's copy of the OS's own kits; kits: the user's packs (SD card copy, or MPC's Documents browser)
 	in->kitDirs = {base + "/factory", base + "/kits", "/sdcard/Force Documents/Machinedrum Kits"};
 	in->catTh = std::thread([in] {

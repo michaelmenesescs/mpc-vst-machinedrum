@@ -39,6 +39,12 @@ namespace md::engine
 		// Render one 32-sample block of all 16 voices. Returns false on a fault.
 		bool renderBlock(Block& _out);
 
+		// Write words into P memory (e.g. the ROM machines' sample memory, which the MD copies from its sample flash at
+		// boot - not part of the OS file). reset() reloads the program's own records, the ROM sample directory among them,
+		// so write again after a reset.
+		void writeP(uint32_t _addr, const uint32_t* _words, size_t _count);
+		uint32_t readP(uint32_t _addr) const;
+
 		uint64_t instructionsLastBlock() const { return m_lastInstructions; }
 		const std::string& faultReason() const { return m_fault; }
 		dsp56k::DSP& dsp() { return *m_dsp; }

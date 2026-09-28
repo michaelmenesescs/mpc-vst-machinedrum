@@ -198,6 +198,17 @@ namespace md::engine
 		}
 	}
 
+	void VoiceEngine::writeP(const uint32_t _addr, const uint32_t* _words, const size_t _count)
+	{
+		for(size_t i = 0; i < _count && _addr + i < m_mem->sizeP(); ++i)
+			m_mem->set(MemArea_P, static_cast<TWord>(_addr + i), _words[i] & 0xffffff);
+	}
+
+	uint32_t VoiceEngine::readP(const uint32_t _addr) const
+	{
+		return _addr < m_mem->sizeP() ? m_mem->get(MemArea_P, _addr) & 0xffffff : 0;
+	}
+
 	void VoiceEngine::reset()
 	{
 		m_fault.clear();

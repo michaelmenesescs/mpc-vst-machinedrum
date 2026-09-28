@@ -1209,3 +1209,16 @@ from it.
   - Randomise (GLOBAL toggles, Monomodule's momentary hold-1.5 s design): machines on all / 1-8 / 9-16
     tracks from TRX/EFM/E12/P-I (SYN reset to the new machine's defaults), and RND KIT = a random kit
     from the current bank.
+
+- **2026-09-28: ROM machines play.** The UW's ROM slots play samples the MD copies from its sample flash
+  into the voice DSP (DSP2) at boot - absent from the OS file, so they were silent here. Found by dumping
+  the emulated MD's DSP2 P memory after boot (new mdProbe `dspdump:DSP:FROM:TO:FILE`) and diffing it
+  against VoiceEngine's own: the sample data at $150000-$18fc12 (260K words) plus a **sample directory
+  at $147e00** (4 words per slot 0-47: start, length, loop, flags) that the boot writes over the
+  program's own defaults - both needed (data alone stays silent). `tools/mdkits/mdsamples` extracts
+  every differing word from $140000 up (below that it's runtime state) as ROM_SAMPLES.bin records;
+  `make_factory.py` now makes it alongside FACTORY.syx from one emulator boot. The engine loads it
+  (VoiceEngine::writeP after construction - reset() reloads the program's own records, the directory
+  among them) and randomise includes ROM slots whose directory length is non-zero. The factory image
+  fills ROM01-32; ROM33-48 are empty (silent there too). Not yet checked: bit-exactness of ROM output
+  against the emulated MD.

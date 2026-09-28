@@ -54,6 +54,7 @@ namespace md::engine
 
 		HostModel<TVoices>& host() { return *m_host; }
 		const MachineRunner& os() const { return *m_os; }
+		TVoices& voices() { return *m_voices; }
 
 		struct Output
 		{

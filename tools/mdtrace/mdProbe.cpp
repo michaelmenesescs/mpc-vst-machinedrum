@@ -319,6 +319,19 @@ int main(int argc, char** argv)
 			}
 			continue;
 		}
+		if(kind == "dspdump")	// dspdump:DSP:FROM:TO:FILE -- DSP (0 mixer, 1 voices) P memory FROM..TO (hex words) as raw
+		{	// little-endian 32-bit words to FILE
+			const auto p1 = s.find(':'), p2 = s.find(':', p1 + 1), p3 = s.find(':', p2 + 1), p4 = s.find(':', p3 + 1);
+			const auto dspI = static_cast<uint32_t>(std::atoi(s.c_str() + p1 + 1));
+			const auto from = static_cast<uint32_t>(std::strtoul(s.substr(p2 + 1, p3 - p2 - 1).c_str(), nullptr, 16));
+			const auto to = static_cast<uint32_t>(std::strtoul(s.substr(p3 + 1, p4 - p3 - 1).c_str(), nullptr, 16));
+			auto& mem = hw.traceDsp(dspI).memory();
+			std::vector<uint32_t> words;
+			for(uint32_t a = from; a < to && a < mem.sizeP(); ++a) words.push_back(mem.get(dsp56k::MemArea_P, a));
+			std::ofstream(s.substr(p4 + 1), std::ios::binary).write(reinterpret_cast<const char*>(words.data()), static_cast<std::streamsize>(words.size() * 4));
+			std::cerr << "   " << words.size() << " words\n";
+			continue;
+		}
 		if(kind == "kitdump")	// kitdump:DIR -- ask the MD for each of its 64 kits (sysex kit request $53) and write each
 		{	// reply as DIR/kit_NN.syx, exactly as the unit sends it (the factory kits, on a freshly initialised flash)
 			const std::string dir = s.substr(8);
