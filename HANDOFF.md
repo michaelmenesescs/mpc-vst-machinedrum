@@ -1014,11 +1014,23 @@ Steps:
   8. **SYN1-8 params + "touched" tracking in `engine.cpp`** - **NOT DONE**, unchanged blocker, a real
      engine feature (not skin work) needed before the SYN quadrant can show anything but an empty
      frame.
-  9. **Real device build/test** - **NOT DONE** this whole session for any of the new work (params,
-     layout, engine.cpp changes, knob filmstrips). Only verified locally: x86 compile+link+smoke-test,
-     and the layout.conf's structural validity against the toolchain's own parser/checker. A real
-     `build_so.sh` Docker build and Force deploy is the natural next verification step whenever the
-     user is present for it.
+  9. **Real build - DONE and verified (2026-09-28); on-device test still pending.** Ran the actual
+     build pipeline for the first time this session, both halves:
+     - `vst/build_so.sh /tmp/recomp_inc /home/sam/mpc-vst` against the real `md-armhf-builder` Docker
+       image: produced a real ARM EABI5 `machinedrum_one.so` (6.3MB, stripped) - this session's
+       `engine.cpp`/`gen_params.py` changes compiled and linked for real, not just x86.
+     - `build_skin_with_picker.py` against the real `mpc-vst-html-art` Docker image (not the earlier
+       dry run's stubbed `art_bin`/PIL): produced a complete skin package - `TUI.json` (314 component
+       defs, 33 tab pages), all 14 custom knob filmstrips correctly copied in as
+       `sh_knob_r26_<hash>.png` (confirmed by grepping TUI.json - one distinct hash per fx/route key,
+       matching our 14 captures exactly), all 131 machine bar images, the picker panel, and - after
+       this run surfaced they were missing - `version.xml` + `Q-Links.json`/`Q-Links - 8by1.json`,
+       which `build_skin_with_picker.py` hadn't been writing at all (only `write_skin()`'s `TUI.json`
+       half was ported over initially; fixed to also emit the rest matching `write_skin()` exactly).
+     - **Still not done**: an actual on-device deploy. This confirms both halves produce complete,
+       well-formed real artifacts built by the real toolchain - not that they render or behave
+       correctly on a real Force. That's the natural next step whenever the user is present for it
+       (deploying + restarting MPC is a real-device action, not taken without being asked).
   10. **LEV bar-meter** - still parked, not investigated further.
 
   **Phase 1 progress (2026-09-28): rename mechanism confirmed empirically, unblocks capture.**
