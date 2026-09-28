@@ -3616,6 +3616,662 @@
    "max": 127,
    "default": 100,
    "display": "int"
+  },
+  {
+   "key": "track0_lfo_track",
+   "name": "T1 LFO Track",
+   "min": 0,
+   "max": 15,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track0_lfo_param",
+   "name": "T1 LFO Param",
+   "min": 0,
+   "max": 23,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "track0_lfo_shp1",
+   "name": "T1 LFO Shape 1",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track0_lfo_shp2",
+   "name": "T1 LFO Shape 2",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track0_lfo_type",
+   "name": "T1 LFO Update",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track1_lfo_track",
+   "name": "T2 LFO Track",
+   "min": 0,
+   "max": 15,
+   "default": 1,
+   "display": "int"
+  },
+  {
+   "key": "track1_lfo_param",
+   "name": "T2 LFO Param",
+   "min": 0,
+   "max": 23,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "track1_lfo_shp1",
+   "name": "T2 LFO Shape 1",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track1_lfo_shp2",
+   "name": "T2 LFO Shape 2",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track1_lfo_type",
+   "name": "T2 LFO Update",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track2_lfo_track",
+   "name": "T3 LFO Track",
+   "min": 0,
+   "max": 15,
+   "default": 2,
+   "display": "int"
+  },
+  {
+   "key": "track2_lfo_param",
+   "name": "T3 LFO Param",
+   "min": 0,
+   "max": 23,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "track2_lfo_shp1",
+   "name": "T3 LFO Shape 1",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track2_lfo_shp2",
+   "name": "T3 LFO Shape 2",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track2_lfo_type",
+   "name": "T3 LFO Update",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track3_lfo_track",
+   "name": "T4 LFO Track",
+   "min": 0,
+   "max": 15,
+   "default": 3,
+   "display": "int"
+  },
+  {
+   "key": "track3_lfo_param",
+   "name": "T4 LFO Param",
+   "min": 0,
+   "max": 23,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "track3_lfo_shp1",
+   "name": "T4 LFO Shape 1",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track3_lfo_shp2",
+   "name": "T4 LFO Shape 2",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track3_lfo_type",
+   "name": "T4 LFO Update",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track4_lfo_track",
+   "name": "T5 LFO Track",
+   "min": 0,
+   "max": 15,
+   "default": 4,
+   "display": "int"
+  },
+  {
+   "key": "track4_lfo_param",
+   "name": "T5 LFO Param",
+   "min": 0,
+   "max": 23,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "track4_lfo_shp1",
+   "name": "T5 LFO Shape 1",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track4_lfo_shp2",
+   "name": "T5 LFO Shape 2",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track4_lfo_type",
+   "name": "T5 LFO Update",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track5_lfo_track",
+   "name": "T6 LFO Track",
+   "min": 0,
+   "max": 15,
+   "default": 5,
+   "display": "int"
+  },
+  {
+   "key": "track5_lfo_param",
+   "name": "T6 LFO Param",
+   "min": 0,
+   "max": 23,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "track5_lfo_shp1",
+   "name": "T6 LFO Shape 1",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track5_lfo_shp2",
+   "name": "T6 LFO Shape 2",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track5_lfo_type",
+   "name": "T6 LFO Update",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track6_lfo_track",
+   "name": "T7 LFO Track",
+   "min": 0,
+   "max": 15,
+   "default": 6,
+   "display": "int"
+  },
+  {
+   "key": "track6_lfo_param",
+   "name": "T7 LFO Param",
+   "min": 0,
+   "max": 23,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "track6_lfo_shp1",
+   "name": "T7 LFO Shape 1",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track6_lfo_shp2",
+   "name": "T7 LFO Shape 2",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track6_lfo_type",
+   "name": "T7 LFO Update",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track7_lfo_track",
+   "name": "T8 LFO Track",
+   "min": 0,
+   "max": 15,
+   "default": 7,
+   "display": "int"
+  },
+  {
+   "key": "track7_lfo_param",
+   "name": "T8 LFO Param",
+   "min": 0,
+   "max": 23,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "track7_lfo_shp1",
+   "name": "T8 LFO Shape 1",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track7_lfo_shp2",
+   "name": "T8 LFO Shape 2",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track7_lfo_type",
+   "name": "T8 LFO Update",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track8_lfo_track",
+   "name": "T9 LFO Track",
+   "min": 0,
+   "max": 15,
+   "default": 8,
+   "display": "int"
+  },
+  {
+   "key": "track8_lfo_param",
+   "name": "T9 LFO Param",
+   "min": 0,
+   "max": 23,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "track8_lfo_shp1",
+   "name": "T9 LFO Shape 1",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track8_lfo_shp2",
+   "name": "T9 LFO Shape 2",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track8_lfo_type",
+   "name": "T9 LFO Update",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track9_lfo_track",
+   "name": "T10 LFO Track",
+   "min": 0,
+   "max": 15,
+   "default": 9,
+   "display": "int"
+  },
+  {
+   "key": "track9_lfo_param",
+   "name": "T10 LFO Param",
+   "min": 0,
+   "max": 23,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "track9_lfo_shp1",
+   "name": "T10 LFO Shape 1",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track9_lfo_shp2",
+   "name": "T10 LFO Shape 2",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track9_lfo_type",
+   "name": "T10 LFO Update",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track10_lfo_track",
+   "name": "T11 LFO Track",
+   "min": 0,
+   "max": 15,
+   "default": 10,
+   "display": "int"
+  },
+  {
+   "key": "track10_lfo_param",
+   "name": "T11 LFO Param",
+   "min": 0,
+   "max": 23,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "track10_lfo_shp1",
+   "name": "T11 LFO Shape 1",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track10_lfo_shp2",
+   "name": "T11 LFO Shape 2",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track10_lfo_type",
+   "name": "T11 LFO Update",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track11_lfo_track",
+   "name": "T12 LFO Track",
+   "min": 0,
+   "max": 15,
+   "default": 11,
+   "display": "int"
+  },
+  {
+   "key": "track11_lfo_param",
+   "name": "T12 LFO Param",
+   "min": 0,
+   "max": 23,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "track11_lfo_shp1",
+   "name": "T12 LFO Shape 1",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track11_lfo_shp2",
+   "name": "T12 LFO Shape 2",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track11_lfo_type",
+   "name": "T12 LFO Update",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track12_lfo_track",
+   "name": "T13 LFO Track",
+   "min": 0,
+   "max": 15,
+   "default": 12,
+   "display": "int"
+  },
+  {
+   "key": "track12_lfo_param",
+   "name": "T13 LFO Param",
+   "min": 0,
+   "max": 23,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "track12_lfo_shp1",
+   "name": "T13 LFO Shape 1",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track12_lfo_shp2",
+   "name": "T13 LFO Shape 2",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track12_lfo_type",
+   "name": "T13 LFO Update",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track13_lfo_track",
+   "name": "T14 LFO Track",
+   "min": 0,
+   "max": 15,
+   "default": 13,
+   "display": "int"
+  },
+  {
+   "key": "track13_lfo_param",
+   "name": "T14 LFO Param",
+   "min": 0,
+   "max": 23,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "track13_lfo_shp1",
+   "name": "T14 LFO Shape 1",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track13_lfo_shp2",
+   "name": "T14 LFO Shape 2",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track13_lfo_type",
+   "name": "T14 LFO Update",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track14_lfo_track",
+   "name": "T15 LFO Track",
+   "min": 0,
+   "max": 15,
+   "default": 14,
+   "display": "int"
+  },
+  {
+   "key": "track14_lfo_param",
+   "name": "T15 LFO Param",
+   "min": 0,
+   "max": 23,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "track14_lfo_shp1",
+   "name": "T15 LFO Shape 1",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track14_lfo_shp2",
+   "name": "T15 LFO Shape 2",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track14_lfo_type",
+   "name": "T15 LFO Update",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track15_lfo_track",
+   "name": "T16 LFO Track",
+   "min": 0,
+   "max": 15,
+   "default": 15,
+   "display": "int"
+  },
+  {
+   "key": "track15_lfo_param",
+   "name": "T16 LFO Param",
+   "min": 0,
+   "max": 23,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "track15_lfo_shp1",
+   "name": "T16 LFO Shape 1",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track15_lfo_shp2",
+   "name": "T16 LFO Shape 2",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track15_lfo_type",
+   "name": "T16 LFO Update",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "display": "int"
   }
  ],
  "sections": [

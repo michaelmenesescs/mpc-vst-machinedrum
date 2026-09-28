@@ -84,6 +84,16 @@ for t in range(16):
     params.append({"key": "track%d_level" % t, "name": "T%d LEV" % (t + 1), "min": 0, "max": 127,
                     "default": 100, "display": "int"})
 
+# The track's LFO page (engine.cpp kLfoKeys), appended last. lfo_param's shown text is the destination's own label
+# ("dynamic_display": the wrapper asks the DSP for "<key>_display").
+for t in range(16):
+    params.append({"key": "track%d_lfo_track" % t, "name": "T%d LFO Track" % (t + 1), "min": 0, "max": 15, "default": t, "display": "int"})
+    params.append({"key": "track%d_lfo_param" % t, "name": "T%d LFO Param" % (t + 1), "min": 0, "max": 23, "default": 0, "display": "int",
+                   "dynamic_display": True})
+    params.append({"key": "track%d_lfo_shp1" % t, "name": "T%d LFO Shape 1" % (t + 1), "min": 0, "max": 5, "default": 0, "display": "int"})
+    params.append({"key": "track%d_lfo_shp2" % t, "name": "T%d LFO Shape 2" % (t + 1), "min": 0, "max": 5, "default": 0, "display": "int"})
+    params.append({"key": "track%d_lfo_type" % t, "name": "T%d LFO Update" % (t + 1), "min": 0, "max": 2, "default": 0, "display": "int"})
+
 json.dump({"name": "Machinedrum One", "params": params,
            "sections": [{"label": l, "keys": k} for l, k in sections]},
           open("params.json", "w"), indent=1)

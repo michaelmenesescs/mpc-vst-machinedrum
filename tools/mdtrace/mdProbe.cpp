@@ -286,6 +286,23 @@ int main(int argc, char** argv)
 			std::cerr << "   peak=" << run(hw, 4096) << '\n';
 			continue;
 		}
+		if(kind == "combo")	// combo:HELD+TAPPED -- hold one control while tapping another (e.g. Function+Kit)
+		{
+			const auto plus = s.find('+');
+			const auto a = g_panel.find(s.substr(6, plus - 6)), b = g_panel.find(s.substr(plus + 1));
+			if(plus == std::string::npos || a == g_panel.end() || b == g_panel.end()) { std::cerr << "unknown panel control\n"; return 1; }
+			const auto pa = md::panelPacket(md::MachineModel::Machinedrum, a->second);
+			const auto pb = md::panelPacket(md::MachineModel::Machinedrum, b->second);
+			hw.sendPanelEvent(pa->row, pa->mask);
+			run(hw, 1024);
+			hw.sendPanelEvent(pb->row, pb->row == pa->row ? static_cast<uint8_t>(pa->mask | pb->mask) : pb->mask);
+			run(hw, 1024);
+			hw.sendPanelEvent(pb->row, pb->row == pa->row ? pa->mask : 0);
+			run(hw, 1024);
+			hw.sendPanelEvent(pa->row, 0);
+			std::cerr << "   peak=" << run(hw, 4096) << '\n';
+			continue;
+		}
 		if(kind == "encoder")	// encoder:NAME:STEPS -- rotate a data-entry encoder, one detent packet per step
 		{	// (matches mdEditor.cpp's Editor::emitEncoderSteps: cmd from panelEncoderCommand, arg 0x01/0xff per step)
 			const auto p1 = s.find(':'), p2 = s.find(':', p1 + 1);

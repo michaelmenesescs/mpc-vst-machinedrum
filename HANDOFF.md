@@ -1171,3 +1171,18 @@ from it.
     saved project: same program type 3, same padNoteMap; only per-pad colours differ) or the
     settings category (tried category="Drum": no effect, reverted). "Drum test 2" (DrumSynth's pad
     colours on the Machinedrum track) awaits the user's check.
+
+- **2026-09-28: per-track LFO page; CPU fix confirmed on the device; drum-pad layout ruled out.**
+  - Measured on the Force with the user's 4-track kit after 0.2.1/0.2.2: `md-engine` at **40.6%** of
+    its core (was 89%), load average ~1.0, no more glitching reported.
+  - "Drum test 2" (DrumSynth's per-pad colours on the Machinedrum track): still chromatic. The 16-pad
+    drum layout is tied to DrumSynth's internal plugin identity - not reachable from a VST. Closed.
+  - LFO page, captured from the real MD in the emulator (reached with FUNCTION + SYN/EFX/ROUTE; new
+    mdProbe `combo:HELD+TAPPED` action): TRACK PARAM SHP1 SHP2 / UPDTE SPEED DEPTH SHMIX. TRACK is
+    one of 16 named tracks (01-BD .. 16-M4), PARAM the destination's 24 params named by its machine
+    (0-7) or the fixed AMD..LFOM, 6 shapes (tri, saw, square, ramp, exp, random), UPDTE FREE/TRIG/HOLD;
+    SPEED/DEPTH/SHMIX are LFOS/LFOD/LFOM. New params per track: lfo_track/param/shp1/shp2/type
+    (appended) -> HostModel::setLfo. PARAM's text is the destination's live label via a new opt-in
+    wrapper feature, "dynamic_display" (mpc-vst-plugins claude/dynamic-param-names: effGetParamDisplay
+    asks the DSP for "<key>_display"), drawn by MPC's native value label. The LFO page replaces the
+    per-track LEV column (LEV stays on the GLOBAL mixer and the track's Q-Links).

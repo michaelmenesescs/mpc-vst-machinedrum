@@ -4,7 +4,8 @@ layout), adapted to the Machinedrum - the same LCD look, drawing code, knob cell
 column, not a new design. Upstream-of-this differences are only what the Machinedrum needs:
 
   * 16 tabs, one per track (the Monomodule has one voice). Each tab is Monomodule's 2x2: SYN | AMP/EFX over
-    ROUTE | the track's LEV column (Monomodule's GLOBAL quadrant with LEV, minus its extra globals).
+    ROUTE | the track's LFO page (the MD's own: TRACK PARAM SHP1 SHP2 / UPDTE SPEED DEPTH SHMIX). A 17th tab, GLOBAL:
+    a 16-track LEV mixer (Monomodule's LEV column, 16 across) and VOICES.
   * Machines, labels: the MD OS's own machine table (tools/mdmachine's listing), 131 machines in 9 groups; the
     picker's columns are the groups (ROM split into columns of 16 so no column scrolls).
   * The machine param is a raw OS machine id (0-191), so IndexedEnabling / button ids use the id, n = 192.
@@ -177,9 +178,55 @@ def cell_static(cv, x0, y0, p):
     cv.text_centred(F["tiny3x5"], p.label, x0 + 1, CW - 1, y0 + LABEL_Y)
 
 
+def scaled(raw, mx):
+    """a knob frame (0-127) -> the value of a 0..mx param at that position (the wrapper's normalisation)"""
+    return int(round(raw * mx / 127.0))
+
+
+def line(cv, x0, y0, x1, y1):
+    n = max(abs(x1 - x0), abs(y1 - y0), 1)
+    for i in range(n + 1):
+        cv.set(x0 + round((x1 - x0) * i / n), y0 + round((y1 - y0) * i / n))
+
+
+def draw_shape(cv, x, y, k):
+    """the MD's 6 LFO shapes (captured from its LFO page: triangle, saw, square, ramp, exponential, random), 17x9"""
+    import math
+    if k == 0:
+        line(cv, x, y + 8, x + 8, y); line(cv, x + 8, y, x + 16, y + 8)
+    elif k == 1:
+        line(cv, x, y + 8, x + 7, y); line(cv, x + 7, y, x + 7, y + 8); line(cv, x + 8, y + 8, x + 15, y); line(cv, x + 15, y, x + 15, y + 8)
+    elif k == 2:
+        line(cv, x, y + 8, x + 3, y + 8); line(cv, x + 3, y + 8, x + 3, y); line(cv, x + 3, y, x + 11, y)
+        line(cv, x + 11, y, x + 11, y + 8); line(cv, x + 11, y + 8, x + 16, y + 8)
+    elif k == 3:
+        line(cv, x, y, x + 3, y); line(cv, x + 3, y, x + 11, y + 8); line(cv, x + 11, y + 8, x + 16, y + 8)
+    elif k == 4:
+        line(cv, x, y + 8, x, y)
+        for c in range(1, 17):
+            cv.set(x + c, y + int(round(8 * (1 - math.exp(-c / 2.5)))))
+    else:
+        hs = [6, 2, 5, 0, 8, 3]
+        for i, hgt in enumerate(hs):
+            line(cv, x + i * 3, y + hgt, x + i * 3 + 2, y + hgt)
+            if i:
+                line(cv, x + i * 3, y + hs[i - 1], x + i * 3, y + hgt)
+
+
 def cell_dynamic(cv, x0, y0, p, raw):
-    """dial plus the value row (upstream drawKnobCell minus border/label); (x0, y0) = the cell origin."""
+    """dial plus the value row (upstream drawKnobCell minus border/label); (x0, y0) = the cell origin. The LFO page's
+    other kinds, as the MD draws them: "text" (the value as text, no dial), "icon" (an LFO shape), "native" (empty:
+    MPC's own value label draws the text)."""
     inner_x, inner_w = x0 + 1, CW - 1
+    if p.display == "native":
+        return
+    if p.display == "text":
+        font = F["tiny3x5"]
+        cv.text_centred(font, p.fmt(raw), inner_x, inner_w, y0 + CONTENT_Y + (CONTENT_H + VALUE_H - font.h) // 2)
+        return
+    if p.display == "icon":
+        draw_shape(cv, inner_x + (inner_w - 17) // 2, y0 + CONTENT_Y + (CONTENT_H + VALUE_H - 9) // 2, scaled(raw, 5))
+        return
     rx, ry = inner_x + (inner_w - DIAL_RING.w) // 2, y0 + CONTENT_Y + (CONTENT_H - DIAL_RING.h) // 2
     cv.blit(DIAL_RING, rx, ry)
     cv.blit(DIAL_DOT[raw], rx + 2, ry + 4)
@@ -210,7 +257,7 @@ def save_png(name, im):
 
 def strip_image(p, cache={}):
     """128 frames of the dynamic part of a cell of this kind, stacked down."""
-    k = p.display + ("_" + p.label.lower() if p.fmt else "")
+    k = p.display + ("_" + p.label.lower() if p.fmt and p.display != "icon" else "")
     if k in cache:
         return cache[k]
     frames = []
@@ -273,7 +320,7 @@ def enabling(key, i, n):
 
 # ------------------------------------------------------------ page geometry (window coords -> skin px) --------------
 PAGE_POS = {"SYN": (0, 0), "AMP": (1, 0), "ROUTE": (0, 1), "TRACK": (1, 1)}
-PAGE_TITLE = {"SYN": "SYN", "AMP": "AMP/EFX", "ROUTE": "ROUTE", "TRACK": None}   # TRACK: "TRACK <n>", per tab
+PAGE_TITLE = {"SYN": "SYN", "AMP": "AMP/EFX", "ROUTE": "ROUTE", "TRACK": None}   # TRACK: the LFO page, "LFO <nn-XX>" per tab
 
 
 def page_origin(name):
@@ -353,6 +400,11 @@ AMP_KEYS = ["amd", "amf", "eqf", "eqg", "fltf", "fltw", "fltq", "srr"]
 ROUTE_CELLS = [P("DIST"), P("VOL", default=100), P("PAN", "bipolar", 64), P("DEL"), P("REV"), P("LFOS"), P("LFOD"), P("LFOM")]
 ROUTE_KEYS = ["dist", "vol", "pan", "del", "rev", "lfos", "lfod", "lfom"]
 BLANK8 = [P("") for _ in range(8)]
+TRACK_NAMES = ["%02d-%s" % (i + 1, n) for i, n in enumerate("BD SD HT MT LT CP RS CB CH OH RC CC M1 M2 M3 M4".split())]
+LFO_CELLS = [P("TRACK", "text", fmt=lambda raw: TRACK_NAMES[scaled(raw, 15)]), P("PARAM", "native"),
+             P("SHP1", "icon", fmt=True), P("SHP2", "icon", fmt=True),
+             P("UPDTE", "text", fmt=lambda raw: ("FREE", "TRIG", "HOLD")[scaled(raw, 2)]), P("SPEED"), P("DEPTH"), P("SHMIX")]
+LFO_KEYS = ["lfo_track", "lfo_param", "lfo_shp1", "lfo_shp2", "lfo_type", "lfos", "lfod", "lfom"]
 
 
 def syn_cells(m):
@@ -368,22 +420,11 @@ bgs = []
 for t in range(TRACKS):
     b_ = Image.new("RGB", (SKIN_W, SKIN_H), PAPER)
     px_text(b_, F["bold8"], "MD", OX + MARG + (LEV_W - text_width(F["bold8"], "MD") * 4) // 2, OY + 8 + (BAR_ROWS * S - F["bold8"].h * 4) // 2, 4, INK)
-    for name, cells in (("SYN", syn_cells(EMPTY_MACHINE)), ("AMP", AMP_CELLS), ("ROUTE", ROUTE_CELLS), ("TRACK", BLANK8)):
-        cv = page_canvas(name, cells, "TRACK %d" % (t + 1) if name == "TRACK" else None)
+    # the 4th quadrant: the track's LFO page (the MD's own, FUNCTION + SYN/EFX/ROUTE); its title names the track
+    for name, cells in (("SYN", syn_cells(EMPTY_MACHINE)), ("AMP", AMP_CELLS), ("ROUTE", ROUTE_CELLS), ("TRACK", LFO_CELLS)):
+        cv = page_canvas(name, cells, "LFO %s" % TRACK_NAMES[t] if name == "TRACK" else None)
         b_.paste(cv.image(), page_origin(name))
     bgs.append(b_)
-
-# LEV: Monomodule's LEVQ column (label, dotted frame, solid bar) in the first cell column of the TRACK quadrant
-qx, qy = page_origin("TRACK")
-col_rows = 2 * CELL
-lv = Canvas(CW, col_rows)
-lv.dots_h(0, CW - 1, 0); lv.dots_v(0, 0, col_rows - 1)
-lv.text_centred(F["bold8"], "LEV", 0, CW, 1)
-fx_, fy_, fw_l, fh_l = (CW - 19) // 2, 10, 19, col_rows - 11
-lv.dots_h(fx_, fx_ + fw_l - 1, fy_); lv.dots_h(fx_, fx_ + fw_l - 1, fy_ + fh_l - 1)
-lv.dots_v(fx_, fy_, fy_ + fh_l - 1); lv.dots_v(fx_ + fw_l - 1, fy_, fy_ + fh_l - 1)
-for b_ in bgs:
-    b_.paste(lv.image(), (qx, qy + GRID_Y * S))
 for t, b_ in enumerate(bgs):
     image_comp("Background", save_png("bg_%02d" % t, b_), 0, 0, SKIN_W, SKIN_H, tab=t)
 
@@ -449,6 +490,8 @@ def syn_overlay(m, cache={}):
     return cache[key]
 
 
+defs["mdLfoParamText"] = ss._local("mdLfoParamText", [], [ss._value_label(0, 0, FR_W * S, (CONTENT_H + VALUE_H - 2) * S, 26.0,
+                                                                         "%02x%02x%02x" % INK)])
 for t in range(TRACKS):
     tk = lambda k: "track%d_%s" % (t, k)
     syn_keys = [tk("syn%d" % (k + 1)) for k in range(8)]
@@ -462,6 +505,11 @@ for t in range(TRACKS):
     cell_touch("AMP", AMP_CELLS, [tk(k) for k in AMP_KEYS], t)
     cell_dials("ROUTE", ROUTE_CELLS, [tk(k) for k in ROUTE_KEYS], t)
     cell_touch("ROUTE", ROUTE_CELLS, [tk(k) for k in ROUTE_KEYS], t)
+    cell_dials("TRACK", LFO_CELLS, [tk(k) for k in LFO_KEYS], t)
+    lx, ly = page_origin("TRACK")   # PARAM's text: MPC's own value label (the destination's live name, "dynamic_display")
+    place("mdLfoParamText", "LFO PARAM text", PIDX[tk("lfo_param")], lx + (CW + FR_X) * S, ly + (GRID_Y + CONTENT_Y) * S,
+          FR_W * S, (CONTENT_H + VALUE_H - 2) * S, t)
+    cell_touch("TRACK", LFO_CELLS, [tk(k) for k in LFO_KEYS], t)
 
     # machine bar, one image per machine, shown while it's the track's machine
     for m in MACHINES:
@@ -471,35 +519,7 @@ for t in range(TRACKS):
         w_, h_ = Image.open(os.path.join(SKIN, fn)).size
         image_comp("Machine %s" % m["name"], fn, BAR_X, BAR_Y, w_, h_, t, cond=enabling(tk("machine"), m["id"], NMACH))
 
-# LEV bar (Monomodule's LEVQ strips, in two segments) + its touch column
-lev_x, lev_y = qx + (fx_ + 1) * S, qy + GRID_Y * S
-inner_y0 = fy_ + 2
-seg_n = 2
-seg_h = (fh_l - 4) // seg_n
-inner_h = seg_h * seg_n
-lev_fns = []
-for sgm in range(seg_n):
-    frames = []
-    for raw in range(FRAMES):
-        cv = Canvas(17, seg_h)
-        lvl = int(round(raw / 127.0 * inner_h))
-        for r in range(seg_h):
-            if inner_y0 + sgm * seg_h + r >= inner_y0 + inner_h - lvl:
-                for c in range(1, 7):
-                    cv.set(c, r)
-        frames.append(cv.image())
-    st = Image.new("RGB", (17 * S, seg_h * S * FRAMES))
-    for i_, f_ in enumerate(frames):
-        st.paste(f_, (0, i_ * seg_h * S))
-    lev_fns.append(save_png("lev_%d" % sgm, st))
-fn_t = save_png("touch_lev", Image.new("RGBA", (8, 8 * FRAMES), (0, 0, 0, 0)))
-lev_tw, lev_th = TOUCH_W, 2 * CELL * S - 2 * TOUCH_INSET * S
-for t in range(TRACKS):
-    for sgm, fn in enumerate(lev_fns):
-        place(knob_def(fn, 17 * S, seg_h * S, interactive=False), "LEV %d" % (sgm + 1), PIDX["track%d_level" % t],
-              lev_x, lev_y + (inner_y0 + sgm * seg_h) * S, 17 * S, seg_h * S, t, img=fn, raw=100)
-    place(knob_def(fn_t, lev_tw, lev_th), "LEV touch", PIDX["track%d_level" % t], qx + TOUCH_INSET * S,
-          qy + (GRID_Y + TOUCH_INSET) * S, lev_tw, lev_th, t)
+fn_t = save_png("touch_lev", Image.new("RGBA", (8, 8 * FRAMES), (0, 0, 0, 0)))   # an invisible strip for touch columns
 
 # machine picker: field over the machine bar toggles machine__open; panel + one image button per machine
 pk_x, pk_y, pk_w, pk_h = OX + PAGES_X0, OY + TOP, PAGES_W, WIN_H - 8 - TOP
@@ -624,7 +644,7 @@ comp_bg = {"version": 1, "colour": "ff%02x%02x%02x" % PAPER, "image": ""}
 for t in range(TRACKS):
     tk = lambda k: "track%d_%s" % (t, k)
     sets = [("T%d SYN / EFX" % (t + 1), [tk("syn%d" % (k + 1)) for k in range(8)] + [tk(k) for k in AMP_KEYS]),
-            ("T%d ROUTE / LEV" % (t + 1), [tk(k) for k in ROUTE_KEYS] + [tk("level"), tk("machine")])]
+            ("T%d ROUTE / LFO" % (t + 1), [tk(k) for k in ROUTE_KEYS] + [tk(k) for k in LFO_KEYS[:5]] + [tk("level"), tk("machine")])]
     comp = "MACHINEDRUM|TRACK %d" % (t + 1)
     for sp, (title, keys) in enumerate(sets):
         ql = {"Q-Link %d" % (q + 1): -1 for q in range(16)}

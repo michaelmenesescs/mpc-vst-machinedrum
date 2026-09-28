@@ -100,7 +100,13 @@ static_assert(sizeof(kRouteRawParam) / sizeof(kRouteRawParam[0]) == kNumRoute);
 constexpr int kNumSyn = 8;
 constexpr int kSlotSyn = 3 + kNumFx + kNumRoute;	// within a track's slots
 constexpr int kSlotLevel = kSlotSyn + kNumSyn;	// the kit's track LEV (HostModel::setLevel), 0-127
-constexpr int kSlotTrack = 0, kSlotsPerTrack = kSlotLevel + 1;	// machine, vol, pan, FX, ROUTE, SYN, LEV
+// The track's LFO page (FUNCTION + SYN/EFX/ROUTE on the MD) minus SPEED/DEPTH/SHMIX, which are ROUTE's LFOS/LFOD/LFOM:
+// destination track 0-15, destination param 0-23 (HostModel raw order), shapes 0-5, update 0 FREE / 1 TRIG / 2 HOLD.
+constexpr const char* kLfoKeys[] = {"lfo_track", "lfo_param", "lfo_shp1", "lfo_shp2", "lfo_type"};
+constexpr int kLfoMax[] = {15, 23, 5, 5, 2};
+constexpr int kNumLfo = sizeof(kLfoKeys) / sizeof(kLfoKeys[0]);
+constexpr int kSlotLfo = kSlotLevel + 1;
+constexpr int kSlotTrack = 0, kSlotsPerTrack = kSlotLfo + kNumLfo;	// machine, vol, pan, FX, ROUTE, SYN, LEV, LFO
 constexpr int kSlotTempo = kSlotTrack + kTracks * kSlotsPerTrack;
 constexpr int kSlotMaxVoices = kSlotTempo + 1;
 constexpr int kSlotHostBpm = kSlotMaxVoices + 1;	// MPC's tempo x 100 (wrapper "lfo_bpm", vst.json HAS_LFO_BPM); 0 = none yet
@@ -128,6 +134,9 @@ int slotOf(const char* key)
 		for(int i = 0; i < kNumRoute; ++i)
 			if(!std::strcmp(fxKey, kRouteKeys[i]))
 				return kSlotTrack + t * kSlotsPerTrack + 3 + kNumFx + i;
+		for(int i = 0; i < kNumLfo; ++i)
+			if(!std::strcmp(fxKey, kLfoKeys[i]))
+				return kSlotTrack + t * kSlotsPerTrack + kSlotLfo + i;
 		int p = 0, c2 = 0;
 		if(std::sscanf(fxKey, "syn%d%n", &p, &c2) == 1 && fxKey[c2] == '\0' && p >= 1 && p <= kNumSyn)
 			return kSlotTrack + t * kSlotsPerTrack + kSlotSyn + p - 1;
@@ -185,6 +194,7 @@ struct Inst
 			param[kSlotTrack + t * kSlotsPerTrack + 1].store(100);	// vol
 			param[kSlotTrack + t * kSlotsPerTrack + 2].store(64);	// pan (centre)
 			param[kSlotTrack + t * kSlotsPerTrack + kSlotLevel].store(100);	// LEV (HostModel's own default)
+			param[kSlotTrack + t * kSlotsPerTrack + kSlotLfo + 0].store(t);	// LFO -> its own track (HostModel's default)
 			for(int i = 0; i < kNumFx; ++i)
 				param[kSlotTrack + t * kSlotsPerTrack + 3 + i].store(kFxDefaults[i]);
 			for(int i = 0; i < kNumRoute; ++i)
@@ -248,12 +258,14 @@ void Inst::run()
 		int appliedRoute[kTracks][kNumRoute];
 		int appliedSyn[kTracks][kNumSyn];
 		int appliedLevel[kTracks];
+		int appliedLfo[kTracks][kNumLfo];
 		for(int t = 0; t < kTracks; ++t)
 		{
 			appliedMachine[t] = appliedVol[t] = appliedPan[t] = appliedLevel[t] = -1;
 			for(int i = 0; i < kNumFx; ++i) appliedFx[t][i] = -1;
 			for(int i = 0; i < kNumRoute; ++i) appliedRoute[t][i] = -1;
 			for(int i = 0; i < kNumSyn; ++i) appliedSyn[t][i] = -1;
+			for(int i = 0; i < kNumLfo; ++i) appliedLfo[t][i] = -1;
 		}
 
 		Engine::Output out;
@@ -295,6 +307,17 @@ void Inst::run()
 				// VOL (param 17, read by the mixer's own gain formula) - not setLevel(), a separate kit LEV
 				// knob (HostModel.h) that also gates level but isn't what mdrender.cpp's working demo kit uses.
 				if(vol != appliedVol[t]) { appliedVol[t] = vol; h.setParam(t, 17, vol); }
+				{
+					int v[kNumLfo];
+					bool changed = false;
+					for(int i = 0; i < kNumLfo; ++i)
+					{
+						v[i] = std::clamp(param[kSlotTrack + t * kSlotsPerTrack + kSlotLfo + i].load(std::memory_order_relaxed), 0, kLfoMax[i]);
+						changed |= v[i] != appliedLfo[t][i];
+						appliedLfo[t][i] = v[i];
+					}
+					if(changed) h.setLfo(t, v[0], v[1], v[2], v[3], v[4]);
+				}
 				const int lev = std::clamp(param[kSlotTrack + t * kSlotsPerTrack + kSlotLevel].load(std::memory_order_relaxed), 0, 127);
 				if(lev != appliedLevel[t]) { appliedLevel[t] = lev; h.setLevel(t, lev); }
 				const int pan = std::clamp(param[kSlotTrack + t * kSlotsPerTrack + 2].load(std::memory_order_relaxed), 0, 127);
@@ -425,6 +448,26 @@ int eGet(void* p, const char* key, char* buf, int bufLen)
 		return std::snprintf(buf, static_cast<size_t>(bufLen), "%u", in->blocks.load(std::memory_order_relaxed)) > 0;
 	if(!std::strcmp(key, "core"))
 		return std::snprintf(buf, static_cast<size_t>(bufLen), "%d", in->core.load(std::memory_order_relaxed)) > 0;
+	// "track<N>_lfo_param_display": the LFO destination's label, as the MD shows it (params.json dynamic_display)
+	{
+		int t = -1, n = 0;
+		if(std::sscanf(key, "track%d_lfo_param_display%n", &t, &n) == 1 && key[n] == '\0' && t >= 0 && t < kTracks)
+		{
+			static constexpr const char* kFixed[16] = {"AMD", "AMF", "EQF", "EQG", "FLTF", "FLTW", "FLTQ", "SRR", "DIST", "VOL", "PAN", "DEL", "REV", "LFOS", "LFOD", "LFOM"};
+			const int base = kSlotTrack + t * kSlotsPerTrack + kSlotLfo;
+			const int dt = std::clamp(in->param[base].load(std::memory_order_relaxed), 0, kTracks - 1);
+			const int dp = std::clamp(in->param[base + 1].load(std::memory_order_relaxed), 0, 23);
+			const char* name = "?";
+			if(dp >= 8) name = kFixed[dp - 8];
+			else
+			{
+				const int m = in->param[kSlotTrack + dt * kSlotsPerTrack].load(std::memory_order_relaxed);
+				if(!in->machines.ready.load(std::memory_order_acquire) || m < 0 || m >= 256 || !in->machines.valid[m]) name = "-";
+				else name = *in->machines.names[m][dp] ? in->machines.names[m][dp] : "-";
+			}
+			return std::snprintf(buf, static_cast<size_t>(bufLen), "%s", name) > 0;
+		}
+	}
 	// "track<N>_syn<P>_name": the current machine's label for that SYN knob (params.json dynamic_name)
 	{
 		int t = -1, p = 0, n = 0;

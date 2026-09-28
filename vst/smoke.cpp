@@ -59,6 +59,17 @@ int main(int argc, char** argv)
 	e->set_param(in, "track1_syn1", "99");
 	dumpSyn(1);	// PTCH=99
 	e->set_param(in, "track1_machine", "17");
+	// LFO PARAM shows the destination's own label: track 4 (TRXB2) param 1 = DEC, param 9 = AMF
+	for(const char* v : {"1", "9"})
+	{
+		char d[16] = "?";
+		e->set_param(in, "track0_lfo_track", "3");
+		e->set_param(in, "track0_lfo_param", v);
+		e->get_param(in, "track0_lfo_param_display", d, sizeof d);
+		printf("lfo dest track 4 param %s: %s\n", v, d);
+	}
+	e->set_param(in, "track0_lfo_track", "0");
+	e->set_param(in, "track0_lfo_param", "0");
 
 	const int secs = argc > 2 ? std::atoi(argv[2]) : 8;
 	static int16_t out[128 * 2];
