@@ -12,6 +12,8 @@
 //   cc:CH:CC:VAL             MIDI control change
 //   sysex:HEXBYTES           e.g. sysex:f000203c02005b000001f7
 //   panel:NAME               tap a panel control (Kit, Enter, Exit, Up, Down, Left, Right, Play, Stop, ...)
+//   encoder:NAME[:STEPS]     rotate a data-entry encoder (DataEntryA..H, Level, SoundSelection) by STEPS
+//                            detents (default 1, negative = counter-clockwise) - for character-picker screens
 //   wav:PATH                 start recording the stereo output as float32 raw to PATH
 #include "mdLib/mdhardware.h"
 #include "mdLib/mdpanel.h"
@@ -75,6 +77,18 @@ namespace
 		return m;
 	}
 	const std::map<std::string, md::PanelControl> g_panel = makePanelMap();
+
+	std::map<std::string, md::PanelEncoder> makeEncoderMap()
+	{
+		std::map<std::string, md::PanelEncoder> m;
+		for(int i = 0; i <= static_cast<int>(md::PanelEncoder::SoundSelection); ++i)
+		{
+			const auto e = static_cast<md::PanelEncoder>(i);
+			m[md::panelEncoderName(e)] = e;
+		}
+		return m;
+	}
+	const std::map<std::string, md::PanelEncoder> g_encoder = makeEncoderMap();
 
 	bool press(md::Hardware& _hw, md::PanelControl _c, uint32_t _hold)
 	{
@@ -262,12 +276,30 @@ int main(int argc, char** argv)
 			press(hw, static_cast<md::PanelControl>(static_cast<int>(md::PanelControl::Trigger1) + v.at(0) - 1), v.size() > 1 ? v[1] : 2048);
 			continue;
 		}
-		if(kind == "panel")
-		{
-			const auto it = g_panel.find(s.substr(6));
+		if(kind == "panel")	// panel:NAME[:HOLD] -- HOLD in frames, default 2048 (the firmware auto-repeats a
+		{	// held button after a couple hundred ms, so short HOLD e.g. 128 gives single-step control)
+			const auto p1 = s.find(':'), p2 = s.find(':', p1 + 1);
+			const auto it = g_panel.find(s.substr(p1 + 1, p2 - p1 - 1));
 			if(it == g_panel.end()) { std::cerr << "unknown panel control\n"; return 1; }
-			press(hw, it->second, 2048);
+			const uint32_t hold = p2 == std::string::npos ? 2048 : static_cast<uint32_t>(std::atoi(s.c_str() + p2 + 1));
+			press(hw, it->second, hold);
 			std::cerr << "   peak=" << run(hw, 4096) << '\n';
+			continue;
+		}
+		if(kind == "encoder")	// encoder:NAME:STEPS -- rotate a data-entry encoder, one detent packet per step
+		{	// (matches mdEditor.cpp's Editor::emitEncoderSteps: cmd from panelEncoderCommand, arg 0x01/0xff per step)
+			const auto p1 = s.find(':'), p2 = s.find(':', p1 + 1);
+			const auto it = g_encoder.find(s.substr(p1 + 1, p2 - p1 - 1));
+			if(it == g_encoder.end()) { std::cerr << "unknown encoder\n"; return 1; }
+			const auto cmd = md::panelEncoderCommand(md::MachineModel::Machinedrum, it->second);
+			if(!cmd) { std::cerr << "encoder not available on this model\n"; return 1; }
+			const int steps = p2 == std::string::npos ? 1 : std::atoi(s.c_str() + p2 + 1);
+			const uint8_t arg = steps >= 0 ? 0x01 : 0xff;
+			for(int k = 0; k < std::abs(steps); ++k)
+			{
+				hw.sendPanelEvent(*cmd, arg);
+				std::cerr << "   peak(step)=" << run(hw, 512) << '\n';
+			}
 			continue;
 		}
 		synthLib::SMidiEvent ev(synthLib::MidiEventSource::Host);

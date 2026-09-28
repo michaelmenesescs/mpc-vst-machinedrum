@@ -666,6 +666,78 @@ Steps:
   lines) plus the font/icon extraction Monomodule got for free from upstream and we don't have —
   a multi-session build, not a quick patch. Resume at Phase 1.
 
+  **Phase 1 progress (2026-09-28): rename mechanism confirmed empirically, unblocks capture.**
+  - No sysex/data API sets a kit/pattern/track name (checked `mdautomation.cpp`/`mdsysexautomation.cpp`/
+    `mdrom.cpp`/`mdromdata.cpp`/`mdflash.cpp`/`mdsim.cpp` — none). Confirmed real hardware behavior:
+    names are only editable through the front panel's own character-picker screen.
+  - Added an `encoder:NAME[:STEPS]` action to `tools/mdtrace/mdProbe.cpp` (mirrors
+    `mdEditor.cpp`'s `Editor::emitEncoderSteps`: `panelEncoderCommand()` + `sendPanelEvent(cmd, 0x01/0xff)`
+    per detent) since `mdpanel.h`'s `PanelEncoder` (DataEntryA-H/Level/SoundSelection) looked like the
+    likely input for a character picker. **It isn't** — rotating any `DataEntryA` steps had no effect on
+    the name-entry screen in testing.
+  - What actually works, found by probing live (`mdProbe` + `lcdpng`, converted to PNG and inspected):
+    `panel:Kit` → popup with LOAD/SAVE/EDIT/MASTER quadrants → `panel:Right` selects SAVE →
+    `panel:Enter` → save-slot list (`1-USERKIT`, `2-EFR UW`, ...) → `panel:Enter` on a slot → an
+    "Enter name:" screen with the name on one line and a `«  »` cursor indicator below the selected
+    character. From there: **`panel:Up`/`panel:Down` cycles the character at the cursor** (steps by
+    ASCII-ish order; a 2048-frame hold auto-repeats ~2 steps — use a short `hold` argument, e.g.
+    `panel:Up:128`, for single-character control), **`panel:Left`/`panel:Right` moves the cursor**
+    between name positions, `panel:Enter` confirms/saves. Copy of the exact working action sequence
+    (from a fresh boot, ROM path is the user's own `elektron_sps1-1uw_os1.63.bin`, not committed):
+    `panel:Kit panel:Right panel:Enter panel:Enter panel:Right:128 panel:Up:128 ... panel:Enter`.
+  - **Single-step confirmed directly (2026-09-28), correcting an initial misread**: a sequence of six
+    `panel:Up:64` calls in one boot, each followed by an `lcdpng` capture, was inspected at 6x
+    upscale (small thumbnails were ambiguous - don't trust them for glyph work, always upscale before
+    reading) and stepped exactly one character per tap: `T -> U -> V -> ...` Each `panel:Up`/`panel:Down`
+    with `hold=64` is a clean, reliable single-character step; no auto-repeat contamination at that
+    hold length. This means a sweep script can walk the full character set deterministically by
+    counting taps from a known start character - no need to guess distances or verify by trial capture
+    each time.
+  - **Full charset order walked and captured (2026-09-28)**: 45 sequential `panel:Up:64` taps from
+    a start char of "T" were each captured with `lcdpng`, cropped to the name-entry line, and
+    stacked into one strip image for direct reading (a much better technique than one-off captures -
+    reuse this "stack N frames into a vertical strip, read once" trick for any future sweep, it beats
+    inspecting frames one at a time). Confirmed order, continuing forward from T:
+    `T U V W X Y Z [2 accented/special glyphs, unconfirmed exact chars - look like "A-ring" and
+    a second variant] Ø <space> 0 1 2 3 4 5 6 7 8 9 + - = [Ø again, or a lookalike - verify] /
+    ( ) , ! ? A B C D E F G H I J K L M N O` (then presumably continues P Q R S T, wrapping). So the
+    cycle is essentially: **A-Z, a couple of accented/special characters, Ø, space, 0-9, a small
+    symbol set (`+ - = Ø / ( ) , ! ?`), then wraps to A** - i.e. everything needed for the skin
+    (A-Z, 0-9, space, `: . - ►` etc. seen in real captures) is reachable, though the exact symbol
+    for `:` and `►` wasn't hit in this 45-tap window and needs a longer walk or starting from a
+    different point to confirm their position/glyph shape.
+  - **Font atlas built and verified (2026-09-28) - Phase 1's core deliverable is done.** Wrote
+    `tools/mdtrace/build_font_atlas.py` (committed - it's code, not firmware-derived data). It drives
+    the full corrected 50-entry cycle from a fixed start point (steps to `SPACE` first via the known
+    offset from the default "T", then walks forward capturing all 50), and **autocrops the glyph cell
+    by pixel-diffing across all 50 frames** (the cell that changes frame-to-frame *is* the glyph, no
+    manual pitch measurement needed - this technique generalizes to Phase 2's icon sweep too). Output:
+    `font_atlas.json` (`glyph_w`/`glyph_h`/`band_x`/`band_y` + a `glyphs` dict keyed by name, each a
+    list of `"01..."` bit-row strings) plus a `font_atlas_grid.png` for visual sanity-checking - both
+    build output, gitignored (`build*/` already covers it; ran the script into a scratch dir this
+    session, not `vst/build/`, so nothing new needed there). Verified by eye at 8x scale: all 50
+    glyphs are correct, sharp, and distinguishable - `SPACE 0-9 PLUS MINUS EQUALS SLASH LPAREN RPAREN
+    COMMA BANG QUESTION A-Z ARING ADIAERESIS` plus one glyph (`SPECIAL_OSLASH_A`/`_B`, appearing twice
+    in the cycle, both visually "Ø") not yet given a confident semantic name - doesn't block anything,
+    it's still a correct bitmap under a stable key.
+  - Corrected an earlier misreading in this same log: the cycle is exactly 50 entries, not 51 - what
+    an earlier partial 45-tap walk logged as a trailing "PERIOD" was actually just the wrap back to
+    `SPACE` (which looks blank, hence the confusion). `CYCLE` in `build_font_atlas.py` is now the
+    checked-good ordered list.
+  - **The font is proportional, not fixed-pitch** - this corrects the original Phase 1 plan text's
+    assumption ("The font is fixed-pitch... compare letter spacing to get the exact cell pitch").
+    Swept the cursor across 8 name positions (`panel:Right:64` x8) with the fixed suffix "RX UW"
+    showing and diffed consecutive frames: the selection box's position deltas were `8,6,6,5,6,9,5`
+    px - not constant, meaning the box (and by extension each glyph's natural width) varies per
+    character, not a fixed grid. `build_font_atlas.py` now stores `ink_x0`/`ink_x1`/`advance` per
+    glyph as a first attempt at this, but **these numbers aren't trustworthy yet**: the autocrop band
+    includes the cursor box's own dashed border, which touches every glyph's left/right edge, so naive
+    blank-column trimming always reports full width. Fix (not done): mask out the border's fixed dash
+    pattern (constant across all 50 captured frames, so diffable/subtractable) before trimming ink
+    columns. Needed before Phase 3/4 can lay out real multi-character strings; does not block Phase 2
+    (icon sweep), which can proceed independently using the same "diff across a parameter sweep"
+    technique this atlas already proved out.
+
 ## Relationship between the projects
 
 Monomodule (Shnolk) and gearmulator-md-mm (Joe Landers) share no code and neither credits the other. md-mm is
