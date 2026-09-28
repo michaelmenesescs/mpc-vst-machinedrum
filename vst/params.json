@@ -98,6 +98,46 @@
    "display": "int"
   },
   {
+   "key": "track0_del",
+   "name": "T1 DEL",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track0_rev",
+   "name": "T1 REV",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track0_lfos",
+   "name": "T1 LFOS",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track0_lfod",
+   "name": "T1 LFOD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track0_lfom",
+   "name": "T1 LFOM",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
    "key": "track1_machine",
    "name": "T2 Machine",
    "min": 0,
@@ -188,6 +228,46 @@
   {
    "key": "track1_dist",
    "name": "T2 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track1_del",
+   "name": "T2 DEL",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track1_rev",
+   "name": "T2 REV",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track1_lfos",
+   "name": "T2 LFOS",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track1_lfod",
+   "name": "T2 LFOD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track1_lfom",
+   "name": "T2 LFOM",
    "min": 0,
    "max": 127,
    "default": 0,
@@ -290,6 +370,46 @@
    "display": "int"
   },
   {
+   "key": "track2_del",
+   "name": "T3 DEL",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track2_rev",
+   "name": "T3 REV",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track2_lfos",
+   "name": "T3 LFOS",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track2_lfod",
+   "name": "T3 LFOD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track2_lfom",
+   "name": "T3 LFOM",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
    "key": "track3_machine",
    "name": "T4 Machine",
    "min": 0,
@@ -380,6 +500,46 @@
   {
    "key": "track3_dist",
    "name": "T4 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track3_del",
+   "name": "T4 DEL",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track3_rev",
+   "name": "T4 REV",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track3_lfos",
+   "name": "T4 LFOS",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track3_lfod",
+   "name": "T4 LFOD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track3_lfom",
+   "name": "T4 LFOM",
    "min": 0,
    "max": 127,
    "default": 0,
@@ -482,6 +642,46 @@
    "display": "int"
   },
   {
+   "key": "track4_del",
+   "name": "T5 DEL",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track4_rev",
+   "name": "T5 REV",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track4_lfos",
+   "name": "T5 LFOS",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track4_lfod",
+   "name": "T5 LFOD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track4_lfom",
+   "name": "T5 LFOM",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
    "key": "track5_machine",
    "name": "T6 Machine",
    "min": 0,
@@ -572,6 +772,46 @@
   {
    "key": "track5_dist",
    "name": "T6 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track5_del",
+   "name": "T6 DEL",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track5_rev",
+   "name": "T6 REV",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track5_lfos",
+   "name": "T6 LFOS",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track5_lfod",
+   "name": "T6 LFOD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track5_lfom",
+   "name": "T6 LFOM",
    "min": 0,
    "max": 127,
    "default": 0,
@@ -674,6 +914,46 @@
    "display": "int"
   },
   {
+   "key": "track6_del",
+   "name": "T7 DEL",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track6_rev",
+   "name": "T7 REV",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track6_lfos",
+   "name": "T7 LFOS",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track6_lfod",
+   "name": "T7 LFOD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track6_lfom",
+   "name": "T7 LFOM",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
    "key": "track7_machine",
    "name": "T8 Machine",
    "min": 0,
@@ -764,6 +1044,46 @@
   {
    "key": "track7_dist",
    "name": "T8 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track7_del",
+   "name": "T8 DEL",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track7_rev",
+   "name": "T8 REV",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track7_lfos",
+   "name": "T8 LFOS",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track7_lfod",
+   "name": "T8 LFOD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track7_lfom",
+   "name": "T8 LFOM",
    "min": 0,
    "max": 127,
    "default": 0,
@@ -866,6 +1186,46 @@
    "display": "int"
   },
   {
+   "key": "track8_del",
+   "name": "T9 DEL",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track8_rev",
+   "name": "T9 REV",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track8_lfos",
+   "name": "T9 LFOS",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track8_lfod",
+   "name": "T9 LFOD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track8_lfom",
+   "name": "T9 LFOM",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
    "key": "track9_machine",
    "name": "T10 Machine",
    "min": 0,
@@ -956,6 +1316,46 @@
   {
    "key": "track9_dist",
    "name": "T10 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track9_del",
+   "name": "T10 DEL",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track9_rev",
+   "name": "T10 REV",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track9_lfos",
+   "name": "T10 LFOS",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track9_lfod",
+   "name": "T10 LFOD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track9_lfom",
+   "name": "T10 LFOM",
    "min": 0,
    "max": 127,
    "default": 0,
@@ -1058,6 +1458,46 @@
    "display": "int"
   },
   {
+   "key": "track10_del",
+   "name": "T11 DEL",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track10_rev",
+   "name": "T11 REV",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track10_lfos",
+   "name": "T11 LFOS",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track10_lfod",
+   "name": "T11 LFOD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track10_lfom",
+   "name": "T11 LFOM",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
    "key": "track11_machine",
    "name": "T12 Machine",
    "min": 0,
@@ -1148,6 +1588,46 @@
   {
    "key": "track11_dist",
    "name": "T12 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track11_del",
+   "name": "T12 DEL",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track11_rev",
+   "name": "T12 REV",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track11_lfos",
+   "name": "T12 LFOS",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track11_lfod",
+   "name": "T12 LFOD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track11_lfom",
+   "name": "T12 LFOM",
    "min": 0,
    "max": 127,
    "default": 0,
@@ -1250,6 +1730,46 @@
    "display": "int"
   },
   {
+   "key": "track12_del",
+   "name": "T13 DEL",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track12_rev",
+   "name": "T13 REV",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track12_lfos",
+   "name": "T13 LFOS",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track12_lfod",
+   "name": "T13 LFOD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track12_lfom",
+   "name": "T13 LFOM",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
    "key": "track13_machine",
    "name": "T14 Machine",
    "min": 0,
@@ -1340,6 +1860,46 @@
   {
    "key": "track13_dist",
    "name": "T14 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track13_del",
+   "name": "T14 DEL",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track13_rev",
+   "name": "T14 REV",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track13_lfos",
+   "name": "T14 LFOS",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track13_lfod",
+   "name": "T14 LFOD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track13_lfom",
+   "name": "T14 LFOM",
    "min": 0,
    "max": 127,
    "default": 0,
@@ -1442,6 +2002,46 @@
    "display": "int"
   },
   {
+   "key": "track14_del",
+   "name": "T15 DEL",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track14_rev",
+   "name": "T15 REV",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track14_lfos",
+   "name": "T15 LFOS",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track14_lfod",
+   "name": "T15 LFOD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track14_lfom",
+   "name": "T15 LFOM",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
    "key": "track15_machine",
    "name": "T16 Machine",
    "min": 0,
@@ -1538,6 +2138,46 @@
    "display": "int"
   },
   {
+   "key": "track15_del",
+   "name": "T16 DEL",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track15_rev",
+   "name": "T16 REV",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track15_lfos",
+   "name": "T16 LFOS",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track15_lfod",
+   "name": "T16 LFOD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track15_lfom",
+   "name": "T16 LFOM",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
    "key": "tempo",
    "name": "Tempo",
    "min": 30,
@@ -1569,7 +2209,12 @@
     "track0_fltw",
     "track0_fltq",
     "track0_srr",
-    "track0_dist"
+    "track0_dist",
+    "track0_del",
+    "track0_rev",
+    "track0_lfos",
+    "track0_lfod",
+    "track0_lfom"
    ]
   },
   {
@@ -1586,7 +2231,12 @@
     "track1_fltw",
     "track1_fltq",
     "track1_srr",
-    "track1_dist"
+    "track1_dist",
+    "track1_del",
+    "track1_rev",
+    "track1_lfos",
+    "track1_lfod",
+    "track1_lfom"
    ]
   },
   {
@@ -1603,7 +2253,12 @@
     "track2_fltw",
     "track2_fltq",
     "track2_srr",
-    "track2_dist"
+    "track2_dist",
+    "track2_del",
+    "track2_rev",
+    "track2_lfos",
+    "track2_lfod",
+    "track2_lfom"
    ]
   },
   {
@@ -1620,7 +2275,12 @@
     "track3_fltw",
     "track3_fltq",
     "track3_srr",
-    "track3_dist"
+    "track3_dist",
+    "track3_del",
+    "track3_rev",
+    "track3_lfos",
+    "track3_lfod",
+    "track3_lfom"
    ]
   },
   {
@@ -1637,7 +2297,12 @@
     "track4_fltw",
     "track4_fltq",
     "track4_srr",
-    "track4_dist"
+    "track4_dist",
+    "track4_del",
+    "track4_rev",
+    "track4_lfos",
+    "track4_lfod",
+    "track4_lfom"
    ]
   },
   {
@@ -1654,7 +2319,12 @@
     "track5_fltw",
     "track5_fltq",
     "track5_srr",
-    "track5_dist"
+    "track5_dist",
+    "track5_del",
+    "track5_rev",
+    "track5_lfos",
+    "track5_lfod",
+    "track5_lfom"
    ]
   },
   {
@@ -1671,7 +2341,12 @@
     "track6_fltw",
     "track6_fltq",
     "track6_srr",
-    "track6_dist"
+    "track6_dist",
+    "track6_del",
+    "track6_rev",
+    "track6_lfos",
+    "track6_lfod",
+    "track6_lfom"
    ]
   },
   {
@@ -1688,7 +2363,12 @@
     "track7_fltw",
     "track7_fltq",
     "track7_srr",
-    "track7_dist"
+    "track7_dist",
+    "track7_del",
+    "track7_rev",
+    "track7_lfos",
+    "track7_lfod",
+    "track7_lfom"
    ]
   },
   {
@@ -1705,7 +2385,12 @@
     "track8_fltw",
     "track8_fltq",
     "track8_srr",
-    "track8_dist"
+    "track8_dist",
+    "track8_del",
+    "track8_rev",
+    "track8_lfos",
+    "track8_lfod",
+    "track8_lfom"
    ]
   },
   {
@@ -1722,7 +2407,12 @@
     "track9_fltw",
     "track9_fltq",
     "track9_srr",
-    "track9_dist"
+    "track9_dist",
+    "track9_del",
+    "track9_rev",
+    "track9_lfos",
+    "track9_lfod",
+    "track9_lfom"
    ]
   },
   {
@@ -1739,7 +2429,12 @@
     "track10_fltw",
     "track10_fltq",
     "track10_srr",
-    "track10_dist"
+    "track10_dist",
+    "track10_del",
+    "track10_rev",
+    "track10_lfos",
+    "track10_lfod",
+    "track10_lfom"
    ]
   },
   {
@@ -1756,7 +2451,12 @@
     "track11_fltw",
     "track11_fltq",
     "track11_srr",
-    "track11_dist"
+    "track11_dist",
+    "track11_del",
+    "track11_rev",
+    "track11_lfos",
+    "track11_lfod",
+    "track11_lfom"
    ]
   },
   {
@@ -1773,7 +2473,12 @@
     "track12_fltw",
     "track12_fltq",
     "track12_srr",
-    "track12_dist"
+    "track12_dist",
+    "track12_del",
+    "track12_rev",
+    "track12_lfos",
+    "track12_lfod",
+    "track12_lfom"
    ]
   },
   {
@@ -1790,7 +2495,12 @@
     "track13_fltw",
     "track13_fltq",
     "track13_srr",
-    "track13_dist"
+    "track13_dist",
+    "track13_del",
+    "track13_rev",
+    "track13_lfos",
+    "track13_lfod",
+    "track13_lfom"
    ]
   },
   {
@@ -1807,7 +2517,12 @@
     "track14_fltw",
     "track14_fltq",
     "track14_srr",
-    "track14_dist"
+    "track14_dist",
+    "track14_del",
+    "track14_rev",
+    "track14_lfos",
+    "track14_lfod",
+    "track14_lfom"
    ]
   },
   {
@@ -1824,7 +2539,12 @@
     "track15_fltw",
     "track15_fltq",
     "track15_srr",
-    "track15_dist"
+    "track15_dist",
+    "track15_del",
+    "track15_rev",
+    "track15_lfos",
+    "track15_lfod",
+    "track15_lfom"
    ]
   },
   {

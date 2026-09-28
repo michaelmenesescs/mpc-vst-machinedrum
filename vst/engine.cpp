@@ -83,14 +83,22 @@ constexpr int kRing = 4, kAhead = 2;
 constexpr int kTracks = Engine::kTracks;
 constexpr int kBaseNote = 36;					// MPC/GM kick; note 36 = track 0, 37 = track 1, ...
 
-// slot layout, per track: 0=machine, 1=vol (HostModel raw param 17), 2=pan (param 18), 3.. = the 9
-// AMP/EFX params (params 8-16, real hardware page order - see gen_params.py's FX_PARAMS, must match).
-// Not yet exposed: SYN1-8 and DEL/REV/LFOS/LFOD/LFOM - see gen_params.py's docstring.
-constexpr const char* kFxKeys[] = {"amd", "amf", "eqf", "eqg", "fltf", "fltw", "fltq", "srr", "dist"};
+// slot layout, per track: 0=machine, 1=vol (HostModel raw param 17), 2=pan (param 18), 3.. = the
+// AMP/EFX page's 8 params (raw 8-15, real hardware page order - see gen_params.py's FX_PARAMS), then
+// the ROUTE page's 6 not-otherwise-exposed params (DIST raw 16, DEL/REV/LFOS/LFOD/LFOM raw 19-23 -
+// VOL/PAN raw 17/18 are ROUTE-page params too on real hardware, but reuse the existing vol/pan keys
+// above rather than duplicating them - see HANDOFF.md, "found the third per-track page: ROUTE").
+// Not yet exposed: SYN1-8 - see gen_params.py's docstring.
+constexpr const char* kFxKeys[] = {"amd", "amf", "eqf", "eqg", "fltf", "fltw", "fltq", "srr"};
 constexpr int kNumFx = sizeof(kFxKeys) / sizeof(kFxKeys[0]);
 constexpr int kFxRawParamBase = 8;	// HostModel raw param index of kFxKeys[0] ("amd")
 
-constexpr int kSlotTrack = 0, kSlotsPerTrack = 3 + kNumFx;	// machine, vol, pan, then the FX params
+constexpr const char* kRouteKeys[] = {"dist", "del", "rev", "lfos", "lfod", "lfom"};
+constexpr int kRouteRawParam[] = {16, 19, 20, 21, 22, 23};	// not contiguous (17/18 are vol/pan)
+constexpr int kNumRoute = sizeof(kRouteKeys) / sizeof(kRouteKeys[0]);
+static_assert(sizeof(kRouteRawParam) / sizeof(kRouteRawParam[0]) == kNumRoute);
+
+constexpr int kSlotTrack = 0, kSlotsPerTrack = 3 + kNumFx + kNumRoute;	// machine, vol, pan, FX, ROUTE
 constexpr int kSlotTempo = kSlotTrack + kTracks * kSlotsPerTrack;
 constexpr int kSlotMaxVoices = kSlotTempo + 1;
 constexpr int kNumSlots = kSlotMaxVoices + 1;
@@ -112,6 +120,9 @@ int slotOf(const char* key)
 		for(int i = 0; i < kNumFx; ++i)
 			if(!std::strcmp(fxKey, kFxKeys[i]))
 				return kSlotTrack + t * kSlotsPerTrack + 3 + i;
+		for(int i = 0; i < kNumRoute; ++i)
+			if(!std::strcmp(fxKey, kRouteKeys[i]))
+				return kSlotTrack + t * kSlotsPerTrack + 3 + kNumFx + i;
 	}
 	return -1;
 }
@@ -141,13 +152,16 @@ struct Inst
 		// Matches gen_params.py's declared defaults: the host normally pushes these via set_param right
 		// after create(), but this is what plays if render() is called before that (or from a host that
 		// doesn't restore params on creation).
-		constexpr int kFxDefaults[kNumFx] = {0, 0, 64, 64, 0, 127, 0, 0, 0};	// amd amf eqf eqg fltf fltw fltq srr dist
+		constexpr int kFxDefaults[kNumFx] = {0, 0, 64, 64, 0, 127, 0, 0};	// amd amf eqf eqg fltf fltw fltq srr
+		constexpr int kRouteDefaults[kNumRoute] = {0, 0, 0, 0, 0, 0};	// dist del rev lfos lfod lfom
 		for(int t = 0; t < kTracks; ++t)
 		{
 			param[kSlotTrack + t * kSlotsPerTrack + 1].store(100);	// vol
 			param[kSlotTrack + t * kSlotsPerTrack + 2].store(64);	// pan (centre)
 			for(int i = 0; i < kNumFx; ++i)
 				param[kSlotTrack + t * kSlotsPerTrack + 3 + i].store(kFxDefaults[i]);
+			for(int i = 0; i < kNumRoute; ++i)
+				param[kSlotTrack + t * kSlotsPerTrack + 3 + kNumFx + i].store(kRouteDefaults[i]);
 		}
 	}
 
@@ -192,10 +206,12 @@ void Inst::run()
 		int appliedTempo = -1, appliedMaxVoices = -1;
 		int appliedMachine[kTracks], appliedVol[kTracks], appliedPan[kTracks];
 		int appliedFx[kTracks][kNumFx];
+		int appliedRoute[kTracks][kNumRoute];
 		for(int t = 0; t < kTracks; ++t)
 		{
 			appliedMachine[t] = appliedVol[t] = appliedPan[t] = -1;
 			for(int i = 0; i < kNumFx; ++i) appliedFx[t][i] = -1;
+			for(int i = 0; i < kNumRoute; ++i) appliedRoute[t][i] = -1;
 		}
 
 		Engine::Output out;
@@ -229,6 +245,11 @@ void Inst::run()
 				{
 					const int v = std::clamp(param[kSlotTrack + t * kSlotsPerTrack + 3 + i].load(std::memory_order_relaxed), 0, 127);
 					if(v != appliedFx[t][i]) { appliedFx[t][i] = v; h.setParam(t, kFxRawParamBase + i, v); }
+				}
+				for(int i = 0; i < kNumRoute; ++i)
+				{
+					const int v = std::clamp(param[kSlotTrack + t * kSlotsPerTrack + 3 + kNumFx + i].load(std::memory_order_relaxed), 0, 127);
+					if(v != appliedRoute[t][i]) { appliedRoute[t][i] = v; h.setParam(t, kRouteRawParam[i], v); }
 				}
 			}
 

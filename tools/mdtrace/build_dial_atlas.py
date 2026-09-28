@@ -15,7 +15,10 @@ by first/last swept *value*, which comes from the sweep loop itself, not from re
 
 usage: build_dial_atlas.py <mdProbe binary> <flash.bin> <out dir> [encoder] [screen_action]
   encoder      PanelEncoder name (default DataEntryA - the AMD knob on the AMP/EFX page)
-  screen_action  panel: action to reach the screen first (default SynthesisEffectsRouting)
+  screen_action  panel: action(s) to reach the screen first, "+"-joined for repeats of the same
+                 button (default SynthesisEffectsRouting; the ROUTE page is
+                 "SynthesisEffectsRouting+SynthesisEffectsRouting" - see HANDOFF.md, "found the third
+                 per-track page")
 """
 import json
 import subprocess
@@ -98,7 +101,11 @@ def main() -> int:
     ppm_dir = out_dir / "_dial_frames"
     ppm_dir.mkdir(exist_ok=True)
 
-    args = [str(mdprobe), str(flash), str(flashcache), f"panel:{screen_action}"]
+    # screen_action may be several panel: presses joined with "+" (e.g. the ROUTE page needs the same
+    # SynthesisEffectsRouting button pressed twice - see ui_spec.py's SCREENS["route"]["reach"]).
+    args = [str(mdprobe), str(flash), str(flashcache)]
+    for action in screen_action.split("+"):
+        args.append(f"panel:{action}")
     frame_paths = [ppm_dir / "f0.ppm"]
     args.append(f"lcdpng:{frame_paths[0]}")
     for step in range(1, PARAM_STEPS):
