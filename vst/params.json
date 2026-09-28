@@ -2192,6 +2192,150 @@
    "max": 16,
    "default": 16,
    "display": "int"
+  },
+  {
+   "key": "track0_machine__open",
+   "name": "T1 Machine List",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "popup_of": "track0_machine"
+  },
+  {
+   "key": "track1_machine__open",
+   "name": "T2 Machine List",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "popup_of": "track1_machine"
+  },
+  {
+   "key": "track2_machine__open",
+   "name": "T3 Machine List",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "popup_of": "track2_machine"
+  },
+  {
+   "key": "track3_machine__open",
+   "name": "T4 Machine List",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "popup_of": "track3_machine"
+  },
+  {
+   "key": "track4_machine__open",
+   "name": "T5 Machine List",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "popup_of": "track4_machine"
+  },
+  {
+   "key": "track5_machine__open",
+   "name": "T6 Machine List",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "popup_of": "track5_machine"
+  },
+  {
+   "key": "track6_machine__open",
+   "name": "T7 Machine List",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "popup_of": "track6_machine"
+  },
+  {
+   "key": "track7_machine__open",
+   "name": "T8 Machine List",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "popup_of": "track7_machine"
+  },
+  {
+   "key": "track8_machine__open",
+   "name": "T9 Machine List",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "popup_of": "track8_machine"
+  },
+  {
+   "key": "track9_machine__open",
+   "name": "T10 Machine List",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "popup_of": "track9_machine"
+  },
+  {
+   "key": "track10_machine__open",
+   "name": "T11 Machine List",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "popup_of": "track10_machine"
+  },
+  {
+   "key": "track11_machine__open",
+   "name": "T12 Machine List",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "popup_of": "track11_machine"
+  },
+  {
+   "key": "track12_machine__open",
+   "name": "T13 Machine List",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "popup_of": "track12_machine"
+  },
+  {
+   "key": "track13_machine__open",
+   "name": "T14 Machine List",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "popup_of": "track13_machine"
+  },
+  {
+   "key": "track14_machine__open",
+   "name": "T15 Machine List",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "popup_of": "track14_machine"
+  },
+  {
+   "key": "track15_machine__open",
+   "name": "T16 Machine List",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "popup_of": "track15_machine"
   }
  ],
  "sections": [

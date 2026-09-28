@@ -58,6 +58,19 @@ params.append({"key": "tempo", "name": "Tempo", "min": 30, "max": 300, "default"
 params.append({"key": "max_voices", "name": "Max Voices", "min": 1, "max": 16, "default": 16, "display": "int"})
 sections.append(("GLOBAL", ["tempo", "max_voices"]))
 
+# Machine picker "open" flags (HANDOFF.md, "Machine picker: duplicating Monomodule's own design").
+# Appended after every other param, per this file's own "append only" rule (keeps every existing
+# param's index stable, so saved projects stay valid). "popup_of" makes the wrapper keep each of
+# these entirely to itself - never sent to the engine, never in the chunk - exactly the mechanism
+# shadow_skin.py's own `popup` widget uses (wrapper/popup.h's popup_is()/popup_set()/popup_picked()
+# key off this field alone, generically, whether or not a real `popup` layout line exists - confirmed
+# by reading wrapper/vst2_wrap.c directly: its setParameter() already calls popup_set() for every
+# param before ever reaching this port's own set_param()). No engine.cpp changes needed for this.
+for t in range(16):
+    key = "track%d_machine" % t
+    params.append({"key": "%s__open" % key, "name": "T%d Machine List" % (t + 1),
+                    "min": 0, "max": 1, "default": 0, "display": "int", "popup_of": key})
+
 json.dump({"name": "Machinedrum One", "params": params,
            "sections": [{"label": l, "keys": k} for l, k in sections]},
           open("params.json", "w"), indent=1)

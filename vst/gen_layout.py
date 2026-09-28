@@ -83,7 +83,7 @@ for t in range(16):
 
     mx, my = GRID_X0 + 60, 60
     lines.append('knob cx=%d cy=%d r=36 label="MACHINE" key=track%d_machine' % (mx, my, t))
-    keys = ["track%d_machine" % t]
+    amp_keys = ["track%d_machine" % t]
 
     lines += quadrant(*QUAD_XY["syn"], "SYN")
     # SYN1-8 aren't exposed as params yet (blocked on "touched" tracking, engine.cpp) - frame only.
@@ -91,17 +91,20 @@ for t in range(16):
     lines += quadrant(*QUAD_XY["amp_fx"], "AMP / EFX")
     knobs, ks = knob_grid(*QUAD_XY["amp_fx"], FX_PARAMS, "track%d_%s", t, strip_keys=FX_STRIP_KEYS)
     lines += knobs
-    keys += ks
+    amp_keys += ks
 
     lines += quadrant(*QUAD_XY["route"], "ROUTE")
-    knobs, ks = knob_grid(*QUAD_XY["route"], ROUTE_PARAMS, "track%d_%s", t, strip_keys=ROUTE_STRIP_KEYS)
+    knobs, route_keys = knob_grid(*QUAD_XY["route"], ROUTE_PARAMS, "track%d_%s", t, strip_keys=ROUTE_STRIP_KEYS)
     lines += knobs
-    keys += ks
 
     lines += quadrant(*QUAD_XY["reserved"], "-")
     # Reserved - confirmed with the user (HANDOFF.md): leave blank, no invented content.
 
-    lines.append('qlinks "%s" = %s' % (tab, ",".join(keys)))
+    # Two Q-Link sub-pages, not one: MACHINE+AMP/EFX is already 9 keys, and MPC caps a single
+    # qlinks page at 16 - one flat 17-key list (9 + ROUTE's 8) doesn't fit (found by dry-running
+    # this generated layout.conf against shadow_skin.build() directly - see HANDOFF.md).
+    lines.append('qlinks "%s" = %s' % (tab, ",".join(amp_keys)))
+    lines.append('qlinks "%s ROUTE" = %s' % (tab, ",".join(route_keys)))
     lines.append("")
 
 lines.append("[tab GLOBAL]")
