@@ -24,12 +24,24 @@ import sys
 import zlib
 from pathlib import Path
 
-# Crop region (LCD pixel coords) containing just the dial pointer icon, excluding the numeric
-# overlay and neighboring dials - found this session via full-frame pixel variance across a 128-step
-# AMD sweep (see HANDOFF.md). Re-derive for a different dial/screen by widening this box and checking
-# tools/mdtrace's variance-scan technique before trusting a new default.
-DIAL_CROP_X = (52, 66)
-DIAL_CROP_Y = (14, 26)
+# The AMP/EFX page's 8 dials (AMD AMF EQF EQG / FLTF FLTW FLTQ SRR, mapped to encoders
+# DataEntryA..H) sit in a uniform 4-col x 2-row grid - confirmed this session by variance-scanning
+# three of the eight (DataEntryA/B/E) and finding the same 14x12 icon box just offset by a constant
+# pitch: x0 = 52 + col*21, y0 = 14 + row*31. Re-derive with the variance-scan technique (see
+# HANDOFF.md) rather than trusting this for a different screen or a non-4x2 layout.
+_ENCODER_GRID_INDEX = {name: i for i, name in enumerate(
+    ["DataEntryA", "DataEntryB", "DataEntryC", "DataEntryD",
+     "DataEntryE", "DataEntryF", "DataEntryG", "DataEntryH"])}
+
+
+def dial_crop_for(encoder: str):
+    i = _ENCODER_GRID_INDEX[encoder]
+    col, row = i % 4, i // 4
+    x0 = 52 + col * 21
+    y0 = 14 + row * 31
+    return (x0, x0 + 14), (y0, y0 + 12)
+
+
 PARAM_STEPS = 128  # AMD (and most MD params) is a 0-127 range
 
 
@@ -97,8 +109,7 @@ def main() -> int:
     print(f"driving mdProbe through {PARAM_STEPS} steps of {encoder}...", file=sys.stderr)
     subprocess.run(args, check=True, capture_output=True)
 
-    x0, x1 = DIAL_CROP_X
-    y0, y1 = DIAL_CROP_Y
+    (x0, x1), (y0, y1) = dial_crop_for(encoder)
     cw, ch = x1 - x0, y1 - y0
 
     states = []  # list of {"value_first", "value_last", "rows": [...]}
@@ -134,7 +145,7 @@ def main() -> int:
     (out_dir / "dial_atlas.json").write_text(json.dumps({
         "encoder": encoder, "screen_action": screen_action,
         "icon_w": cw, "icon_h": ch,
-        "crop_x": list(DIAL_CROP_X), "crop_y": list(DIAL_CROP_Y),
+        "crop_x": [x0, x1], "crop_y": [y0, y1],
         "param_steps": PARAM_STEPS,
         "states": states,
     }, indent=1))

@@ -649,12 +649,20 @@ Steps:
     range**, verified visually at 8x scale - a clean, correctly-ordered sweep of the pointer dot
     rotating clockwise around the dial. Output `dial_atlas.json` (`states`: list of
     `{value_first, value_last, rows}`) + `dial_atlas_grid.png`, both build output (gitignored).
+  - **All 8 AMP/EFX dials swept (2026-09-28).** Confirmed the 8 dials sit in a uniform 4-col x 2-row
+    grid by variance-scanning three of them (DataEntryA/B/E): same 14x12 icon box, offset by a
+    constant pitch (`x0 = 52 + col*21`, `y0 = 14 + row*31`). Generalized `build_dial_atlas.py` to
+    compute the crop region from the encoder's grid position (`dial_crop_for()`) instead of one
+    hardcoded box, then ran all 8 (`DataEntryA`..`H` = AMD AMF EQF EQG / FLTF FLTW FLTQ SRR). Distinct
+    icon-state counts varied a lot - `36 36 31 13 28 9 12 33` - and that's real hardware behavior, not
+    a bug: spot-checking `DataEntryF` (FLTW)'s grid image showed the pointer rotating through only a
+    small arc for values 0-26 and then staying pinned in the same position for the rest of 27-127 -
+    i.e. this parameter's dial has a genuinely limited visual arc, confirmed by looking, not assumed.
   - Not yet done: the LEV bar-meter (a different icon shape - vertical bars, not a rotating pointer,
-    so likely needs its own crop region and possibly a different sweep target, e.g. incoming audio
-    level rather than a knob) and the other 7 AMP/EFX dials (AMF/EQF/EQG/FLTF/FLTW/FLTQ/SRR - same
-    script should work unchanged for each, just pass a different `encoder` arg - `DataEntryB`.. per
-    the panel layout - and possibly a different `DIAL_CROP_X/Y` per dial position; not yet swept to
-    confirm the crop-region constants generalize or need per-position values).
+    so needs its own crop region and a different sweep target - it's likely driven by output level,
+    not directly by an encoder, so may need a synthesized signal rather than a knob turn to sweep it)
+    and generalizing/verifying this same grid-formula approach on a different screen (SYN page knobs,
+    which Phase 3 will also need labels for).
 
   **Phase 3 — UI structure (hand-authored, not extracted — the one part with no ROM-derived
   shortcut).**
