@@ -213,14 +213,16 @@ void Inst::run()
 		}
 		machines.ready.store(true, std::memory_order_release);
 
-		// Real-time priority, above MPC's own AudioWorkers (SCHED_RR 20) - only once booted, so the boot
-		// itself doesn't hog the CPU at real-time priority. Without this the render thread is a plain
-		// SCHED_OTHER thread that can get starved under system load, heard as choppy/dropped audio (a
-		// plain background thread was the whole design point of this architecture - see the top-of-file
-		// comment - but it still needs real-time scheduling to actually keep up, same as
-		// mpc-vst-monomodule's own DSP thread).
+		// Real-time priority - only once booted, so the boot itself doesn't hog the CPU at real-time priority.
+		// Without it the render thread is a plain SCHED_OTHER thread that gets starved under system load, heard
+		// as choppy audio. But BELOW MPC's own audio threads (AudioWorkerN / Audio Processing: SCHED_RR 20) and
+		// its MIDI out (RR 10): at FIFO 30 (above them, the first version) an overloaded engine took its core
+		// from MPC's AudioWorker there and the whole Force glitched, not just this plugin (measured on the
+		// device, 2026-09-28: this thread at 89% of its core with a 4-track kit). Overloaded, it now drops
+		// only its own blocks (counted as underruns).
+		pthread_setname_np(pthread_self(), "md-engine");
 		{
-			int prio = 30;
+			int prio = 5;
 			if(const char* e = std::getenv("MD_FIFO")) prio = std::atoi(e);
 			if(prio > 0)
 			{

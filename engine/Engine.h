@@ -2,6 +2,7 @@
 // emulated) and the mixer DSP's per-track effects and mix as native C++ (TrackFx, Mixer). One 32-sample block
 // at a time: all 16 tracks, the dry main mix, the reverb/delay sends and each track's own output.
 #pragma once
+#include <algorithm>
 #include <array>
 #include <memory>
 #include <vector>
@@ -70,8 +71,25 @@ namespace md::engine
 			{
 				const auto& mi = m_host->mixerInput(t);
 				TrackFx::setParams(m_state[t], mi.fx.data());
-				m_fx.process(m_state[t], m_voiceOut[t].data(), _out.tracks[t].data());
-				in[t] = _out.tracks[t].data();
+				const int32_t* src = m_voiceOut[t].data();
+				int32_t* dst = _out.tracks[t].data();
+				const bool silentIn = std::all_of(src, src + kBlock, [](int32_t s) { return s == 0; });
+				// A silent track whose effect chain has settled (a block of silence left its state unchanged and
+				// output nothing) gives the same again for as long as its input stays silent and its state (which
+				// holds its params) stays the same: skip it. Exact - see HANDOFF.md, "fixed per-block cost".
+				if(skipSettled && silentIn && m_settled[t] && m_state[t].y == m_settledState[t].y)
+				{
+					std::fill(dst, dst + kBlock, 0);
+				}
+				else
+				{
+					const auto before = m_state[t];
+					m_fx.process(m_state[t], src, dst);
+					m_settled[t] = silentIn && m_state[t].y == before.y && std::all_of(dst, dst + kBlock, [](int32_t s) { return s == 0; });
+					if(m_settled[t])
+						m_settledState[t] = m_state[t];
+				}
+				in[t] = dst;
 				mix[t] = mi.mix;
 			}
 			m_mixer.process(in.data(), mix.data(), _out.mix);
@@ -79,6 +97,8 @@ namespace md::engine
 		}
 
 		const std::string& fault() const { return m_voices->faultReason(); }
+
+		bool skipSettled = true;	// false: run every track's effects every block (for verifying the skip)
 
 	private:
 		void init()
@@ -95,6 +115,8 @@ namespace md::engine
 		TrackFx m_fx;
 		Mixer m_mixer;
 		std::array<TrackFx::State, kTracks> m_state{};
+		std::array<TrackFx::State, kTracks> m_settledState{};
+		std::array<bool, kTracks> m_settled{};
 		typename TVoices::Block m_voiceOut{};
 	};
 

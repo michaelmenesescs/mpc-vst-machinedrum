@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <chrono>
+#include <string>
 #include <thread>
 extern "C" {
 #include "engine.h"
@@ -66,12 +67,35 @@ int main(int argc, char** argv)
 	const double cpu0 = static_cast<double>(clock());
 	const auto t1 = Clock::now();
 	auto next = t1;
+	// MD_SMOKE_KIT="32,34,49,66": that kit on tracks 1..n instead, every track on every 16th at 120 BPM
+	int kit = 0;
+	if(const char* k = std::getenv("MD_SMOKE_KIT"))
+		for(const char* p = k; *p; ++kit)
+		{
+			char key[32];
+			snprintf(key, sizeof key, "track%d_machine", kit);
+			e->set_param(in, key, std::to_string(std::atoi(p)).c_str());
+			while(*p && *p != ',') ++p;
+			if(*p) ++p;
+		}
 	const int blocks = secs * 44100 / 128;
 	for(int b = 0; b < blocks; ++b)
 	{
-		if(b % 12 == 0) e->midi(in, kick, 3);
-		if(b % 24 == 12) e->midi(in, snare, 3);
-		if(b % 6 == 3) e->midi(in, hat, 3);
+		if(kit)
+		{
+			if(b % 43 == 0)
+				for(int t = 0; t < kit; ++t)
+				{
+					const uint8_t on[3] = {0x90, static_cast<uint8_t>(36 + t), 110};
+					e->midi(in, on, 3);
+				}
+		}
+		else
+		{
+			if(b % 12 == 0) e->midi(in, kick, 3);
+			if(b % 24 == 12) e->midi(in, snare, 3);
+			if(b % 6 == 3) e->midi(in, hat, 3);
+		}
 		e->render(in, out, 128);
 		for(int i = 0; i < 128 * 2; ++i) if(std::abs(out[i]) > peak) peak = std::abs(out[i]);
 		next += std::chrono::microseconds(2902);
