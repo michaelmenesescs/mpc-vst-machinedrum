@@ -32,7 +32,7 @@ import shadow_skin as ss  # noqa: E402  (TUI.json helpers shared with the other 
 args = dict(a.split("=", 1) for a in sys.argv[5:])
 PRESETS = {"default": ("000000", "ffffff"), "inverted": ("ffffff", "000000"), "lowcontrast": ("5c5c5c", "c4c4c4"),
            # the Machinedrum's own LCD: near-black ink on its orange-red backlight (this port's default)
-           "md": ("1a0800", "ff5a1f"),
+           "md": ("5e0c0c", "ff4836"),   # sampled from a photo of the real LCD: maroon pixels on the red backlight
            "red": ("ff3b2e", "1c0403"), "blue": ("5ab0ff", "04112b"), "green": ("52ff70", "031608"), "orange": ("ffa11f", "1e1000")}
 _skin = args.get("skin", "md")
 _swap = _skin.endswith("-inverted") and _skin != "-inverted"
@@ -48,7 +48,7 @@ CELL, LABEL_Y, CONTENT_Y, CONTENT_H, VALUE_Y, VALUE_H = 32, 3, 9, 14, 23, 9
 TITLE_H, GRID_Y = 10, 11
 MARG, GAPX, PAGE_GAP = 10, 8, 12
 BAR_ROWS = 26
-ROW_GAP = PAGE_GAP
+ROW_GAP = 24              # (Monomodule: PAGE_GAP) room for the bezel between the LCD windows of the two page rows
 CW = int(args.get("cellw", "40"))
 LCD_W = 4 * CW + 1
 PAGE_GAP = MARG = int(args.get("gap", (SKIN_W - 2 * LCD_W * S) // 3))
@@ -56,8 +56,8 @@ PAGE_LCD_H = GRID_Y + 2 * CELL + 1
 PAGE_ROWS = 2
 LEV_W = 19 * S
 PAGES_W = 2 * LCD_W * S + PAGE_GAP
-BAR_X_W = MARG + LEV_W + GAPX
-TOP = 8 + BAR_ROWS * S + 8
+BAR_X_W = MARG   # (Monomodule: + LEV_W + GAPX, room for its logo) the machine bar lines up with the pages
+TOP = 8 + BAR_ROWS * S + 20   # (Monomodule: + 8) room for the bezel between the machine bar's window and the pages
 PAGES_X0 = MARG
 WIN_W = PAGES_X0 + PAGES_W + MARG
 WIN_H = TOP + PAGE_ROWS * PAGE_LCD_H * S + (PAGE_ROWS - 1) * ROW_GAP + 8
@@ -413,20 +413,93 @@ def syn_cells(m):
 
 default_machine = next(m for m in MACHINES if m["id"] == PREVIEW_MACHINE)
 
+# ------------------------------------------------------------------ chassis -------------------------------------------
+# The hardware's face (after a photo of the MD): a brushed-aluminium faceplate, a glossy black bezel, and LCD windows
+# cut into it - one per page and one for the machine bar - with the backlight's darker edges. Components only ever sit
+# inside a page's own rectangle, which stays flat PAPER, so the strips' opaque backgrounds still match.
+LCD_PAD = 6                                  # window margin around a page (skin px)
+BEZEL = (6, 5, 6)
+
+
+def chassis(windows):
+    import random
+    from PIL import ImageFilter, ImageFont
+    rnd = random.Random(7)
+    # brushed aluminium: horizontal streaks (noise stretched along x) over a soft vertical gradient
+    noise = Image.new("L", (SKIN_W // 16, SKIN_H))
+    noise.putdata([rnd.randint(0, 255) for _ in range(noise.size[0] * noise.size[1])])
+    noise = noise.resize((SKIN_W, SKIN_H), Image.BILINEAR).filter(ImageFilter.GaussianBlur(0.6))
+    im = Image.new("RGB", (SKIN_W, SKIN_H))
+    px, nz = im.load(), noise.load()
+    for y in range(SKIN_H):
+        base = 182 - 22 * y / SKIN_H
+        for x in range(SKIN_W):
+            v = int(base + (nz[x, y] - 128) * 0.09)
+            px[x, y] = (v, v, v - 2)
+    dr = ImageDraw.Draw(im)
+    # the bezel: glossy black, a faint highlight towards the top right, a bevelled edge
+    bx0, by0, bx1, by1 = 34, 6, SKIN_W - 35, SKIN_H - 7
+    mask = Image.new("L", (SKIN_W, SKIN_H), 0)
+    ImageDraw.Draw(mask).rounded_rectangle([bx0, by0, bx1, by1], radius=16, fill=255)
+    bez = Image.new("RGB", (SKIN_W, SKIN_H), BEZEL)
+    bp = bez.load()
+    for y in range(by0, by1):
+        for x in range(bx0, bx1):
+            g = max(0.0, (x - bx0) / (bx1 - bx0) - (y - by0) / (by1 - by0) * 0.9 - 0.25)   # diagonal sheen
+            a = int(26 * g)
+            bp[x, y] = (BEZEL[0] + a, BEZEL[1] + a, BEZEL[2] + a + 1)
+    im.paste(bez, (0, 0), mask)
+    dr.rounded_rectangle([bx0, by0, bx1, by1], radius=16, outline=(70, 70, 72), width=1)
+    dr.rounded_rectangle([bx0 + 1, by0 + 1, bx1 - 1, by1 - 1], radius=15, outline=(22, 22, 24), width=1)
+    # LCD windows: flat backlight inside, darkening over the last few pixels towards the edge, a thin dark rim
+    edge = tuple(int(c * 0.82) for c in PAPER)
+    for (x0, y0, x1, y1) in windows:
+        x0, y0, x1, y1 = x0 - LCD_PAD, y0 - LCD_PAD, x1 + LCD_PAD, y1 + LCD_PAD
+        dr.rectangle([x0 - 2, y0 - 2, x1 + 1, y1 + 1], fill=(0, 0, 0))
+        for d in range(LCD_PAD):
+            f = d / LCD_PAD
+            col = tuple(int(e + (p_ - e) * f) for e, p_ in zip(edge, PAPER))
+            dr.rectangle([x0 + d, y0 + d, x1 - 1 - d, y1 - 1 - d], outline=col)
+        dr.rectangle([x0 + LCD_PAD, y0 + LCD_PAD, x1 - 1 - LCD_PAD, y1 - 1 - LCD_PAD], fill=PAPER)
+    # the nameplate, on the bezel: plain lettering (no maker's logo)
+    try:
+        font = ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf", 30)
+        text, x_end = "MACHINEDRUM ONE", OX + PAGES_X0 + PAGES_W
+        tracking = 3
+        widths = [dr.textlength(ch, font=font) for ch in text]
+        x = x_end - int(sum(widths) + tracking * (len(text) - 1))
+        y = OY + 8 + (BAR_ROWS * S - 30) // 2
+        for ch, w in zip(text, widths):
+            dr.text((x, y), ch, font=font, fill=(222, 222, 220))
+            x += w + tracking
+    except OSError:
+        pass
+    return im
+
+
+def page_rect(name, w=None):
+    x, y = page_origin(name)
+    return (x, y, x + (w or LCD_W * S), y + PAGE_LCD_H * S)
+
+
+BAR_W_MAX = max(machine_bar(m).size[0] for m in MACHINES)
+HEADER_RECT = (OX + BAR_X_W, OY + 8, OX + BAR_X_W + BAR_W_MAX, OY + 8 + BAR_ROWS * S)   # the widest machine bar
+TRACK_CHASSIS = chassis([HEADER_RECT] + [page_rect(n) for n in ("SYN", "AMP", "ROUTE", "TRACK")])
+
 # backgrounds: one per track (the TRACK quadrant's title names it); SYN uses the default machine's labels here, the
 # per-machine overlay repaints its grid
 EMPTY_MACHINE = next(m for m in MACHINES if m["id"] == 0)   # GND--: a new track's machine
 bgs = []
 for t in range(TRACKS):
-    b_ = Image.new("RGB", (SKIN_W, SKIN_H), PAPER)
-    px_text(b_, F["bold8"], "MD", OX + MARG + (LEV_W - text_width(F["bold8"], "MD") * 4) // 2, OY + 8 + (BAR_ROWS * S - F["bold8"].h * 4) // 2, 4, INK)
+    b_ = TRACK_CHASSIS.copy()
     # the 4th quadrant: the track's LFO page (the MD's own, FUNCTION + SYN/EFX/ROUTE)
     for name, cells in (("SYN", syn_cells(EMPTY_MACHINE)), ("AMP", AMP_CELLS), ("ROUTE", ROUTE_CELLS), ("TRACK", LFO_CELLS)):
         cv = page_canvas(name, cells, "LFO" if name == "TRACK" else None)
         b_.paste(cv.image(), page_origin(name))
     bgs.append(b_)
-for t, b_ in enumerate(bgs):
-    image_comp("Background", save_png("bg_%02d" % t, b_), 0, 0, SKIN_W, SKIN_H, tab=t)
+bg_track = save_png("bg_track", bgs[0])   # every track's background is the same now (the LFO title doesn't name the track)
+for t in range(TRACKS):
+    image_comp("Background", bg_track, 0, 0, SKIN_W, SKIN_H, tab=t)
 
 BAR_X, BAR_Y = OX + BAR_X_W, OY + 8
 
@@ -525,6 +598,8 @@ fn_t = save_png("touch_lev", Image.new("RGBA", (8, 8 * FRAMES), (0, 0, 0, 0)))  
 
 # machine picker: field over the machine bar toggles machine__open; panel + one image button per machine
 pk_x, pk_y, pk_w, pk_h = OX + PAGES_X0, OY + TOP, PAGES_W, WIN_H - 8 - TOP
+# over the page windows' margins too, so the bezel between them doesn't show through the open picker
+pk_x, pk_y, pk_w, pk_h = pk_x - LCD_PAD, pk_y - LCD_PAD, pk_w + 2 * LCD_PAD, pk_h + 2 * LCD_PAD
 COL_ROWS = 16
 cols = []
 for m in MACHINES:
@@ -577,10 +652,10 @@ for m in MACHINES:
 pk = "mdPickPanel"
 defs[pk] = ss._local(pk, [], [ss._sub("Image", {"version": 2, "imageType": "Regular", "colour": "0", "image": fn_panel}, ss._bounds(0, 0, pk_w, pk_h), "Image")])
 key = "mdPickField"
-defs[key] = ss._local(key, [ss._action("Mouse Down", "Toggle Switch"), ss._action("Enter Pressed", "Toggle Switch")], [ss._focus(75 * S, BAR_ROWS * S)])
+defs[key] = ss._local(key, [ss._action("Mouse Down", "Toggle Switch"), ss._action("Enter Pressed", "Toggle Switch")], [ss._focus(BAR_W_MAX, BAR_ROWS * S)])
 for t in range(TRACKS):   # last, so the picker draws over everything on the tab
     mk, ok = "track%d_machine" % t, "track%d_machine__open" % t
-    place("mdPickField", "Machine picker", PIDX[ok], BAR_X, BAR_Y, 75 * S, BAR_ROWS * S, t, focus="Yes", extra={"Text": PIDX[mk]})
+    place("mdPickField", "Machine picker", PIDX[ok], BAR_X, BAR_Y, BAR_W_MAX, BAR_ROWS * S, t, focus="Yes", extra={"Text": PIDX[mk]})
     open_c = enabling(ok, 1, 2)
     place(pk, "Machine list", PIDX[ok], pk_x, pk_y, pk_w, pk_h, t, cond=open_c, img=fn_panel)
     for m in MACHINES:
@@ -592,8 +667,6 @@ for t in range(TRACKS):   # last, so the picker draws over everything on the tab
 # MIXER (the top row, both pages wide): every track's LEV as Monomodule's LEV column, 16 across. GLOBAL (bottom left):
 # VOICES (max_voices, 1-16). Tempo follows MPC's own (vst.json HAS_LFO_BPM), so it has no control here.
 GT = TRACKS
-gbg = Image.new("RGB", (SKIN_W, SKIN_H), PAPER)
-px_text(gbg, F["bold8"], "MD", OX + MARG + (LEV_W - text_width(F["bold8"], "MD") * 4) // 2, OY + 8 + (BAR_ROWS * S - F["bold8"].h * 4) // 2, 4, INK)
 MW = PAGES_W // S                      # the mixer page's width in LCD px
 MCW = (MW - 1) // TRACKS               # a channel column
 mcv = Canvas(MW, PAGE_LCD_H)
@@ -609,6 +682,7 @@ for c in range(TRACKS):
     mcv.dots_v(x0 + mfx, mfy, mfy + mfh - 1); mcv.dots_v(x0 + mfx + mfw - 1, mfy, mfy + mfh - 1)
 mcv.dots_h(0, MW - 1, GRID_Y); mcv.dots_v(TRACKS * MCW, GRID_Y, PAGE_LCD_H - 1); mcv.dots_h(0, MW - 1, PAGE_LCD_H - 1)
 mx0, my0 = page_origin("SYN")
+gbg = chassis([page_rect("SYN", MW * S), page_rect("ROUTE")])
 gbg.paste(mcv.image(), (mx0, my0))
 GLOBAL_CELLS = [P("VOICES", default=127, fmt=lambda raw: str(1 + int(round(raw * 15 / 127.0))))] + [P("") for _ in range(7)]
 gcv = page_canvas("ROUTE", GLOBAL_CELLS, "GLOBAL")
