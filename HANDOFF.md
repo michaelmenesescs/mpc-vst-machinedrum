@@ -658,11 +658,32 @@ Steps:
     a bug: spot-checking `DataEntryF` (FLTW)'s grid image showed the pointer rotating through only a
     small arc for values 0-26 and then staying pinned in the same position for the rest of 27-127 -
     i.e. this parameter's dial has a genuinely limited visual arc, confirmed by looking, not assumed.
-  - Not yet done: the LEV bar-meter (a different icon shape - vertical bars, not a rotating pointer,
-    so needs its own crop region and a different sweep target - it's likely driven by output level,
-    not directly by an encoder, so may need a synthesized signal rather than a knob turn to sweep it)
-    and generalizing/verifying this same grid-formula approach on a different screen (SYN page knobs,
-    which Phase 3 will also need labels for).
+  - **LEV bar-meter investigated, not yet solved (2026-09-28) - ruled out several easy guesses.**
+    Tried: `encoder:Level:20` (no visible change to the bar at all - so `PanelEncoder::Level` is not
+    what drives it), `encoder:SoundSelection:20` (this one *did* do something real - it changed the
+    breadcrumb's machine name, i.e. it's the machine/sound-select knob - but still no LEV bar change),
+    a trigger-and-decay sweep (`trig:1:256` then 20x `wait:1024` + `lcdpng`, variance-scanned the whole
+    top-left quadrant - zero pixel variance across all 21 frames, meaning either the LEV bar genuinely
+    didn't move or trigger 1 isn't the same track this AMP/EFX page is showing - the breadcrumb read
+    "TRX►B2►TFX", i.e. bank B track 2, not trigger 1's track), and `panel:DataPageForward`/`Backward`
+    (no visible change at all on this screen - may need a different starting screen or a hold/repeat
+    semantics not yet tried). **Next things to try, not yet done**: align the triggered track with the
+    displayed track (select bank/track A1 first, then trigger pad 1, before capturing the decay sweep)
+    since a live VU-style meter is the most likely remaining explanation; if that still shows no
+    movement, LEV may require actual DAC/output-stage audio routing this full-system emulation doesn't
+    drive by default, or may be a static per-track "level" *setting* controlled by some other physical
+    input not yet tried (e.g. one of the `Track1-6` panel buttons, or a dedicated hardware level pot
+    modeled as its own `PanelControl`/`PanelEncoder` not yet probed).
+  - Tried the "align track" idea immediately: `panel:BankA panel:Track1` before the AMP/EFX page.
+    Result: `BankA` opens a "BANK A" **popup dialog** (confirmed by capture - a modal overlay with 4
+    selectable squares), not a direct track-select; `Track1` after it didn't close the popup or
+    change the active track (breadcrumb stayed on "TRX►B2►TFX"), and triggering while the popup is
+    still open silenced playback entirely (peak dropped to 0, vs. ~0.17-0.22 without the popup open).
+    So this specific combo doesn't reach bank/track selection - needs the popup's own confirm/dismiss
+    sequence worked out first (probably `panel:Enter` after `Track1`, not tried yet) before this
+    approach can be retried.
+  - Not yet done: generalizing/verifying this same grid-formula approach on a different screen (SYN
+    page knobs, which Phase 3 will also need labels for).
 
   **Phase 3 — UI structure (hand-authored, not extracted — the one part with no ROM-derived
   shortcut).**
