@@ -142,7 +142,7 @@ index 05557026..e356de8f 100644
  		{
  			return m_frontPanelPublisher->tryRead(_panel);
 diff --git a/source/elektron/md/mdLib/mdmc.cpp b/source/elektron/md/mdLib/mdmc.cpp
-index dae644c3..454cef03 100644
+index dae644c3..489b61ab 100644
 --- a/source/elektron/md/mdLib/mdmc.cpp
 +++ b/source/elektron/md/mdLib/mdmc.cpp
 @@ -21,6 +21,7 @@
@@ -169,7 +169,7 @@ index dae644c3..454cef03 100644
 +		for(uint32_t i = 0; i < g_mdBpCount; ++i)
 +		{
 +			if(g_mdBp[i] != pc) continue;
-+			std::fprintf(stderr, "BP pc=%06x a=", pc);
++			std::fprintf(stderr, "BP pc=%06x cyc=%llu a=", pc, static_cast<unsigned long long>(getCycles()));
 +			for(uint32_t r = 0; r < 8; ++r) std::fprintf(stderr, "%08x ", getAReg(r));
 +			std::fprintf(stderr, "d=");
 +			for(uint32_t r = 0; r < 8; ++r) std::fprintf(stderr, "%08x ", getDReg(r));

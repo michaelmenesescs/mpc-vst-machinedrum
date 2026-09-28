@@ -2,7 +2,9 @@
 // smoothing settle, triggers it and writes that voice's output (int32, 24-bit signed) to a file.
 // usage: mdhost OS.syx OUT.raw TRACK MACHINE_ID BLOCKS [P0 P1 ... P23]   (P = 0-127)
 // env MDHOST_LFO="destTrack,destParam,shape1,shape2,type" sets the track's LFO;
-// env MDHOST_SLOTS=path writes the voice slot (13 words) after every tick as text.
+// env MDHOST_SLOTS=path writes the voice slot (13 words) after every tick as text;
+// env MDHOST_SET="param=value,..." sets single parameters, MDHOST_LEVEL / MDHOST_VEL the track level and the
+// trigger velocity; the track's mixer-DSP input words are printed at the end.
 #include "../../engine/HostModel.h"
 #include "../mdfw/Firmware.h"
 #include "dsp56kEmu/dsp.h"
@@ -33,10 +35,21 @@ int main(int argc, char** argv)
 			std::sscanf(lfo, "%d,%d,%d,%d,%d", &v[0], &v[1], &v[2], &v[3], &v[4]);
 			host.setLfo(track, v[0], v[1], v[2], v[3], v[4]);
 		}
+		if(const char* set = std::getenv("MDHOST_SET"))
+			for(const char* q = set; *q; )
+			{
+				int pp = 0, v = 0, used = 0;
+				if(std::sscanf(q, "%d=%d%n", &pp, &v, &used) < 2) break;
+				host.setParam(track, pp, v);
+				q += used; if(*q == ',') ++q;
+			}
+		if(const char* lev = std::getenv("MDHOST_LEVEL"))
+			host.setLevel(track, std::atoi(lev));
+		const int vel = std::getenv("MDHOST_VEL") ? std::atoi(std::getenv("MDHOST_VEL")) : 100;
 		std::FILE* slots = std::getenv("MDHOST_SLOTS") ? std::fopen(std::getenv("MDHOST_SLOTS"), "w") : nullptr;
 
 		md::engine::VoiceEngine::Block b;
-		host.trigger(track);
+		host.trigger(track, vel);
 		std::FILE* f = std::fopen(argv[2], "wb");
 		uint64_t dspInstr = 0;
 		for(int n = 0; n < blocks; ++n)
@@ -52,6 +65,12 @@ int main(int argc, char** argv)
 			std::fwrite(b[track].data(), 4, b[track].size(), f);
 		}
 		std::fclose(f);
+		const auto& mi = host.mixerInput(track);
+		std::printf("mixer fx:");
+		for(auto w : mi.fx) std::printf(" %06x", w);
+		std::printf("  mix:");
+		for(auto w : mi.mix) std::printf(" %06x", w);
+		std::printf("\n");
 		const auto* m = os.machine(machine);
 		std::printf("track %d %s: %d blocks, DSP2 %.1f M instr/s\n", track + 1, m ? m->name.c_str() : "?", blocks,
 			double(dspInstr) / blocks * 44100.0 / 32.0 / 1e6);

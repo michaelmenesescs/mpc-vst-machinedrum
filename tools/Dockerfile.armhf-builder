@@ -1,0 +1,8 @@
+# Cross-compiler image for vst/build_so.sh. Build once: docker build -t md-armhf-builder -f tools/Dockerfile.armhf-builder .
+# debian:bookworm's crossbuild-essential-armhf targets glibc ~2.36, staying below the Force's 2.39 (a
+# newer host toolchain's cross libc could emit symbol versions the device's loader can't satisfy).
+FROM debian:bookworm
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    crossbuild-essential-armhf cmake ninja-build git file ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+ENV CROSS_PREFIX=arm-linux-gnueabihf-

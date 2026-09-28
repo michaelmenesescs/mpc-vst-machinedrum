@@ -12,6 +12,8 @@
 //   cc:CH:CC:VAL             MIDI control change
 //   sysex:HEXBYTES           e.g. sysex:f000203c02005b000001f7
 //   panel:NAME               tap a panel control (Kit, Enter, Exit, Up, Down, Left, Right, Play, Stop, ...)
+//   encoder:NAME[:STEPS]     rotate a data-entry encoder (DataEntryA..H, Level, SoundSelection) by STEPS
+//                            detents (default 1, negative = counter-clockwise) - for character-picker screens
 //   wav:PATH                 start recording the stereo output as float32 raw to PATH
 #include "mdLib/mdhardware.h"
 #include "mdLib/mdpanel.h"
@@ -64,13 +66,29 @@ namespace
 		return v;
 	}
 
-	const std::map<std::string, md::PanelControl> g_panel = {
-		{"Kit", md::PanelControl::Kit}, {"Enter", md::PanelControl::Enter}, {"Exit", md::PanelControl::Exit},
-		{"Up", md::PanelControl::Up}, {"Down", md::PanelControl::Down}, {"Left", md::PanelControl::Left},
-		{"Right", md::PanelControl::Right}, {"Play", md::PanelControl::Play}, {"Stop", md::PanelControl::Stop},
-		{"Function", md::PanelControl::Function}, {"Record", md::PanelControl::Record},
-		{"Track1", md::PanelControl::Track1}, {"Track2", md::PanelControl::Track2},
-	};
+	std::map<std::string, md::PanelControl> makePanelMap()
+	{
+		std::map<std::string, md::PanelControl> m;
+		for(int i = 0; i <= static_cast<int>(md::PanelControl::ClassicExtended); ++i)
+		{
+			const auto c = static_cast<md::PanelControl>(i);
+			m[md::panelControlName(c)] = c;
+		}
+		return m;
+	}
+	const std::map<std::string, md::PanelControl> g_panel = makePanelMap();
+
+	std::map<std::string, md::PanelEncoder> makeEncoderMap()
+	{
+		std::map<std::string, md::PanelEncoder> m;
+		for(int i = 0; i <= static_cast<int>(md::PanelEncoder::SoundSelection); ++i)
+		{
+			const auto e = static_cast<md::PanelEncoder>(i);
+			m[md::panelEncoderName(e)] = e;
+		}
+		return m;
+	}
+	const std::map<std::string, md::PanelEncoder> g_encoder = makeEncoderMap();
 
 	bool press(md::Hardware& _hw, md::PanelControl _c, uint32_t _hold)
 	{
@@ -172,6 +190,28 @@ int main(int argc, char** argv)
 				md::g_mdCount[0] / sec, md::g_mdCount[1] / sec, md::g_mdCount[2] / sec, md::g_mdCount[3] / sec);
 			continue;
 		}
+		if(kind == "dspregs")	// dspregs:N - DSP N peripheral/state words
+		{
+			auto& dsp = hw.traceDsp(static_cast<uint32_t>(v.at(0)));
+			auto* periph = dsp.getPeriph(0);
+			std::fprintf(stderr, "   pc=%06x sr=%06x omr=%06x", dsp.getPC().toWord(), dsp.getSR().toWord(), dsp.regs().omr.var);
+			for(uint32_t a : {0xfffff9u, 0xfffff8u, 0xfffff7u, 0xfffff6u, 0xfffffeu, 0xffffffu, 0xfffffdu})
+				std::fprintf(stderr, " X:%06x=%06x", a, periph->read(a, dsp56k::Nop));
+			for(uint32_t a : {0x147fffu, 0x140u, 0x141u, 0x142u, 0x7ffu})
+				std::fprintf(stderr, " Y:%06x=%06x", a, dsp.memory().get(dsp56k::MemArea_Y, a));
+			std::fprintf(stderr, "\n");
+			continue;
+		}
+		if(kind == "dumpmem")	// dumpmem:FROM:TO:PATH - raw ColdFire memory to a file
+		{
+			const auto p1 = s.find(':'), p2 = s.find(':', p1 + 1), p3 = s.find(':', p2 + 1);
+			const auto from = static_cast<uint32_t>(std::strtoul(s.substr(p1 + 1, p2 - p1 - 1).c_str(), nullptr, 16));
+			const auto to = static_cast<uint32_t>(std::strtoul(s.substr(p2 + 1, p3 - p2 - 1).c_str(), nullptr, 16));
+			std::FILE* f = std::fopen(s.substr(p3 + 1).c_str(), "wb");
+			for(uint32_t a = from; a < to; a += 2) { const uint16_t w = hw.traceUc().read16(a); const uint8_t b[2] = {static_cast<uint8_t>(w >> 8), static_cast<uint8_t>(w)}; std::fwrite(b, 1, 2, f); }
+			std::fclose(f);
+			continue;
+		}
 		if(s == "cf:on") { md::g_mdCfTraceOn = true; continue; }
 		if(s == "cf:off") { md::g_mdCfTraceOn = false; continue; }
 		if(s == "essi:on") { md::g_mdEssiDumpOn = true; continue; }
@@ -188,6 +228,23 @@ int main(int argc, char** argv)
 					line += a && b ? '#' : a ? '"' : b ? '.' : ' ';
 				}
 				std::cerr << "   |" << line << "|\n";
+			}
+			continue;
+		}
+		if(kind == "lcdpng")	// lcdpng:PATH.ppm -- the real emulated LCD framebuffer as a bit-exact bitmap,
+		{	// for skin reference art (never commit: it's Elektron's own LCD art, see docs/FIRMWARE.md).
+			const auto fp = hw.getFrontPanelSnapshot();
+			std::FILE* f = std::fopen(s.substr(7).c_str(), "wb");
+			if(f)
+			{
+				std::fprintf(f, "P5\n%u %u\n255\n", md::FrontPanel::g_lcdWidth, md::FrontPanel::g_lcdHeight);
+				for(uint32_t y = 0; y < md::FrontPanel::g_lcdHeight; ++y)
+					for(uint32_t x = 0; x < md::FrontPanel::g_lcdWidth; ++x)
+					{
+						const uint8_t v = fp.getLcdPixel(x, y) ? 0 : 255;	// ink on = dark, matching the real backlit LCD
+						std::fwrite(&v, 1, 1, f);
+					}
+				std::fclose(f);
 			}
 			continue;
 		}
@@ -219,12 +276,91 @@ int main(int argc, char** argv)
 			press(hw, static_cast<md::PanelControl>(static_cast<int>(md::PanelControl::Trigger1) + v.at(0) - 1), v.size() > 1 ? v[1] : 2048);
 			continue;
 		}
-		if(kind == "panel")
-		{
-			const auto it = g_panel.find(s.substr(6));
+		if(kind == "panel")	// panel:NAME[:HOLD] -- HOLD in frames, default 2048 (the firmware auto-repeats a
+		{	// held button after a couple hundred ms, so short HOLD e.g. 128 gives single-step control)
+			const auto p1 = s.find(':'), p2 = s.find(':', p1 + 1);
+			const auto it = g_panel.find(s.substr(p1 + 1, p2 - p1 - 1));
 			if(it == g_panel.end()) { std::cerr << "unknown panel control\n"; return 1; }
-			press(hw, it->second, 2048);
+			const uint32_t hold = p2 == std::string::npos ? 2048 : static_cast<uint32_t>(std::atoi(s.c_str() + p2 + 1));
+			press(hw, it->second, hold);
 			std::cerr << "   peak=" << run(hw, 4096) << '\n';
+			continue;
+		}
+		if(kind == "combo")	// combo:HELD+TAPPED -- hold one control while tapping another (e.g. Function+Kit)
+		{
+			const auto plus = s.find('+');
+			const auto a = g_panel.find(s.substr(6, plus - 6)), b = g_panel.find(s.substr(plus + 1));
+			if(plus == std::string::npos || a == g_panel.end() || b == g_panel.end()) { std::cerr << "unknown panel control\n"; return 1; }
+			const auto pa = md::panelPacket(md::MachineModel::Machinedrum, a->second);
+			const auto pb = md::panelPacket(md::MachineModel::Machinedrum, b->second);
+			hw.sendPanelEvent(pa->row, pa->mask);
+			run(hw, 1024);
+			hw.sendPanelEvent(pb->row, pb->row == pa->row ? static_cast<uint8_t>(pa->mask | pb->mask) : pb->mask);
+			run(hw, 1024);
+			hw.sendPanelEvent(pb->row, pb->row == pa->row ? pa->mask : 0);
+			run(hw, 1024);
+			hw.sendPanelEvent(pa->row, 0);
+			std::cerr << "   peak=" << run(hw, 4096) << '\n';
+			continue;
+		}
+		if(kind == "encoder")	// encoder:NAME:STEPS -- rotate a data-entry encoder, one detent packet per step
+		{	// (matches mdEditor.cpp's Editor::emitEncoderSteps: cmd from panelEncoderCommand, arg 0x01/0xff per step)
+			const auto p1 = s.find(':'), p2 = s.find(':', p1 + 1);
+			const auto it = g_encoder.find(s.substr(p1 + 1, p2 - p1 - 1));
+			if(it == g_encoder.end()) { std::cerr << "unknown encoder\n"; return 1; }
+			const auto cmd = md::panelEncoderCommand(md::MachineModel::Machinedrum, it->second);
+			if(!cmd) { std::cerr << "encoder not available on this model\n"; return 1; }
+			const int steps = p2 == std::string::npos ? 1 : std::atoi(s.c_str() + p2 + 1);
+			const uint8_t arg = steps >= 0 ? 0x01 : 0xff;
+			for(int k = 0; k < std::abs(steps); ++k)
+			{
+				hw.sendPanelEvent(*cmd, arg);
+				std::cerr << "   peak(step)=" << run(hw, 512) << '\n';
+			}
+			continue;
+		}
+		if(kind == "dspdump")	// dspdump:DSP:FROM:TO:FILE -- DSP (0 mixer, 1 voices) P memory FROM..TO (hex words) as raw
+		{	// little-endian 32-bit words to FILE
+			const auto p1 = s.find(':'), p2 = s.find(':', p1 + 1), p3 = s.find(':', p2 + 1), p4 = s.find(':', p3 + 1);
+			const auto dspI = static_cast<uint32_t>(std::atoi(s.c_str() + p1 + 1));
+			const auto from = static_cast<uint32_t>(std::strtoul(s.substr(p2 + 1, p3 - p2 - 1).c_str(), nullptr, 16));
+			const auto to = static_cast<uint32_t>(std::strtoul(s.substr(p3 + 1, p4 - p3 - 1).c_str(), nullptr, 16));
+			auto& mem = hw.traceDsp(dspI).memory();
+			std::vector<uint32_t> words;
+			for(uint32_t a = from; a < to && a < mem.sizeP(); ++a) words.push_back(mem.get(dsp56k::MemArea_P, a));
+			std::ofstream(s.substr(p4 + 1), std::ios::binary).write(reinterpret_cast<const char*>(words.data()), static_cast<std::streamsize>(words.size() * 4));
+			std::cerr << "   " << words.size() << " words\n";
+			continue;
+		}
+		if(kind == "kitdump")	// kitdump:DIR -- ask the MD for each of its 64 kits (sysex kit request $53) and write each
+		{	// reply as DIR/kit_NN.syx, exactly as the unit sends it (the factory kits, on a freshly initialised flash)
+			const std::string dir = s.substr(8);
+			std::vector<synthLib::SMidiEvent> out;
+			int got = 0;
+			for(int slot = 0; slot < 64; ++slot)
+			{
+				synthLib::SMidiEvent rq(synthLib::MidiEventSource::Host);
+				for(const uint8_t b : {0xf0, 0x00, 0x20, 0x3c, 0x02, 0x00, 0x53, slot, 0xf7}) rq.sysex.push_back(static_cast<uint8_t>(b));
+				hw.sendMidi(rq);
+				std::vector<uint8_t> dump;
+				for(int f = 0; f < 44100 * 2 && (dump.empty() || dump.back() != 0xf7); f += 512)
+				{
+					hw.advance(512);
+					out.clear();
+					hw.readMidiOut(out);
+					for(const auto& e : out)
+					{
+						if(!e.sysex.empty()) dump.insert(dump.end(), e.sysex.begin(), e.sysex.end());
+						else if(!dump.empty() || e.a == 0xf0) { dump.push_back(e.a); if(e.b != 0 || e.c != 0) { dump.push_back(e.b); dump.push_back(e.c); } }
+					}
+				}
+				if(dump.size() < 16 || dump.front() != 0xf0 || dump.back() != 0xf7) { std::cerr << "   slot " << slot << ": no dump\n"; continue; }
+				char name[512];
+				std::snprintf(name, sizeof name, "%s/kit_%02d.syx", dir.c_str(), slot);
+				std::ofstream(name, std::ios::binary).write(reinterpret_cast<const char*>(dump.data()), static_cast<std::streamsize>(dump.size()));
+				++got;
+			}
+			std::cerr << "   " << got << " kits dumped\n";
 			continue;
 		}
 		synthLib::SMidiEvent ev(synthLib::MidiEventSource::Host);

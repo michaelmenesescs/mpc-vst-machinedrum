@@ -1,0 +1,4724 @@
+{
+ "name": "Machinedrum Module",
+ "params": [
+  {
+   "key": "track0_machine",
+   "name": "T1 Machine",
+   "min": 0,
+   "max": 191,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track0_vol",
+   "name": "T1 Vol",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track0_pan",
+   "name": "T1 Pan",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track0_amd",
+   "name": "T1 AMD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track0_amf",
+   "name": "T1 AMF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track0_eqf",
+   "name": "T1 EQF",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track0_eqg",
+   "name": "T1 EQG",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track0_fltf",
+   "name": "T1 FLTF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track0_fltw",
+   "name": "T1 FLTW",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "track0_fltq",
+   "name": "T1 FLTQ",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track0_srr",
+   "name": "T1 SRR",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track0_dist",
+   "name": "T1 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track0_del",
+   "name": "T1 DEL",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track0_rev",
+   "name": "T1 REV",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track0_lfos",
+   "name": "T1 LFOS",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track0_lfod",
+   "name": "T1 LFOD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track0_lfom",
+   "name": "T1 LFOM",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track1_machine",
+   "name": "T2 Machine",
+   "min": 0,
+   "max": 191,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track1_vol",
+   "name": "T2 Vol",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track1_pan",
+   "name": "T2 Pan",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track1_amd",
+   "name": "T2 AMD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track1_amf",
+   "name": "T2 AMF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track1_eqf",
+   "name": "T2 EQF",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track1_eqg",
+   "name": "T2 EQG",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track1_fltf",
+   "name": "T2 FLTF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track1_fltw",
+   "name": "T2 FLTW",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "track1_fltq",
+   "name": "T2 FLTQ",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track1_srr",
+   "name": "T2 SRR",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track1_dist",
+   "name": "T2 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track1_del",
+   "name": "T2 DEL",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track1_rev",
+   "name": "T2 REV",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track1_lfos",
+   "name": "T2 LFOS",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track1_lfod",
+   "name": "T2 LFOD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track1_lfom",
+   "name": "T2 LFOM",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track2_machine",
+   "name": "T3 Machine",
+   "min": 0,
+   "max": 191,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track2_vol",
+   "name": "T3 Vol",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track2_pan",
+   "name": "T3 Pan",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track2_amd",
+   "name": "T3 AMD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track2_amf",
+   "name": "T3 AMF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track2_eqf",
+   "name": "T3 EQF",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track2_eqg",
+   "name": "T3 EQG",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track2_fltf",
+   "name": "T3 FLTF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track2_fltw",
+   "name": "T3 FLTW",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "track2_fltq",
+   "name": "T3 FLTQ",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track2_srr",
+   "name": "T3 SRR",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track2_dist",
+   "name": "T3 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track2_del",
+   "name": "T3 DEL",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track2_rev",
+   "name": "T3 REV",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track2_lfos",
+   "name": "T3 LFOS",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track2_lfod",
+   "name": "T3 LFOD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track2_lfom",
+   "name": "T3 LFOM",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track3_machine",
+   "name": "T4 Machine",
+   "min": 0,
+   "max": 191,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track3_vol",
+   "name": "T4 Vol",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track3_pan",
+   "name": "T4 Pan",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track3_amd",
+   "name": "T4 AMD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track3_amf",
+   "name": "T4 AMF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track3_eqf",
+   "name": "T4 EQF",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track3_eqg",
+   "name": "T4 EQG",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track3_fltf",
+   "name": "T4 FLTF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track3_fltw",
+   "name": "T4 FLTW",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "track3_fltq",
+   "name": "T4 FLTQ",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track3_srr",
+   "name": "T4 SRR",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track3_dist",
+   "name": "T4 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track3_del",
+   "name": "T4 DEL",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track3_rev",
+   "name": "T4 REV",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track3_lfos",
+   "name": "T4 LFOS",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track3_lfod",
+   "name": "T4 LFOD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track3_lfom",
+   "name": "T4 LFOM",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track4_machine",
+   "name": "T5 Machine",
+   "min": 0,
+   "max": 191,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track4_vol",
+   "name": "T5 Vol",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track4_pan",
+   "name": "T5 Pan",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track4_amd",
+   "name": "T5 AMD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track4_amf",
+   "name": "T5 AMF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track4_eqf",
+   "name": "T5 EQF",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track4_eqg",
+   "name": "T5 EQG",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track4_fltf",
+   "name": "T5 FLTF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track4_fltw",
+   "name": "T5 FLTW",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "track4_fltq",
+   "name": "T5 FLTQ",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track4_srr",
+   "name": "T5 SRR",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track4_dist",
+   "name": "T5 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track4_del",
+   "name": "T5 DEL",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track4_rev",
+   "name": "T5 REV",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track4_lfos",
+   "name": "T5 LFOS",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track4_lfod",
+   "name": "T5 LFOD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track4_lfom",
+   "name": "T5 LFOM",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track5_machine",
+   "name": "T6 Machine",
+   "min": 0,
+   "max": 191,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track5_vol",
+   "name": "T6 Vol",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track5_pan",
+   "name": "T6 Pan",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track5_amd",
+   "name": "T6 AMD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track5_amf",
+   "name": "T6 AMF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track5_eqf",
+   "name": "T6 EQF",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track5_eqg",
+   "name": "T6 EQG",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track5_fltf",
+   "name": "T6 FLTF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track5_fltw",
+   "name": "T6 FLTW",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "track5_fltq",
+   "name": "T6 FLTQ",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track5_srr",
+   "name": "T6 SRR",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track5_dist",
+   "name": "T6 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track5_del",
+   "name": "T6 DEL",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track5_rev",
+   "name": "T6 REV",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track5_lfos",
+   "name": "T6 LFOS",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track5_lfod",
+   "name": "T6 LFOD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track5_lfom",
+   "name": "T6 LFOM",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track6_machine",
+   "name": "T7 Machine",
+   "min": 0,
+   "max": 191,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track6_vol",
+   "name": "T7 Vol",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track6_pan",
+   "name": "T7 Pan",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track6_amd",
+   "name": "T7 AMD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track6_amf",
+   "name": "T7 AMF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track6_eqf",
+   "name": "T7 EQF",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track6_eqg",
+   "name": "T7 EQG",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track6_fltf",
+   "name": "T7 FLTF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track6_fltw",
+   "name": "T7 FLTW",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "track6_fltq",
+   "name": "T7 FLTQ",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track6_srr",
+   "name": "T7 SRR",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track6_dist",
+   "name": "T7 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track6_del",
+   "name": "T7 DEL",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track6_rev",
+   "name": "T7 REV",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track6_lfos",
+   "name": "T7 LFOS",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track6_lfod",
+   "name": "T7 LFOD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track6_lfom",
+   "name": "T7 LFOM",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track7_machine",
+   "name": "T8 Machine",
+   "min": 0,
+   "max": 191,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track7_vol",
+   "name": "T8 Vol",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track7_pan",
+   "name": "T8 Pan",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track7_amd",
+   "name": "T8 AMD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track7_amf",
+   "name": "T8 AMF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track7_eqf",
+   "name": "T8 EQF",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track7_eqg",
+   "name": "T8 EQG",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track7_fltf",
+   "name": "T8 FLTF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track7_fltw",
+   "name": "T8 FLTW",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "track7_fltq",
+   "name": "T8 FLTQ",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track7_srr",
+   "name": "T8 SRR",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track7_dist",
+   "name": "T8 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track7_del",
+   "name": "T8 DEL",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track7_rev",
+   "name": "T8 REV",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track7_lfos",
+   "name": "T8 LFOS",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track7_lfod",
+   "name": "T8 LFOD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track7_lfom",
+   "name": "T8 LFOM",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track8_machine",
+   "name": "T9 Machine",
+   "min": 0,
+   "max": 191,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track8_vol",
+   "name": "T9 Vol",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track8_pan",
+   "name": "T9 Pan",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track8_amd",
+   "name": "T9 AMD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track8_amf",
+   "name": "T9 AMF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track8_eqf",
+   "name": "T9 EQF",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track8_eqg",
+   "name": "T9 EQG",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track8_fltf",
+   "name": "T9 FLTF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track8_fltw",
+   "name": "T9 FLTW",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "track8_fltq",
+   "name": "T9 FLTQ",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track8_srr",
+   "name": "T9 SRR",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track8_dist",
+   "name": "T9 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track8_del",
+   "name": "T9 DEL",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track8_rev",
+   "name": "T9 REV",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track8_lfos",
+   "name": "T9 LFOS",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track8_lfod",
+   "name": "T9 LFOD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track8_lfom",
+   "name": "T9 LFOM",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track9_machine",
+   "name": "T10 Machine",
+   "min": 0,
+   "max": 191,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track9_vol",
+   "name": "T10 Vol",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track9_pan",
+   "name": "T10 Pan",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track9_amd",
+   "name": "T10 AMD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track9_amf",
+   "name": "T10 AMF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track9_eqf",
+   "name": "T10 EQF",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track9_eqg",
+   "name": "T10 EQG",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track9_fltf",
+   "name": "T10 FLTF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track9_fltw",
+   "name": "T10 FLTW",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "track9_fltq",
+   "name": "T10 FLTQ",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track9_srr",
+   "name": "T10 SRR",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track9_dist",
+   "name": "T10 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track9_del",
+   "name": "T10 DEL",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track9_rev",
+   "name": "T10 REV",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track9_lfos",
+   "name": "T10 LFOS",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track9_lfod",
+   "name": "T10 LFOD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track9_lfom",
+   "name": "T10 LFOM",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track10_machine",
+   "name": "T11 Machine",
+   "min": 0,
+   "max": 191,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track10_vol",
+   "name": "T11 Vol",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track10_pan",
+   "name": "T11 Pan",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track10_amd",
+   "name": "T11 AMD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track10_amf",
+   "name": "T11 AMF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track10_eqf",
+   "name": "T11 EQF",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track10_eqg",
+   "name": "T11 EQG",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track10_fltf",
+   "name": "T11 FLTF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track10_fltw",
+   "name": "T11 FLTW",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "track10_fltq",
+   "name": "T11 FLTQ",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track10_srr",
+   "name": "T11 SRR",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track10_dist",
+   "name": "T11 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track10_del",
+   "name": "T11 DEL",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track10_rev",
+   "name": "T11 REV",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track10_lfos",
+   "name": "T11 LFOS",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track10_lfod",
+   "name": "T11 LFOD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track10_lfom",
+   "name": "T11 LFOM",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track11_machine",
+   "name": "T12 Machine",
+   "min": 0,
+   "max": 191,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track11_vol",
+   "name": "T12 Vol",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track11_pan",
+   "name": "T12 Pan",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track11_amd",
+   "name": "T12 AMD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track11_amf",
+   "name": "T12 AMF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track11_eqf",
+   "name": "T12 EQF",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track11_eqg",
+   "name": "T12 EQG",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track11_fltf",
+   "name": "T12 FLTF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track11_fltw",
+   "name": "T12 FLTW",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "track11_fltq",
+   "name": "T12 FLTQ",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track11_srr",
+   "name": "T12 SRR",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track11_dist",
+   "name": "T12 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track11_del",
+   "name": "T12 DEL",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track11_rev",
+   "name": "T12 REV",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track11_lfos",
+   "name": "T12 LFOS",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track11_lfod",
+   "name": "T12 LFOD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track11_lfom",
+   "name": "T12 LFOM",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track12_machine",
+   "name": "T13 Machine",
+   "min": 0,
+   "max": 191,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track12_vol",
+   "name": "T13 Vol",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track12_pan",
+   "name": "T13 Pan",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track12_amd",
+   "name": "T13 AMD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track12_amf",
+   "name": "T13 AMF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track12_eqf",
+   "name": "T13 EQF",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track12_eqg",
+   "name": "T13 EQG",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track12_fltf",
+   "name": "T13 FLTF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track12_fltw",
+   "name": "T13 FLTW",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "track12_fltq",
+   "name": "T13 FLTQ",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track12_srr",
+   "name": "T13 SRR",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track12_dist",
+   "name": "T13 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track12_del",
+   "name": "T13 DEL",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track12_rev",
+   "name": "T13 REV",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track12_lfos",
+   "name": "T13 LFOS",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track12_lfod",
+   "name": "T13 LFOD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track12_lfom",
+   "name": "T13 LFOM",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track13_machine",
+   "name": "T14 Machine",
+   "min": 0,
+   "max": 191,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track13_vol",
+   "name": "T14 Vol",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track13_pan",
+   "name": "T14 Pan",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track13_amd",
+   "name": "T14 AMD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track13_amf",
+   "name": "T14 AMF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track13_eqf",
+   "name": "T14 EQF",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track13_eqg",
+   "name": "T14 EQG",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track13_fltf",
+   "name": "T14 FLTF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track13_fltw",
+   "name": "T14 FLTW",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "track13_fltq",
+   "name": "T14 FLTQ",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track13_srr",
+   "name": "T14 SRR",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track13_dist",
+   "name": "T14 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track13_del",
+   "name": "T14 DEL",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track13_rev",
+   "name": "T14 REV",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track13_lfos",
+   "name": "T14 LFOS",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track13_lfod",
+   "name": "T14 LFOD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track13_lfom",
+   "name": "T14 LFOM",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track14_machine",
+   "name": "T15 Machine",
+   "min": 0,
+   "max": 191,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track14_vol",
+   "name": "T15 Vol",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track14_pan",
+   "name": "T15 Pan",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track14_amd",
+   "name": "T15 AMD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track14_amf",
+   "name": "T15 AMF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track14_eqf",
+   "name": "T15 EQF",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track14_eqg",
+   "name": "T15 EQG",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track14_fltf",
+   "name": "T15 FLTF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track14_fltw",
+   "name": "T15 FLTW",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "track14_fltq",
+   "name": "T15 FLTQ",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track14_srr",
+   "name": "T15 SRR",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track14_dist",
+   "name": "T15 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track14_del",
+   "name": "T15 DEL",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track14_rev",
+   "name": "T15 REV",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track14_lfos",
+   "name": "T15 LFOS",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track14_lfod",
+   "name": "T15 LFOD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track14_lfom",
+   "name": "T15 LFOM",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track15_machine",
+   "name": "T16 Machine",
+   "min": 0,
+   "max": 191,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track15_vol",
+   "name": "T16 Vol",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track15_pan",
+   "name": "T16 Pan",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track15_amd",
+   "name": "T16 AMD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track15_amf",
+   "name": "T16 AMF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track15_eqf",
+   "name": "T16 EQF",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track15_eqg",
+   "name": "T16 EQG",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "track15_fltf",
+   "name": "T16 FLTF",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track15_fltw",
+   "name": "T16 FLTW",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "track15_fltq",
+   "name": "T16 FLTQ",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track15_srr",
+   "name": "T16 SRR",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track15_dist",
+   "name": "T16 DIST",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track15_del",
+   "name": "T16 DEL",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track15_rev",
+   "name": "T16 REV",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track15_lfos",
+   "name": "T16 LFOS",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track15_lfod",
+   "name": "T16 LFOD",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track15_lfom",
+   "name": "T16 LFOM",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "tempo",
+   "name": "Tempo",
+   "min": 30,
+   "max": 300,
+   "default": 120,
+   "display": "int"
+  },
+  {
+   "key": "max_voices",
+   "name": "Max Voices",
+   "min": 1,
+   "max": 16,
+   "default": 16,
+   "display": "int"
+  },
+  {
+   "key": "track0_machine__open",
+   "name": "T1 Machine List",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "popup_of": "track0_machine"
+  },
+  {
+   "key": "track1_machine__open",
+   "name": "T2 Machine List",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "popup_of": "track1_machine"
+  },
+  {
+   "key": "track2_machine__open",
+   "name": "T3 Machine List",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "popup_of": "track2_machine"
+  },
+  {
+   "key": "track3_machine__open",
+   "name": "T4 Machine List",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "popup_of": "track3_machine"
+  },
+  {
+   "key": "track4_machine__open",
+   "name": "T5 Machine List",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "popup_of": "track4_machine"
+  },
+  {
+   "key": "track5_machine__open",
+   "name": "T6 Machine List",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "popup_of": "track5_machine"
+  },
+  {
+   "key": "track6_machine__open",
+   "name": "T7 Machine List",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "popup_of": "track6_machine"
+  },
+  {
+   "key": "track7_machine__open",
+   "name": "T8 Machine List",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "popup_of": "track7_machine"
+  },
+  {
+   "key": "track8_machine__open",
+   "name": "T9 Machine List",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "popup_of": "track8_machine"
+  },
+  {
+   "key": "track9_machine__open",
+   "name": "T10 Machine List",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "popup_of": "track9_machine"
+  },
+  {
+   "key": "track10_machine__open",
+   "name": "T11 Machine List",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "popup_of": "track10_machine"
+  },
+  {
+   "key": "track11_machine__open",
+   "name": "T12 Machine List",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "popup_of": "track11_machine"
+  },
+  {
+   "key": "track12_machine__open",
+   "name": "T13 Machine List",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "popup_of": "track12_machine"
+  },
+  {
+   "key": "track13_machine__open",
+   "name": "T14 Machine List",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "popup_of": "track13_machine"
+  },
+  {
+   "key": "track14_machine__open",
+   "name": "T15 Machine List",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "popup_of": "track14_machine"
+  },
+  {
+   "key": "track15_machine__open",
+   "name": "T16 Machine List",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "popup_of": "track15_machine"
+  },
+  {
+   "key": "track0_syn1",
+   "name": "T1 SYN1",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track0_syn2",
+   "name": "T1 SYN2",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track0_syn3",
+   "name": "T1 SYN3",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track0_syn4",
+   "name": "T1 SYN4",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track0_syn5",
+   "name": "T1 SYN5",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track0_syn6",
+   "name": "T1 SYN6",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track0_syn7",
+   "name": "T1 SYN7",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track0_syn8",
+   "name": "T1 SYN8",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track1_syn1",
+   "name": "T2 SYN1",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track1_syn2",
+   "name": "T2 SYN2",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track1_syn3",
+   "name": "T2 SYN3",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track1_syn4",
+   "name": "T2 SYN4",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track1_syn5",
+   "name": "T2 SYN5",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track1_syn6",
+   "name": "T2 SYN6",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track1_syn7",
+   "name": "T2 SYN7",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track1_syn8",
+   "name": "T2 SYN8",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track2_syn1",
+   "name": "T3 SYN1",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track2_syn2",
+   "name": "T3 SYN2",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track2_syn3",
+   "name": "T3 SYN3",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track2_syn4",
+   "name": "T3 SYN4",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track2_syn5",
+   "name": "T3 SYN5",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track2_syn6",
+   "name": "T3 SYN6",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track2_syn7",
+   "name": "T3 SYN7",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track2_syn8",
+   "name": "T3 SYN8",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track3_syn1",
+   "name": "T4 SYN1",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track3_syn2",
+   "name": "T4 SYN2",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track3_syn3",
+   "name": "T4 SYN3",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track3_syn4",
+   "name": "T4 SYN4",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track3_syn5",
+   "name": "T4 SYN5",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track3_syn6",
+   "name": "T4 SYN6",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track3_syn7",
+   "name": "T4 SYN7",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track3_syn8",
+   "name": "T4 SYN8",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track4_syn1",
+   "name": "T5 SYN1",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track4_syn2",
+   "name": "T5 SYN2",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track4_syn3",
+   "name": "T5 SYN3",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track4_syn4",
+   "name": "T5 SYN4",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track4_syn5",
+   "name": "T5 SYN5",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track4_syn6",
+   "name": "T5 SYN6",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track4_syn7",
+   "name": "T5 SYN7",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track4_syn8",
+   "name": "T5 SYN8",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track5_syn1",
+   "name": "T6 SYN1",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track5_syn2",
+   "name": "T6 SYN2",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track5_syn3",
+   "name": "T6 SYN3",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track5_syn4",
+   "name": "T6 SYN4",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track5_syn5",
+   "name": "T6 SYN5",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track5_syn6",
+   "name": "T6 SYN6",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track5_syn7",
+   "name": "T6 SYN7",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track5_syn8",
+   "name": "T6 SYN8",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track6_syn1",
+   "name": "T7 SYN1",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track6_syn2",
+   "name": "T7 SYN2",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track6_syn3",
+   "name": "T7 SYN3",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track6_syn4",
+   "name": "T7 SYN4",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track6_syn5",
+   "name": "T7 SYN5",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track6_syn6",
+   "name": "T7 SYN6",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track6_syn7",
+   "name": "T7 SYN7",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track6_syn8",
+   "name": "T7 SYN8",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track7_syn1",
+   "name": "T8 SYN1",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track7_syn2",
+   "name": "T8 SYN2",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track7_syn3",
+   "name": "T8 SYN3",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track7_syn4",
+   "name": "T8 SYN4",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track7_syn5",
+   "name": "T8 SYN5",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track7_syn6",
+   "name": "T8 SYN6",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track7_syn7",
+   "name": "T8 SYN7",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track7_syn8",
+   "name": "T8 SYN8",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track8_syn1",
+   "name": "T9 SYN1",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track8_syn2",
+   "name": "T9 SYN2",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track8_syn3",
+   "name": "T9 SYN3",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track8_syn4",
+   "name": "T9 SYN4",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track8_syn5",
+   "name": "T9 SYN5",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track8_syn6",
+   "name": "T9 SYN6",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track8_syn7",
+   "name": "T9 SYN7",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track8_syn8",
+   "name": "T9 SYN8",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track9_syn1",
+   "name": "T10 SYN1",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track9_syn2",
+   "name": "T10 SYN2",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track9_syn3",
+   "name": "T10 SYN3",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track9_syn4",
+   "name": "T10 SYN4",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track9_syn5",
+   "name": "T10 SYN5",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track9_syn6",
+   "name": "T10 SYN6",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track9_syn7",
+   "name": "T10 SYN7",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track9_syn8",
+   "name": "T10 SYN8",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track10_syn1",
+   "name": "T11 SYN1",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track10_syn2",
+   "name": "T11 SYN2",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track10_syn3",
+   "name": "T11 SYN3",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track10_syn4",
+   "name": "T11 SYN4",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track10_syn5",
+   "name": "T11 SYN5",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track10_syn6",
+   "name": "T11 SYN6",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track10_syn7",
+   "name": "T11 SYN7",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track10_syn8",
+   "name": "T11 SYN8",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track11_syn1",
+   "name": "T12 SYN1",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track11_syn2",
+   "name": "T12 SYN2",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track11_syn3",
+   "name": "T12 SYN3",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track11_syn4",
+   "name": "T12 SYN4",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track11_syn5",
+   "name": "T12 SYN5",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track11_syn6",
+   "name": "T12 SYN6",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track11_syn7",
+   "name": "T12 SYN7",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track11_syn8",
+   "name": "T12 SYN8",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track12_syn1",
+   "name": "T13 SYN1",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track12_syn2",
+   "name": "T13 SYN2",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track12_syn3",
+   "name": "T13 SYN3",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track12_syn4",
+   "name": "T13 SYN4",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track12_syn5",
+   "name": "T13 SYN5",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track12_syn6",
+   "name": "T13 SYN6",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track12_syn7",
+   "name": "T13 SYN7",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track12_syn8",
+   "name": "T13 SYN8",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track13_syn1",
+   "name": "T14 SYN1",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track13_syn2",
+   "name": "T14 SYN2",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track13_syn3",
+   "name": "T14 SYN3",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track13_syn4",
+   "name": "T14 SYN4",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track13_syn5",
+   "name": "T14 SYN5",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track13_syn6",
+   "name": "T14 SYN6",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track13_syn7",
+   "name": "T14 SYN7",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track13_syn8",
+   "name": "T14 SYN8",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track14_syn1",
+   "name": "T15 SYN1",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track14_syn2",
+   "name": "T15 SYN2",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track14_syn3",
+   "name": "T15 SYN3",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track14_syn4",
+   "name": "T15 SYN4",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track14_syn5",
+   "name": "T15 SYN5",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track14_syn6",
+   "name": "T15 SYN6",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track14_syn7",
+   "name": "T15 SYN7",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track14_syn8",
+   "name": "T15 SYN8",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track15_syn1",
+   "name": "T16 SYN1",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track15_syn2",
+   "name": "T16 SYN2",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track15_syn3",
+   "name": "T16 SYN3",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track15_syn4",
+   "name": "T16 SYN4",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track15_syn5",
+   "name": "T16 SYN5",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track15_syn6",
+   "name": "T16 SYN6",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track15_syn7",
+   "name": "T16 SYN7",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track15_syn8",
+   "name": "T16 SYN8",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_name": true
+  },
+  {
+   "key": "track0_level",
+   "name": "T1 LEV",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track1_level",
+   "name": "T2 LEV",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track2_level",
+   "name": "T3 LEV",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track3_level",
+   "name": "T4 LEV",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track4_level",
+   "name": "T5 LEV",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track5_level",
+   "name": "T6 LEV",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track6_level",
+   "name": "T7 LEV",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track7_level",
+   "name": "T8 LEV",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track8_level",
+   "name": "T9 LEV",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track9_level",
+   "name": "T10 LEV",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track10_level",
+   "name": "T11 LEV",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track11_level",
+   "name": "T12 LEV",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track12_level",
+   "name": "T13 LEV",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track13_level",
+   "name": "T14 LEV",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track14_level",
+   "name": "T15 LEV",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track15_level",
+   "name": "T16 LEV",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "track0_lfo_track",
+   "name": "T1 LFO Track",
+   "min": 0,
+   "max": 15,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track0_lfo_param",
+   "name": "T1 LFO Param",
+   "min": 0,
+   "max": 23,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "track0_lfo_shp1",
+   "name": "T1 LFO Shape 1",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track0_lfo_shp2",
+   "name": "T1 LFO Shape 2",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track0_lfo_type",
+   "name": "T1 LFO Update",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track1_lfo_track",
+   "name": "T2 LFO Track",
+   "min": 0,
+   "max": 15,
+   "default": 1,
+   "display": "int"
+  },
+  {
+   "key": "track1_lfo_param",
+   "name": "T2 LFO Param",
+   "min": 0,
+   "max": 23,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "track1_lfo_shp1",
+   "name": "T2 LFO Shape 1",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track1_lfo_shp2",
+   "name": "T2 LFO Shape 2",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track1_lfo_type",
+   "name": "T2 LFO Update",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track2_lfo_track",
+   "name": "T3 LFO Track",
+   "min": 0,
+   "max": 15,
+   "default": 2,
+   "display": "int"
+  },
+  {
+   "key": "track2_lfo_param",
+   "name": "T3 LFO Param",
+   "min": 0,
+   "max": 23,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "track2_lfo_shp1",
+   "name": "T3 LFO Shape 1",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track2_lfo_shp2",
+   "name": "T3 LFO Shape 2",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track2_lfo_type",
+   "name": "T3 LFO Update",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track3_lfo_track",
+   "name": "T4 LFO Track",
+   "min": 0,
+   "max": 15,
+   "default": 3,
+   "display": "int"
+  },
+  {
+   "key": "track3_lfo_param",
+   "name": "T4 LFO Param",
+   "min": 0,
+   "max": 23,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "track3_lfo_shp1",
+   "name": "T4 LFO Shape 1",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track3_lfo_shp2",
+   "name": "T4 LFO Shape 2",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track3_lfo_type",
+   "name": "T4 LFO Update",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track4_lfo_track",
+   "name": "T5 LFO Track",
+   "min": 0,
+   "max": 15,
+   "default": 4,
+   "display": "int"
+  },
+  {
+   "key": "track4_lfo_param",
+   "name": "T5 LFO Param",
+   "min": 0,
+   "max": 23,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "track4_lfo_shp1",
+   "name": "T5 LFO Shape 1",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track4_lfo_shp2",
+   "name": "T5 LFO Shape 2",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track4_lfo_type",
+   "name": "T5 LFO Update",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track5_lfo_track",
+   "name": "T6 LFO Track",
+   "min": 0,
+   "max": 15,
+   "default": 5,
+   "display": "int"
+  },
+  {
+   "key": "track5_lfo_param",
+   "name": "T6 LFO Param",
+   "min": 0,
+   "max": 23,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "track5_lfo_shp1",
+   "name": "T6 LFO Shape 1",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track5_lfo_shp2",
+   "name": "T6 LFO Shape 2",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track5_lfo_type",
+   "name": "T6 LFO Update",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track6_lfo_track",
+   "name": "T7 LFO Track",
+   "min": 0,
+   "max": 15,
+   "default": 6,
+   "display": "int"
+  },
+  {
+   "key": "track6_lfo_param",
+   "name": "T7 LFO Param",
+   "min": 0,
+   "max": 23,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "track6_lfo_shp1",
+   "name": "T7 LFO Shape 1",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track6_lfo_shp2",
+   "name": "T7 LFO Shape 2",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track6_lfo_type",
+   "name": "T7 LFO Update",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track7_lfo_track",
+   "name": "T8 LFO Track",
+   "min": 0,
+   "max": 15,
+   "default": 7,
+   "display": "int"
+  },
+  {
+   "key": "track7_lfo_param",
+   "name": "T8 LFO Param",
+   "min": 0,
+   "max": 23,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "track7_lfo_shp1",
+   "name": "T8 LFO Shape 1",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track7_lfo_shp2",
+   "name": "T8 LFO Shape 2",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track7_lfo_type",
+   "name": "T8 LFO Update",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track8_lfo_track",
+   "name": "T9 LFO Track",
+   "min": 0,
+   "max": 15,
+   "default": 8,
+   "display": "int"
+  },
+  {
+   "key": "track8_lfo_param",
+   "name": "T9 LFO Param",
+   "min": 0,
+   "max": 23,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "track8_lfo_shp1",
+   "name": "T9 LFO Shape 1",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track8_lfo_shp2",
+   "name": "T9 LFO Shape 2",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track8_lfo_type",
+   "name": "T9 LFO Update",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track9_lfo_track",
+   "name": "T10 LFO Track",
+   "min": 0,
+   "max": 15,
+   "default": 9,
+   "display": "int"
+  },
+  {
+   "key": "track9_lfo_param",
+   "name": "T10 LFO Param",
+   "min": 0,
+   "max": 23,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "track9_lfo_shp1",
+   "name": "T10 LFO Shape 1",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track9_lfo_shp2",
+   "name": "T10 LFO Shape 2",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track9_lfo_type",
+   "name": "T10 LFO Update",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track10_lfo_track",
+   "name": "T11 LFO Track",
+   "min": 0,
+   "max": 15,
+   "default": 10,
+   "display": "int"
+  },
+  {
+   "key": "track10_lfo_param",
+   "name": "T11 LFO Param",
+   "min": 0,
+   "max": 23,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "track10_lfo_shp1",
+   "name": "T11 LFO Shape 1",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track10_lfo_shp2",
+   "name": "T11 LFO Shape 2",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track10_lfo_type",
+   "name": "T11 LFO Update",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track11_lfo_track",
+   "name": "T12 LFO Track",
+   "min": 0,
+   "max": 15,
+   "default": 11,
+   "display": "int"
+  },
+  {
+   "key": "track11_lfo_param",
+   "name": "T12 LFO Param",
+   "min": 0,
+   "max": 23,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "track11_lfo_shp1",
+   "name": "T12 LFO Shape 1",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track11_lfo_shp2",
+   "name": "T12 LFO Shape 2",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track11_lfo_type",
+   "name": "T12 LFO Update",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track12_lfo_track",
+   "name": "T13 LFO Track",
+   "min": 0,
+   "max": 15,
+   "default": 12,
+   "display": "int"
+  },
+  {
+   "key": "track12_lfo_param",
+   "name": "T13 LFO Param",
+   "min": 0,
+   "max": 23,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "track12_lfo_shp1",
+   "name": "T13 LFO Shape 1",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track12_lfo_shp2",
+   "name": "T13 LFO Shape 2",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track12_lfo_type",
+   "name": "T13 LFO Update",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track13_lfo_track",
+   "name": "T14 LFO Track",
+   "min": 0,
+   "max": 15,
+   "default": 13,
+   "display": "int"
+  },
+  {
+   "key": "track13_lfo_param",
+   "name": "T14 LFO Param",
+   "min": 0,
+   "max": 23,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "track13_lfo_shp1",
+   "name": "T14 LFO Shape 1",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track13_lfo_shp2",
+   "name": "T14 LFO Shape 2",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track13_lfo_type",
+   "name": "T14 LFO Update",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track14_lfo_track",
+   "name": "T15 LFO Track",
+   "min": 0,
+   "max": 15,
+   "default": 14,
+   "display": "int"
+  },
+  {
+   "key": "track14_lfo_param",
+   "name": "T15 LFO Param",
+   "min": 0,
+   "max": 23,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "track14_lfo_shp1",
+   "name": "T15 LFO Shape 1",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track14_lfo_shp2",
+   "name": "T15 LFO Shape 2",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track14_lfo_type",
+   "name": "T15 LFO Update",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track15_lfo_track",
+   "name": "T16 LFO Track",
+   "min": 0,
+   "max": 15,
+   "default": 15,
+   "display": "int"
+  },
+  {
+   "key": "track15_lfo_param",
+   "name": "T16 LFO Param",
+   "min": 0,
+   "max": 23,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "track15_lfo_shp1",
+   "name": "T16 LFO Shape 1",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track15_lfo_shp2",
+   "name": "T16 LFO Shape 2",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "track15_lfo_type",
+   "name": "T16 LFO Update",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "bank_prev",
+   "name": "Bank Prev",
+   "min": 0,
+   "max": 1,
+   "momentary": true
+  },
+  {
+   "key": "bank_next",
+   "name": "Bank Next",
+   "min": 0,
+   "max": 1,
+   "momentary": true
+  },
+  {
+   "key": "bank_name",
+   "name": "Bank",
+   "min": 0,
+   "max": 0,
+   "display": "string"
+  },
+  {
+   "key": "kit_prev",
+   "name": "Kit Prev",
+   "min": 0,
+   "max": 1,
+   "momentary": true
+  },
+  {
+   "key": "kit_next",
+   "name": "Kit Next",
+   "min": 0,
+   "max": 1,
+   "momentary": true
+  },
+  {
+   "key": "kit_name",
+   "name": "Kit",
+   "min": 0,
+   "max": 0,
+   "display": "string"
+  },
+  {
+   "key": "randomize_all",
+   "name": "Randomise Machines",
+   "options": [
+    "OFF",
+    "ON"
+   ],
+   "default": 0,
+   "momentary": true,
+   "hold_ms": 1500
+  },
+  {
+   "key": "randomize_1_8",
+   "name": "Randomise Machines 1-8",
+   "options": [
+    "OFF",
+    "ON"
+   ],
+   "default": 0,
+   "momentary": true,
+   "hold_ms": 1500
+  },
+  {
+   "key": "randomize_9_16",
+   "name": "Randomise Machines 9-16",
+   "options": [
+    "OFF",
+    "ON"
+   ],
+   "default": 0,
+   "momentary": true,
+   "hold_ms": 1500
+  },
+  {
+   "key": "randomize_kit",
+   "name": "Randomise Kit",
+   "options": [
+    "OFF",
+    "ON"
+   ],
+   "default": 0,
+   "momentary": true,
+   "hold_ms": 1500
+  }
+ ],
+ "sections": [
+  {
+   "label": "TRACK 1",
+   "keys": [
+    "track0_machine",
+    "track0_vol",
+    "track0_pan",
+    "track0_amd",
+    "track0_amf",
+    "track0_eqf",
+    "track0_eqg",
+    "track0_fltf",
+    "track0_fltw",
+    "track0_fltq",
+    "track0_srr",
+    "track0_dist",
+    "track0_del",
+    "track0_rev",
+    "track0_lfos",
+    "track0_lfod",
+    "track0_lfom"
+   ]
+  },
+  {
+   "label": "TRACK 2",
+   "keys": [
+    "track1_machine",
+    "track1_vol",
+    "track1_pan",
+    "track1_amd",
+    "track1_amf",
+    "track1_eqf",
+    "track1_eqg",
+    "track1_fltf",
+    "track1_fltw",
+    "track1_fltq",
+    "track1_srr",
+    "track1_dist",
+    "track1_del",
+    "track1_rev",
+    "track1_lfos",
+    "track1_lfod",
+    "track1_lfom"
+   ]
+  },
+  {
+   "label": "TRACK 3",
+   "keys": [
+    "track2_machine",
+    "track2_vol",
+    "track2_pan",
+    "track2_amd",
+    "track2_amf",
+    "track2_eqf",
+    "track2_eqg",
+    "track2_fltf",
+    "track2_fltw",
+    "track2_fltq",
+    "track2_srr",
+    "track2_dist",
+    "track2_del",
+    "track2_rev",
+    "track2_lfos",
+    "track2_lfod",
+    "track2_lfom"
+   ]
+  },
+  {
+   "label": "TRACK 4",
+   "keys": [
+    "track3_machine",
+    "track3_vol",
+    "track3_pan",
+    "track3_amd",
+    "track3_amf",
+    "track3_eqf",
+    "track3_eqg",
+    "track3_fltf",
+    "track3_fltw",
+    "track3_fltq",
+    "track3_srr",
+    "track3_dist",
+    "track3_del",
+    "track3_rev",
+    "track3_lfos",
+    "track3_lfod",
+    "track3_lfom"
+   ]
+  },
+  {
+   "label": "TRACK 5",
+   "keys": [
+    "track4_machine",
+    "track4_vol",
+    "track4_pan",
+    "track4_amd",
+    "track4_amf",
+    "track4_eqf",
+    "track4_eqg",
+    "track4_fltf",
+    "track4_fltw",
+    "track4_fltq",
+    "track4_srr",
+    "track4_dist",
+    "track4_del",
+    "track4_rev",
+    "track4_lfos",
+    "track4_lfod",
+    "track4_lfom"
+   ]
+  },
+  {
+   "label": "TRACK 6",
+   "keys": [
+    "track5_machine",
+    "track5_vol",
+    "track5_pan",
+    "track5_amd",
+    "track5_amf",
+    "track5_eqf",
+    "track5_eqg",
+    "track5_fltf",
+    "track5_fltw",
+    "track5_fltq",
+    "track5_srr",
+    "track5_dist",
+    "track5_del",
+    "track5_rev",
+    "track5_lfos",
+    "track5_lfod",
+    "track5_lfom"
+   ]
+  },
+  {
+   "label": "TRACK 7",
+   "keys": [
+    "track6_machine",
+    "track6_vol",
+    "track6_pan",
+    "track6_amd",
+    "track6_amf",
+    "track6_eqf",
+    "track6_eqg",
+    "track6_fltf",
+    "track6_fltw",
+    "track6_fltq",
+    "track6_srr",
+    "track6_dist",
+    "track6_del",
+    "track6_rev",
+    "track6_lfos",
+    "track6_lfod",
+    "track6_lfom"
+   ]
+  },
+  {
+   "label": "TRACK 8",
+   "keys": [
+    "track7_machine",
+    "track7_vol",
+    "track7_pan",
+    "track7_amd",
+    "track7_amf",
+    "track7_eqf",
+    "track7_eqg",
+    "track7_fltf",
+    "track7_fltw",
+    "track7_fltq",
+    "track7_srr",
+    "track7_dist",
+    "track7_del",
+    "track7_rev",
+    "track7_lfos",
+    "track7_lfod",
+    "track7_lfom"
+   ]
+  },
+  {
+   "label": "TRACK 9",
+   "keys": [
+    "track8_machine",
+    "track8_vol",
+    "track8_pan",
+    "track8_amd",
+    "track8_amf",
+    "track8_eqf",
+    "track8_eqg",
+    "track8_fltf",
+    "track8_fltw",
+    "track8_fltq",
+    "track8_srr",
+    "track8_dist",
+    "track8_del",
+    "track8_rev",
+    "track8_lfos",
+    "track8_lfod",
+    "track8_lfom"
+   ]
+  },
+  {
+   "label": "TRACK 10",
+   "keys": [
+    "track9_machine",
+    "track9_vol",
+    "track9_pan",
+    "track9_amd",
+    "track9_amf",
+    "track9_eqf",
+    "track9_eqg",
+    "track9_fltf",
+    "track9_fltw",
+    "track9_fltq",
+    "track9_srr",
+    "track9_dist",
+    "track9_del",
+    "track9_rev",
+    "track9_lfos",
+    "track9_lfod",
+    "track9_lfom"
+   ]
+  },
+  {
+   "label": "TRACK 11",
+   "keys": [
+    "track10_machine",
+    "track10_vol",
+    "track10_pan",
+    "track10_amd",
+    "track10_amf",
+    "track10_eqf",
+    "track10_eqg",
+    "track10_fltf",
+    "track10_fltw",
+    "track10_fltq",
+    "track10_srr",
+    "track10_dist",
+    "track10_del",
+    "track10_rev",
+    "track10_lfos",
+    "track10_lfod",
+    "track10_lfom"
+   ]
+  },
+  {
+   "label": "TRACK 12",
+   "keys": [
+    "track11_machine",
+    "track11_vol",
+    "track11_pan",
+    "track11_amd",
+    "track11_amf",
+    "track11_eqf",
+    "track11_eqg",
+    "track11_fltf",
+    "track11_fltw",
+    "track11_fltq",
+    "track11_srr",
+    "track11_dist",
+    "track11_del",
+    "track11_rev",
+    "track11_lfos",
+    "track11_lfod",
+    "track11_lfom"
+   ]
+  },
+  {
+   "label": "TRACK 13",
+   "keys": [
+    "track12_machine",
+    "track12_vol",
+    "track12_pan",
+    "track12_amd",
+    "track12_amf",
+    "track12_eqf",
+    "track12_eqg",
+    "track12_fltf",
+    "track12_fltw",
+    "track12_fltq",
+    "track12_srr",
+    "track12_dist",
+    "track12_del",
+    "track12_rev",
+    "track12_lfos",
+    "track12_lfod",
+    "track12_lfom"
+   ]
+  },
+  {
+   "label": "TRACK 14",
+   "keys": [
+    "track13_machine",
+    "track13_vol",
+    "track13_pan",
+    "track13_amd",
+    "track13_amf",
+    "track13_eqf",
+    "track13_eqg",
+    "track13_fltf",
+    "track13_fltw",
+    "track13_fltq",
+    "track13_srr",
+    "track13_dist",
+    "track13_del",
+    "track13_rev",
+    "track13_lfos",
+    "track13_lfod",
+    "track13_lfom"
+   ]
+  },
+  {
+   "label": "TRACK 15",
+   "keys": [
+    "track14_machine",
+    "track14_vol",
+    "track14_pan",
+    "track14_amd",
+    "track14_amf",
+    "track14_eqf",
+    "track14_eqg",
+    "track14_fltf",
+    "track14_fltw",
+    "track14_fltq",
+    "track14_srr",
+    "track14_dist",
+    "track14_del",
+    "track14_rev",
+    "track14_lfos",
+    "track14_lfod",
+    "track14_lfom"
+   ]
+  },
+  {
+   "label": "TRACK 16",
+   "keys": [
+    "track15_machine",
+    "track15_vol",
+    "track15_pan",
+    "track15_amd",
+    "track15_amf",
+    "track15_eqf",
+    "track15_eqg",
+    "track15_fltf",
+    "track15_fltw",
+    "track15_fltq",
+    "track15_srr",
+    "track15_dist",
+    "track15_del",
+    "track15_rev",
+    "track15_lfos",
+    "track15_lfod",
+    "track15_lfom"
+   ]
+  },
+  {
+   "label": "GLOBAL",
+   "keys": [
+    "tempo",
+    "max_voices"
+   ]
+  }
+ ]
+}

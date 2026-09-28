@@ -1,4 +1,5 @@
 #include "HostModel.h"
+#include "ParallelVoiceEngine.h"
 
 #include <algorithm>
 #include <cmath>
@@ -17,23 +18,31 @@ namespace md::engine
 		constexpr uint32_t kLfoWave = 0x204c94;		// waveform/restart for one LFO (in the tick routine's trigger path)
 		constexpr uint32_t kLfoApplyOne = 0x10001e8;	// apply one LFO to its destination in the voice arrays
 		constexpr uint32_t kTrackStride = 0x30;
+		constexpr uint32_t kLevel = 0x1000d7c;		// smoothed track levels: 16 words (value << 7); then 32 master FX
+		constexpr uint32_t kLevelTarget = 0x1000f5c;	// their targets: 48 bytes (0-127)
+		constexpr uint32_t kLevelSmooth = 0x100029e;	// new = (3 old + target << 7) >> 2, all 48
 
 		bool isAudioMachine(const uint8_t _id) { return !(_id >= 0x60 && _id <= 0x7b); }	// MID/CTR: no audio
 	}
 
-	HostModel::HostModel(MachineRunner& _os, VoiceEngine& _voices) : m_os(_os), m_voices(_voices)
+	template<class TVoices>
+	HostModel<TVoices>::HostModel(MachineRunner& _os, TVoices& _voices) : m_os(_os), m_voices(_voices)
 	{
 		setTempo(125.0);
 		m_pendingMachine.fill(-1);
+		m_route.fill(6);
 		for(int t = 0; t < kTracks; ++t)
 		{
+			m_os.poke8(kLevelTarget + static_cast<uint32_t>(t), 100);
+			m_os.poke16(kLevel + 2 * static_cast<uint32_t>(t), 100 << 7);
 			m_machine[t] = 0;
 			setMachine(t, 0);
 			setLfo(t, t, 0, 0, 0, 0);
 		}
 	}
 
-	void HostModel::setMachine(const int _track, const uint8_t _machineId)
+	template<class TVoices>
+	void HostModel<TVoices>::setMachine(const int _track, const uint8_t _machineId)
 	{
 		const auto* m = m_os.machine(_machineId);
 		if(!m) return;
@@ -42,17 +51,20 @@ namespace md::engine
 			m_raw[_track][p] = m->defaults[p];
 	}
 
-	void HostModel::setParam(const int _track, const int _param, const int _value)
+	template<class TVoices>
+	void HostModel<TVoices>::setParam(const int _track, const int _param, const int _value)
 	{
 		m_raw[_track][_param] = static_cast<uint8_t>(std::clamp(_value, 0, 127));
 	}
 
-	void HostModel::setTempo(const double _bpm)
+	template<class TVoices>
+	void HostModel<TVoices>::setTempo(const double _bpm)
 	{
 		m_os.poke32(kTempo, static_cast<uint32_t>(std::lround(std::clamp(_bpm, 30.0, 300.0) * 24.0)));
 	}
 
-	void HostModel::setLfo(const int _track, const int _destTrack, const int _destParam, const int _shape1, const int _shape2, const int _type)
+	template<class TVoices>
+	void HostModel<TVoices>::setLfo(const int _track, const int _destTrack, const int _destParam, const int _shape1, const int _shape2, const int _type)
 	{
 		const uint32_t base = kLfo + kLfoStride * static_cast<uint32_t>(_track);
 		m_os.poke8(base + 0, static_cast<uint8_t>(std::clamp(_destTrack, 0, kTracks - 1)));
@@ -62,9 +74,44 @@ namespace md::engine
 		m_os.poke8(base + 4, static_cast<uint8_t>(std::clamp(_type, 0, 3)));
 	}
 
-	void HostModel::trigger(const int _track)
+	template<class TVoices>
+	void HostModel<TVoices>::setLevel(const int _track, const int _level)
 	{
+		m_os.poke8(kLevelTarget + static_cast<uint32_t>(_track), static_cast<uint8_t>(std::clamp(_level, 0, 127)));
+	}
+
+	template<class TVoices>
+	void HostModel<TVoices>::silenceVoice(const int _track)
+	{
+		uint32_t out[32];
+		const uint16_t params[8] = {};	// GND-- (OS machine id 0) takes none
+		const int n = m_os.compute(0, params, out, 32);
+		if(n > 0)
+		{
+			out[0] = 1;	// trigger code for machine id 0
+			m_voices.setSlot(_track, out, std::min(n, TVoices::kSlotWords));
+		}
+	}
+
+	template<class TVoices>
+	void HostModel<TVoices>::trigger(const int _track, const int _velocity, const bool _accent)
+	{
+		if(m_maxActive < kTracks)
+		{
+			auto it = std::find(m_activeOrder.begin(), m_activeOrder.end(), _track);
+			if(it != m_activeOrder.end())
+				m_activeOrder.erase(it);
+			else if(static_cast<int>(m_activeOrder.size()) >= m_maxActive)
+			{
+				const int victim = m_activeOrder.front();
+				m_activeOrder.erase(m_activeOrder.begin());
+				silenceVoice(victim);
+			}
+			m_activeOrder.push_back(_track);
+		}
 		m_trigger[_track] = true;
+		m_velocity[_track] = static_cast<uint8_t>(std::clamp(_velocity, 1, 127));
+		m_accent[_track] = _accent;
 		// The OS's track trigger ($20cdf0) flags the track's own LFO; the tick's trigger path acts on it.
 		m_os.poke8(kLfo + kLfoStride * static_cast<uint32_t>(_track) + 5, 1);
 		// The tick routine's trigger path: a pending machine is applied now, loading the kit values straight into
@@ -83,7 +130,8 @@ namespace md::engine
 		}
 	}
 
-	const uint16_t* HostModel::voiceParams(const int _track) const
+	template<class TVoices>
+	const uint16_t* HostModel<TVoices>::voiceParams(const int _track) const
 	{
 		auto* self = const_cast<HostModel*>(this);
 		for(int p = 0; p < kParams; ++p)
@@ -91,7 +139,8 @@ namespace md::engine
 		return m_scratch.data();
 	}
 
-	void HostModel::updateVoice(const int _track)
+	template<class TVoices>
+	void HostModel<TVoices>::updateVoice(const int _track)
 	{
 		// As the tick routine's voice loop: the machine function on the voice's current array; word 0 = trigger
 		// flag, which the slot pump turns into machine id + 1. MID/CTR machines have no audio and are not sent.
@@ -110,13 +159,42 @@ namespace md::engine
 			if(n > 0)
 			{
 				out[0] = m_trigger[_track] ? static_cast<uint32_t>(id) + 1 : 0;
-				m_voices.setSlot(_track, out, std::min(n, VoiceEngine::kSlotWords));
+				m_voices.setSlot(_track, out, std::min(n, TVoices::kSlotWords));
 			}
 		}
+		updateMixer(_track);
 		m_trigger[_track] = false;
 	}
 
-	void HostModel::tick()
+	template<class TVoices>
+	void HostModel<TVoices>::updateMixer(const int _track)
+	{
+		// The tick routine's DSP1 block ($20b1e2-$20b302). MID/CTR machines send nothing.
+		auto& m = m_mixer[_track];
+		if(!isAudioMachine(m_machine[_track]))
+			return;
+		const uint16_t* a6 = voiceParams(_track);
+		for(int k = 0; k < 9; ++k)
+			m.fx[k] = a6[8 + k];	// sent unchanged by $1000702
+		m.mix[0] = m_route[_track];
+		if(m_mute[_track])
+		{
+			m.mix[1] = m.mix[2] = m.mix[3] = m.mix[4] = 0;
+			return;
+		}
+		// VOL gain = ((LEV^2 >> 8) x VEL >> 17) x (VOL^2 >> 17); VEL = the trigger's velocity, or 128 + 2 x accent
+		const int32_t lev = m_os.peek16(kLevel + 2 * static_cast<uint32_t>(_track));
+		const int32_t vel = m_accent[_track] ? 128 + 2 * m_accentAmount : m_velocity[_track];
+		const auto sq = [](const uint16_t _v) { return static_cast<uint32_t>(_v) * _v; };
+		const int32_t gain = static_cast<int32_t>((((lev * lev) >> 8) * vel) >> 17) * static_cast<int32_t>(sq(a6[17]) >> 17);
+		m.mix[1] = static_cast<uint32_t>(gain) & 0xffffff;
+		m.mix[2] = (static_cast<uint32_t>(a6[18]) << 9) & 0x1fffe00;
+		m.mix[3] = sq(a6[20]) >> 5;	// REV
+		m.mix[4] = sq(a6[19]) >> 5;	// DEL
+	}
+
+	template<class TVoices>
+	void HostModel<TVoices>::tick()
 	{
 		for(int t = 0; t < kTracks; ++t)
 			for(int p = 0; p < kParams; ++p)
@@ -129,10 +207,12 @@ namespace md::engine
 		m_os.call(kSmooth, {});
 		m_os.call(kLfoOsc, {});
 		m_os.call(kLfoApply, {});
+		m_os.call(kLevelSmooth, {});
 		++m_tickCount;
 	}
 
-	bool HostModel::renderBlock(VoiceEngine::Block& _out)
+	template<class TVoices>
+	bool HostModel<TVoices>::renderBlock(typename TVoices::Block& _out)
 	{
 		// Ticks on a fixed block schedule; a trigger between ticks updates just its voice, so it starts on this
 		// block rather than waiting for the next tick.
@@ -144,4 +224,7 @@ namespace md::engine
 					updateVoice(t);
 		return m_voices.renderBlock(_out);
 	}
+
+	template class HostModel<VoiceEngine>;
+	template class HostModel<ParallelVoiceEngine>;
 }

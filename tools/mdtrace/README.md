@@ -60,15 +60,26 @@ after about 20 emulated seconds of `Hardware::advance()`. Driving it any shorter
 | `sysex:HEX` | e.g. `sysex:f000203c02005b001000f7` (assign machine: track, machine, table) |
 | `panel:NAME` | tap Kit, Enter, Exit, Up, Down, Left, Right, Play, Stop, Function, Record |
 | `lcd` | print the LCD as ASCII |
+| `lcdpng:PATH.ppm` | the real emulated LCD framebuffer (`FrontPanel::getLcdPixel`, 128x64, 1-bit) as a binary PGM (`P5`) — bit-exact reference art for the plugin's skin, the same idea as Monomodule's `mnm_artdump.cpp` but via full-system emulation rather than a reverse-engineered font/icon decoder. **Never commit the output**: it's Elektron's own LCD art (see docs/FIRMWARE.md, same policy as the ROM/flash image itself). Convert to PNG with any tool (ImageMagick's `convert`, PIL, or a few lines of `zlib`) for viewing. |
 | `prof:N` | N frames with a PC histogram and instruction counts for both DSPs |
 | `cf:on` / `cf:off` | log ColdFire PC + registers on every HI08 write |
 | `watch:BEGIN:END` | log ColdFire writes into [BEGIN, END) (hex); `watch:0:0` off |
 | `bp:PC[,PC…][:REG:LEN]` | log registers at 68k PCs, plus LEN bytes at REG (0-7 d0-d7, 8-15 a0-a7); `bp:0` off |
 | `count:N` | 68k instructions/s by region (param/LFO code, LFO shapes, machine fns, total) |
+| `dspregs:N` | DSP N's PC, SR, OMR, memory map (AAR0-3) and a few state words |
+| `dumpmem:FROM:TO:PATH` | raw ColdFire memory to a file (firmware-derived: keep out of git) |
 | `dis68k:FROM:TO`, `peek32:FROM:TO` | ColdFire memory (the disassembler needs Musashi's read callbacks; use `analysis/dis68.py` / `isram.py` instead) |
 
 Track parameters by CC on channel 0 (track 1): 16-23 SYN1-8, 24-32 AMD AMF EQF EQG FLTF FLTW FLTQ SRR
 DIST, 33-36 VOL PAN DEL REV, 37-39 LFOS LFOD LFOM, 8 level.
+
+## mdmix (mixer DSP reference)
+
+`tools/mdmix/MixerRef` runs the mixer DSP's program from the `.syx` in dsp56300 and calls its per-track
+effect function (`P:$a4-$25d`) directly, one track and block at a time; `mdfxtest OS.syx STAGE [TRIALS]
+[BLOCKS] [walk]` compares `engine/TrackFx` against it word for word (stages `amd eq f1 f2 srr all`;
+`walk` moves the parameters every block); `mdmixtest OS.syx [TRIALS]` does the same for `engine/Mixer`
+against the DSP's mix (`MixerRef::runMix`). Built by `tools/build_proto.sh`.
 
 ## mddis
 
