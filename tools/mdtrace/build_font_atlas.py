@@ -50,6 +50,10 @@ assert len(CYCLE) == 50
 # Re-derive by hand (see HANDOFF.md's discovery log) if the firmware/layout ever changes.
 GLYPH_BAND_X = (17, 24)
 GLYPH_BAND_Y = (31, 44)
+# Within GLYPH_BAND_Y, rows 0-2 and 11-12 (0-based within the 13-row band) hold the cursor box's own
+# dashed corner ticks, not glyph body - found by intersecting all 50 captured glyphs' bitmaps (see
+# HANDOFF.md). Row range is a half-open [start, end).
+GLYPH_BODY_ROWS = (3, 11)
 
 
 def load_ppm(path: Path):
@@ -104,10 +108,16 @@ def main() -> int:
 
     args = [str(mdprobe), str(flash), str(flashcache),
             "panel:Kit", "panel:Right", "panel:Enter", "panel:Enter"]
-    # The default kit name's first character is "T" = CYCLE index 39; step to SPACE (index 0) first,
-    # then walk the full cycle from there so frame i (1-based) shows CYCLE[i % 50].
+    # The default kit name's first character is "T" = CYCLE index 40. Up moves forward through CYCLE,
+    # so reaching SPACE (index 0) from T needs (0 - 40) % 50 = 10 taps, NOT `CYCLE.index("T")` taps
+    # (that earlier version landed 30 slots short of SPACE, silently mislabeling every glyph 10 slots
+    # off - e.g. "A"'s stored bitmap was actually PLUS's. Caught by rendering ASCII dumps of specific
+    # letters and checking their shape, not just eyeballing a relabeled grid - a relabeled-then-
+    # redisplayed grid looks self-consistently "right" even when every key points at the wrong glyph).
+    # After this preloop we're exactly at SPACE (index 0), so frame i (0-based) needs no `start_index`
+    # term in its label lookup below - it shows CYCLE[(i + 1) % 50].
     start_index = CYCLE.index("T")
-    for _ in range(start_index):
+    for _ in range((-start_index) % 50):
         args.append("panel:Up:64")
     frame_paths = []
     for step in range(1, 51):
@@ -137,7 +147,7 @@ def main() -> int:
     grid = bytearray([255]) * (gw * gh)
 
     for i, pix in enumerate(frames):
-        label = CYCLE[(start_index + i + 1) % 50]
+        label = CYCLE[(i + 1) % 50]
         cell_rows = []
         cell = bytearray()
         for y in range(y0, y1):
@@ -150,14 +160,13 @@ def main() -> int:
             # The name-entry screen's cursor box resizes to hug each glyph (confirmed by diffing a
             # cursor-position sweep - deltas of 5-9px between positions, not a constant pitch), so
             # this is a proportional font, not fixed-pitch as originally assumed in the Phase 1 plan.
-            # ink_x0/ink_x1/advance below are a FIRST ATTEMPT at per-glyph width and are NOT reliable
-            # yet: the autocrop band (GLYPH_BAND_X/Y) includes the cursor box's own dashed border,
-            # which touches column 0 and cw-1 in every glyph, so naive blank-column trimming reports
-            # every glyph as full-width. Needs the border pattern masked out first (it's a fixed dash
-            # pattern, constant across all 50 frames, so a second diff-against-a-reference pass could
-            # isolate and subtract it) before `advance` can be trusted - do this when Phase 4's
-            # compositor actually needs real inter-glyph spacing.
-            ink_cols = [x for x in range(cw) if any(cell_rows[y][x] == "1" for y in range(ch))]
+            # The box draws dashed corner ticks in this crop band's rows 0-2 and 11-12 (confirmed by
+            # intersecting all 50 glyphs' bitmaps: only col0-1 of rows 1 and 12 are ink in literally
+            # every glyph, and the *other* corner - which moves - lands in those same row bands too),
+            # so ink_x0/ink_x1/advance are measured only over GLYPH_BODY_ROWS, which every sample glyph
+            # confirmed holds the actual character body with no border bleed.
+            body = range(*GLYPH_BODY_ROWS)
+            ink_cols = [x for x in range(cw) if any(cell_rows[y][x] == "1" for y in body)]
             ink_x0, ink_x1 = (ink_cols[0], ink_cols[-1] + 1) if ink_cols else (0, 0)
             atlas[label] = {
                 "w": cw, "h": ch, "rows": cell_rows,

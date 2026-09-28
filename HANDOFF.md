@@ -715,11 +715,23 @@ Steps:
     `font_atlas.json` (`glyph_w`/`glyph_h`/`band_x`/`band_y` + a `glyphs` dict keyed by name, each a
     list of `"01..."` bit-row strings) plus a `font_atlas_grid.png` for visual sanity-checking - both
     build output, gitignored (`build*/` already covers it; ran the script into a scratch dir this
-    session, not `vst/build/`, so nothing new needed there). Verified by eye at 8x scale: all 50
-    glyphs are correct, sharp, and distinguishable - `SPACE 0-9 PLUS MINUS EQUALS SLASH LPAREN RPAREN
-    COMMA BANG QUESTION A-Z ARING ADIAERESIS` plus one glyph (`SPECIAL_OSLASH_A`/`_B`, appearing twice
-    in the cycle, both visually "Ø") not yet given a confident semantic name - doesn't block anything,
-    it's still a correct bitmap under a stable key.
+    session, not `vst/build/`, so nothing new needed there).
+  - **Found and fixed a real off-by-10 labeling bug the same session it was introduced.** The first
+    working version's preloop (to walk from the default kit name's first char "T" back to `SPACE`
+    before starting the sweep) tapped `Up` `CYCLE.index("T")` (= 40) times instead of the needed
+    `(0 - 40) % 50 = 10` times, landing 30 slots past `SPACE` - so every captured glyph was stored
+    under a label 10 slots away from its true character (e.g. the bitmap stored as `"A"` was actually
+    `PLUS`'s glyph). **This was invisible in an eyeballed grid image** - relabeling-then-redisplaying
+    glyphs by their (wrong) stored key still produces a self-consistent-looking, alphabetically-ordered
+    grid, because the display script trusted the same wrong labels. It only surfaced by dumping a few
+    specific letters' raw bitmaps as ASCII (`A` looked like a plus sign, not a letter A) and checking
+    their *shape* against what that letter should actually look like. **Lesson for any future
+    label-from-position capture work**: verify a labeled asset against an independent ground truth of
+    what the label should look like, not just against a re-rendering of itself. Fixed: preloop now taps
+    `(-CYCLE.index("T")) % 50` times, and the per-frame label lookup no longer double-counts the
+    preloop offset. Re-ran and re-verified: `T`, `U`, `I`, `O`, `S`, `L` all now show correct,
+    recognizable letterforms; the natural capture-order grid (`font_atlas_grid.png`) also reads
+    correctly as `0-9, + - = Ø / ( ) , ! ?, A-Z, Å Ä Ø` without any relabeling.
   - Corrected an earlier misreading in this same log: the cycle is exactly 50 entries, not 51 - what
     an earlier partial 45-tap walk logged as a trailing "PERIOD" was actually just the wrap back to
     `SPACE` (which looks blank, hence the confusion). `CYCLE` in `build_font_atlas.py` is now the
@@ -728,15 +740,15 @@ Steps:
     assumption ("The font is fixed-pitch... compare letter spacing to get the exact cell pitch").
     Swept the cursor across 8 name positions (`panel:Right:64` x8) with the fixed suffix "RX UW"
     showing and diffed consecutive frames: the selection box's position deltas were `8,6,6,5,6,9,5`
-    px - not constant, meaning the box (and by extension each glyph's natural width) varies per
-    character, not a fixed grid. `build_font_atlas.py` now stores `ink_x0`/`ink_x1`/`advance` per
-    glyph as a first attempt at this, but **these numbers aren't trustworthy yet**: the autocrop band
-    includes the cursor box's own dashed border, which touches every glyph's left/right edge, so naive
-    blank-column trimming always reports full width. Fix (not done): mask out the border's fixed dash
-    pattern (constant across all 50 captured frames, so diffable/subtractable) before trimming ink
-    columns. Needed before Phase 3/4 can lay out real multi-character strings; does not block Phase 2
-    (icon sweep), which can proceed independently using the same "diff across a parameter sweep"
-    technique this atlas already proved out.
+    px - not constant, meaning each glyph's natural width varies, not a fixed grid.
+  - **Per-glyph `advance` width now measured reliably.** The first attempt's `ink_x0`/`ink_x1`/
+    `advance` were contaminated by the cursor box's own dashed corner ticks (present in every glyph's
+    crop, touching column 0 and the right edge) and reported every glyph as full-width. Fix: intersect
+    all 50 captured glyph bitmaps to find pixels that are ink in literally every one - this isolated
+    the ticks to rows 0-2 and 11-12 of the 13-row crop band, with the actual character body confined
+    to rows 3-10 (`GLYPH_BODY_ROWS`). Restricting ink-column trimming to that row range gives sane,
+    varied results: `SPACE` advance 2px, most letters 6-7px, none pinned at the full 8px band width
+    anymore. This is real, physically-measured per-glyph spacing, ready for Phase 3/4 text layout.
 
 ## Relationship between the projects
 
