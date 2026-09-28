@@ -636,12 +636,25 @@ Steps:
   - Verify by re-rendering a captured string from the extracted glyphs and diffing pixel-for-pixel
     against the original capture — the gate before trusting the atlas for anything else.
 
-  **Phase 2 — Icon assets.**
-  - The small rotating dial-pointer icons next to AMD/EQF/etc. and the LEV bar-meter blocks are a
-    bounded set of visual states (not text). Sweep the relevant parameter across its range while
-    capturing (a loop over `sysex:`/param-set actions + `lcdpng` per step, extending
-    `capture_screens.py`'s pattern) and slice out each distinct icon frame the same way as Phase 1's
-    glyphs, into the same kind of atlas (frame index → bitmap).
+  **Phase 2 — Icon assets. Done for the AMD dial (2026-09-28); same recipe covers the rest.**
+  - Wrote `tools/mdtrace/build_dial_atlas.py` (committed). It reaches the AMP/EFX page
+    (`panel:SynthesisEffectsRouting`) and sweeps a knob's full 0-127 range one step at a time via its
+    rotary `encoder:` action (confirmed `PanelEncoder::DataEntryA` = the AMD knob - turning it also
+    shows a temporary numeric readout under the dial, useful as an independent sanity check while
+    developing this, though the script itself doesn't depend on reading that overlay), capturing the
+    LCD after every step and deduping consecutive identical frames within a fixed crop region (found
+    the same way as the font glyph band: full-frame pixel variance across the sweep, restricted to
+    the dial's own area to exclude the numeric overlay and the LEV meter/neighboring dials, which vary
+    too but aren't this icon). Result: **36 distinct rotation states across the AMD dial's 0-127
+    range**, verified visually at 8x scale - a clean, correctly-ordered sweep of the pointer dot
+    rotating clockwise around the dial. Output `dial_atlas.json` (`states`: list of
+    `{value_first, value_last, rows}`) + `dial_atlas_grid.png`, both build output (gitignored).
+  - Not yet done: the LEV bar-meter (a different icon shape - vertical bars, not a rotating pointer,
+    so likely needs its own crop region and possibly a different sweep target, e.g. incoming audio
+    level rather than a knob) and the other 7 AMP/EFX dials (AMF/EQF/EQG/FLTF/FLTW/FLTQ/SRR - same
+    script should work unchanged for each, just pass a different `encoder` arg - `DataEntryB`.. per
+    the panel layout - and possibly a different `DIAL_CROP_X/Y` per dial position; not yet swept to
+    confirm the crop-region constants generalize or need per-position values).
 
   **Phase 3 — UI structure (hand-authored, not extracted — the one part with no ROM-derived
   shortcut).**
