@@ -103,7 +103,8 @@ constexpr int kSlotLevel = kSlotSyn + kNumSyn;	// the kit's track LEV (HostModel
 constexpr int kSlotTrack = 0, kSlotsPerTrack = kSlotLevel + 1;	// machine, vol, pan, FX, ROUTE, SYN, LEV
 constexpr int kSlotTempo = kSlotTrack + kTracks * kSlotsPerTrack;
 constexpr int kSlotMaxVoices = kSlotTempo + 1;
-constexpr int kNumSlots = kSlotMaxVoices + 1;
+constexpr int kSlotHostBpm = kSlotMaxVoices + 1;	// MPC's tempo x 100 (wrapper "lfo_bpm", vst.json HAS_LFO_BPM); 0 = none yet
+constexpr int kNumSlots = kSlotHostBpm + 1;
 
 int slotOf(const char* key)
 {
@@ -268,8 +269,10 @@ void Inst::run()
 				continue;
 			}
 
-			const int tempo = std::clamp(param[kSlotTempo].load(std::memory_order_relaxed), 30, 300);
-			if(tempo != appliedTempo) { appliedTempo = tempo; h.setTempo(tempo); }
+			// MPC's own tempo once the wrapper has sent it (it does every block it changes), else the tempo param
+			const int hostBpm = param[kSlotHostBpm].load(std::memory_order_relaxed);
+			const int tempo = hostBpm > 0 ? std::clamp(hostBpm, 3000, 30000) : std::clamp(param[kSlotTempo].load(std::memory_order_relaxed), 30, 300) * 100;
+			if(tempo != appliedTempo) { appliedTempo = tempo; h.setTempo(tempo / 100.0); }
 			const int maxVoices = std::clamp(param[kSlotMaxVoices].load(std::memory_order_relaxed), 1, kTracks);
 			if(maxVoices != appliedMaxVoices) { appliedMaxVoices = maxVoices; h.setMaxActiveVoices(maxVoices); }
 			for(int t = 0; t < kTracks; ++t)
@@ -383,6 +386,11 @@ void eMidi(void* p, const uint8_t* msg, int len)
 void eSet(void* p, const char* key, const char* val)
 {
 	auto* in = static_cast<Inst*>(p);
+	if(!std::strcmp(key, "lfo_bpm"))
+	{
+		in->param[kSlotHostBpm].store(static_cast<int>(std::lround(std::atof(val) * 100.0)), std::memory_order_relaxed);
+		return;
+	}
 	const int slot = slotOf(key);
 	if(slot < 0) return;
 	const int v = std::atoi(val);

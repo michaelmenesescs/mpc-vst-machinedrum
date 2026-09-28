@@ -1150,3 +1150,24 @@ the voice program first runs.
 The user owns the hardware and has supplied the OS `.syx` and a full flash `.bin` (MD OS 1.63). They're kept
 outside the repo. `.gitignore` blocks `*.syx`, `*.bin` and `*.inl`; never commit firmware or anything derived
 from it.
+
+- **2026-09-28: CPU glitching with a 4-track kit, a GLOBAL tab, master FX parked.**
+  - Measured on the Force (per-thread /proc sampling while the user's pattern played): the engine
+    thread at 89% of its core with EFM BD / EFM XT / E12 SD / P-I MT, at FIFO 30 above MPC's
+    AudioWorker on the same core, so overload glitched all of MPC. **The Force has 4 cores**
+    (/proc/cpuinfo; MPC's threads run on cpu 0-3) - `nproc` = 2 only reflects the ssh shell's
+    affinity, correcting the "2 cores" note above.
+  - Stage timing (x86, recompiled DSP): most of the cost is fixed per block, not per voice - all
+    silent 41 us/block vs 64 with the kit; per-track FX on 16 tracks was ~15 us of it. Fix: a
+    settled silent track's FX is skipped (exact: verified identical over 60000 blocks against the
+    unskipped path), -16..18% on the kit. Engine thread now FIFO 5 (below MPC audio RR 20 and
+    MIDI out RR 10), named `md-engine`. Deployed as 0.2.1. **Not yet re-measured on the device.**
+    Next lever if still short: voices on a second core via a persistent thread pair.
+  - **Master FX (reverb/delay/etc.) parked (user direction):** the engine computes the REV/DEL send
+    mixes but no master effect consumes them, so REV/DEL do nothing yet.
+  - GLOBAL tab (the Monomodule-style skin had dropped it): MIXER (16 LEV bars) + VOICES; tempo now
+    follows MPC's (vst.json HAS_LFO_BPM -> "lfo_bpm"; the tempo param is only a fallback).
+  - Force "drum pads" investigation: DrumSynth Multi's 16-pad layout isn't a stored flag (diffed a
+    saved project: same program type 3, same padNoteMap; only per-pad colours differ) or the
+    settings category (tried category="Drum": no effect, reverted). "Drum test 2" (DrumSynth's pad
+    colours on the Machinedrum track) awaits the user's check.

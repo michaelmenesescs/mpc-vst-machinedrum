@@ -152,13 +152,16 @@ def text_width(font, s):
 class P:
     """a knob cell (Monomodule's spec::Param, reduced to what the MD's cells use: dials, no list icons)"""
 
-    def __init__(self, label, display="numeric", default=0):
+    def __init__(self, label, display="numeric", default=0, fmt=None):
         self.label, self.display, self.default = label, display if label else "blank", default
         self.tie, self.max = 0, 127
+        self.fmt = fmt   # optional raw -> text, for a param whose range isn't 0-127 (as Monomodule's extra globals)
 
 
 def value_text(p, raw):
     raw = max(0, min(p.max, raw))
+    if p.fmt:
+        return p.fmt(raw)
     if p.display == "bipolar":
         b = raw - 64
         return "+%d" % b if b > 0 else str(b)
@@ -207,7 +210,7 @@ def save_png(name, im):
 
 def strip_image(p, cache={}):
     """128 frames of the dynamic part of a cell of this kind, stacked down."""
-    k = p.display
+    k = p.display + ("_" + p.label.lower() if p.fmt else "")
     if k in cache:
         return cache[k]
     frames = []
@@ -224,7 +227,7 @@ def strip_image(p, cache={}):
 
 
 defs = {}
-TABK = [[] for _ in range(TRACKS)]   # components per tab (= per track)
+TABK = [[] for _ in range(TRACKS + 1)]   # components per tab: one per track, then GLOBAL
 PREVIEW = []   # (image file, x, y, w, h, condition, frame index or None, tab), in draw order, for the offline composite
 
 
@@ -563,6 +566,58 @@ for t in range(TRACKS):   # last, so the picker draws over everything on the tab
         place("mdPickOpt_%d" % m["id"], "Machine %s" % m["name"], PIDX[mk], pk_x + rx, pk_y + ry, rw, rh, t, cond=open_c,
               img=pick_imgs[m["id"]]["on" if m["id"] == PREVIEW_MACHINE else "off"])
 
+# ------------------------------------------------------------------ GLOBAL tab ----------------------------------------
+# MIXER (the top row, both pages wide): every track's LEV as Monomodule's LEV column, 16 across. GLOBAL (bottom left):
+# VOICES (max_voices, 1-16). Tempo follows MPC's own (vst.json HAS_LFO_BPM), so it has no control here.
+GT = TRACKS
+gbg = Image.new("RGB", (SKIN_W, SKIN_H), PAPER)
+px_text(gbg, F["bold8"], "MD", OX + MARG + (LEV_W - text_width(F["bold8"], "MD") * 4) // 2, OY + 8 + (BAR_ROWS * S - F["bold8"].h * 4) // 2, 4, INK)
+MW = PAGES_W // S                      # the mixer page's width in LCD px
+MCW = (MW - 1) // TRACKS               # a channel column
+mcv = Canvas(MW, PAGE_LCD_H)
+mcv.fill(0, 0, MW, TITLE_H, True)
+mcv.text(F["bold8"], "MIXER", 2, 1, False)
+mfx, mfy, mfw = (MCW - 11) // 2, GRID_Y + 9, 11     # each channel's dotted bar frame
+mfh = PAGE_LCD_H - 2 - mfy
+for c in range(TRACKS):
+    x0 = c * MCW
+    mcv.dots_v(x0, GRID_Y, PAGE_LCD_H - 1)
+    mcv.text_centred(F["tiny3x5"], str(c + 1), x0 + 1, MCW - 1, GRID_Y + LABEL_Y)
+    mcv.dots_h(x0 + mfx, x0 + mfx + mfw - 1, mfy); mcv.dots_h(x0 + mfx, x0 + mfx + mfw - 1, mfy + mfh - 1)
+    mcv.dots_v(x0 + mfx, mfy, mfy + mfh - 1); mcv.dots_v(x0 + mfx + mfw - 1, mfy, mfy + mfh - 1)
+mcv.dots_h(0, MW - 1, GRID_Y); mcv.dots_v(TRACKS * MCW, GRID_Y, PAGE_LCD_H - 1); mcv.dots_h(0, MW - 1, PAGE_LCD_H - 1)
+mx0, my0 = page_origin("SYN")
+gbg.paste(mcv.image(), (mx0, my0))
+GLOBAL_CELLS = [P("VOICES", default=127, fmt=lambda raw: str(1 + int(round(raw * 15 / 127.0))))] + [P("") for _ in range(7)]
+gcv = page_canvas("ROUTE", GLOBAL_CELLS, "GLOBAL")
+gbg.paste(gcv.image(), page_origin("ROUTE"))
+image_comp("Background", save_png("bg_global", gbg), 0, 0, SKIN_W, SKIN_H, tab=GT)
+# the bars: Monomodule's LEV strips (bar rows 1..7 of a 9-wide strip), in segments to keep each image short
+m_inner_y0, m_seg_n = mfy + 2, 3
+m_seg_h = (mfh - 4) // m_seg_n
+m_inner_h = m_seg_h * m_seg_n
+mseg = []
+for sgm in range(m_seg_n):
+    st = Image.new("RGB", ((mfw - 2) * S, m_seg_h * S * FRAMES))
+    for raw in range(FRAMES):
+        cv = Canvas(mfw - 2, m_seg_h)
+        lvl = int(round(raw / 127.0 * m_inner_h))
+        for r in range(m_seg_h):
+            if m_inner_y0 + sgm * m_seg_h + r >= m_inner_y0 + m_inner_h - lvl:
+                for cc in range(1, mfw - 3):
+                    cv.set(cc, r)
+        st.paste(cv.image(), (0, raw * m_seg_h * S))
+    mseg.append(save_png("mix_%d" % sgm, st))
+mt_w, mt_h = (MCW - 2) * S, (PAGE_LCD_H - GRID_Y - 3) * S
+for c in range(TRACKS):
+    key = "track%d_level" % c
+    for sgm, fn in enumerate(mseg):
+        place(knob_def(fn, (mfw - 2) * S, m_seg_h * S, interactive=False), "MIX %d %d" % (c + 1, sgm + 1), PIDX[key],
+              mx0 + (c * MCW + mfx + 1) * S, my0 + (m_inner_y0 + sgm * m_seg_h) * S, (mfw - 2) * S, m_seg_h * S, GT, img=fn, raw=100)
+    place(knob_def(fn_t, mt_w, mt_h), "MIX %d touch" % (c + 1), PIDX[key], mx0 + (c * MCW + 1) * S, my0 + (GRID_Y + 1) * S, mt_w, mt_h, GT)
+cell_dials("ROUTE", GLOBAL_CELLS, ["max_voices"] + [None] * 7, GT)
+cell_touch("ROUTE", GLOBAL_CELLS, ["max_voices"] + [None] * 7, GT)
+
 # ------------------------------------------------------------------ assemble ----------------------------------------
 pages, qmap = [], []
 comp_bg = {"version": 1, "colour": "ff%02x%02x%02x" % PAPER, "image": ""}
@@ -581,6 +636,17 @@ for t in range(TRACKS):
     defs[comp] = {"key": comp, "value": {"version": 4, "actions": [], "backgroundData": {"version": 1, "focussed": comp_bg, "unfocussed": comp_bg},
                                          "ignoreMousePresses": False, "disableCoarseDataWheel": False, "repeats": 1,
                                          "hideQLinkBounds": True, "componentsData": TABK[t]}}
+gsets = [("MIXER", ["track%d_level" % c for c in range(TRACKS)]), ("GLOBAL", ["max_voices"])]
+for sp, (title, keys) in enumerate(gsets):
+    ql = {"Q-Link %d" % (q + 1): -1 for q in range(16)}
+    for s_, k in enumerate(keys):
+        ql["Q-Link %d" % ss.qlink_for_slot(s_)] = PIDX[k]
+    pages.append({"version": 3, "tabName": "GLOBAL", "fnKeyIndex": GT, "fnKeySubIndex": sp, "qlinkBoundsData": ["0 0 0 0"],
+                  "componentName": "MACHINEDRUM|GLOBAL", "initialSize": "0 0 %d %d" % (SKIN_W, SKIN_H), "scale": 1.0})
+    qmap.append({"Tab": GT + 1, "SubTab": sp + 1, "Bank Direction": "Column", "Q-Links": ql})
+defs["MACHINEDRUM|GLOBAL"] = {"key": "MACHINEDRUM|GLOBAL", "value": {"version": 4, "actions": [], "backgroundData": {"version": 1, "focussed": comp_bg, "unfocussed": comp_bg},
+                                                                  "ignoreMousePresses": False, "disableCoarseDataWheel": False, "repeats": 1,
+                                                                  "hideQLinkBounds": True, "componentsData": TABK[GT]}}
 tui = {"pageData": {"version": 1, "componentDefinitions": {"version": 2, "importFiles": [ss.AKAI + "Generic/Generic Knob Overlay.json",
                                                                                         ss.AKAI + "Generic/Generic Menu Overlay.json"],
                                                           "localComponentDefinitions": list(defs.values())},
@@ -617,4 +683,5 @@ def preview(state, out, tab=0):
 preview({"track0_machine": PREVIEW_MACHINE}, os.path.join(sys.argv[4], "preview_track1.png"), 0)
 preview({"track1_machine": 20}, os.path.join(sys.argv[4], "preview_track2_rs.png"), 1)
 preview({}, os.path.join(sys.argv[4], "preview_track3_new.png"), 2)
+preview({}, os.path.join(sys.argv[4], "preview_global.png"), GT)
 preview({"track0_machine": PREVIEW_MACHINE, "track0_machine__open": 1}, os.path.join(sys.argv[4], "preview_open.png"), 0)
