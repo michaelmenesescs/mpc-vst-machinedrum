@@ -35,6 +35,10 @@ namespace md::mixref
 		// frames $400 (6 channels).
 		bool runMix(const Block* _tracks, const uint32_t (*_mix)[5]);
 
+		// The master effects (P:$342-$970: rhythm echo, gate box, EQ, dynamix), run on what runMix() left in X memory,
+		// their parameters at Y:$150-$18c. Stops at the output stage ($971).
+		bool runMaster();
+
 		uint32_t peekX(uint32_t _a) const;
 		uint32_t peekY(uint32_t _a) const;
 		void pokeX(uint32_t _a, uint32_t _v);

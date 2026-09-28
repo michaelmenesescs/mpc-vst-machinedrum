@@ -132,6 +132,17 @@ namespace md::mixref
 		return ok;
 	}
 
+	bool MixerRef::runMaster()
+	{
+		const TWord stop = 0x971;
+		const TWord saved = m_dsp->memory().get(MemArea_P, stop);
+		m_dsp->memWriteP(stop, 0x0c0000 | stop);
+		m_dsp->setPC(0x342);
+		const bool ok = runUntil(stop, 10'000'000);
+		m_dsp->memWriteP(stop, saved);
+		return ok;
+	}
+
 	bool MixerRef::runTrack(const int _track, const Block& _in, Block& _out, const uint32_t _stopAt)
 	{
 		const auto k = static_cast<TWord>(_track);

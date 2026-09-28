@@ -1222,3 +1222,33 @@ from it.
   among them) and randomise includes ROM slots whose directory length is non-zero. The factory image
   fills ROM01-32; ROM33-48 are empty (silent there too). Not yet checked: bit-exactness of ROM output
   against the emulated MD.
+
+## RESUME HERE (2026-09-28, session cut off)
+
+State:
+- Committed (local, NOT pushed): everything through `410c380` (ROM machines). mpc-vst-plugins: wrapper
+  dynamic_name/dynamic_display are on branch `claude/dynamic-param-names` (now = main checkout
+  `/home/sam/mpc-vst` at 87d722b; the old `/home/sam/mpc-vst-dynname` worktree is gone - build with
+  `vst/build_so.sh /tmp/recomp_inc /home/sam/mpc-vst`). Monomodule chassis skin: branch
+  `claude/faceplate-chassis` (91e431b) in mpc-vst-monomodule, not pushed.
+- On the Force: Machinedrum Module **0.4.0** (kits, randomise, GLOBAL first, picker trimmed) and the
+  new Monomodule build (chassis skin) are installed. **0.4.1 (ROM machines + ROM_SAMPLES.bin) is built
+  and packaged at /tmp/md_release but NOT installed** - install with the zip's `install.sh -y`
+  (restarts MPC; ask the user first).
+- Build steps: `python3 tools/mdkits/make_factory.py <mdProbe> build-vst-x86/mdsamples <os .bin> <os .syx>
+  vst/build/factory`, `tools/mdskin/build_skin.sh <os.syx> <monomodule art.json> /home/sam/mpc-vst`,
+  `vst/build_so.sh ...`, then release.py with `--extra vst/build/factory:vst/machinedrum/factory`.
+
+In progress - **global (master) FX**, user's next priority:
+- Master FX = mixer DSP (DSP1, section 2) code `P:$342-$970` (rhythm echo, gate box/reverb, EQ,
+  dynamix), params at `Y:$150-$18c`, inputs from the mix: dry `X:$180`, reverb send `X:$1c0`, delay send
+  `X:$600`; output stage from `$971`. Kits carry master FX settings at $48c.. (not yet parsed).
+- Uncommitted: `MixerRef::runMaster()` (tools/mdmix) runs $342->$971. A throwaway
+  `mastercost.cpp` (scratchpad) to measure its instructions/block was killed (exit 137, likely OOM/loop)
+  before giving a number - rerun carefully (smaller run, check it terminates).
+- Decision pending on that number: emulate the section (cheap to build, CPU cost on the Force) vs
+  bit-exact native C++ translation like TrackFx/Mixer (tools/mdmix already has stage-by-stage compare).
+- Then: map the 68k's master-FX param writes to Y:$150+, expose master FX params (+ kit parsing), skin
+  page for them (REV/DEL currently do nothing).
+
+Other open items: ROM output not verified bit-exact vs emulator; ROM33-48 empty on factory image.
