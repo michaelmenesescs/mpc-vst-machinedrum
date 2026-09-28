@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Writes params.json for Machinedrum One (VST index = order; append only, never reorder once shipped).
+"""Writes params.json for Machinedrum Module (VST index = order; append only, never reorder once shipped).
 Keys match vst/engine.cpp. Per track (0-15): machine (a raw OS machine id, not a named option list - the
 id table is decoded from the user's own firmware at runtime, see docs/FIRMWARE.md, so this repo can't
 commit real names for it), vol, pan, the AMP/EFX page's 8 params (AMD/AMF/EQF/EQG/FLTF/FLTW/FLTQ/SRR -
@@ -94,6 +94,6 @@ for t in range(16):
     params.append({"key": "track%d_lfo_shp2" % t, "name": "T%d LFO Shape 2" % (t + 1), "min": 0, "max": 5, "default": 0, "display": "int"})
     params.append({"key": "track%d_lfo_type" % t, "name": "T%d LFO Update" % (t + 1), "min": 0, "max": 2, "default": 0, "display": "int"})
 
-json.dump({"name": "Machinedrum One", "params": params,
+json.dump({"name": "Machinedrum Module", "params": params,
            "sections": [{"label": l, "keys": k} for l, k in sections]},
           open("params.json", "w"), indent=1)

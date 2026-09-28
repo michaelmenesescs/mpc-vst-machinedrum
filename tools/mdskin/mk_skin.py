@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Builds the MPC skin for Machinedrum One: mpc-vst-monomodule's own vst/skin/mk_skin.py (at 56cb8e0, its "2x2"
+"""Builds the MPC skin for Machinedrum Module: mpc-vst-monomodule's own vst/skin/mk_skin.py (at 56cb8e0, its "2x2"
 layout), adapted to the Machinedrum - the same LCD look, drawing code, knob cells, machine bar, picker and LEV
 column, not a new design. Upstream-of-this differences are only what the Machinedrum needs:
 
@@ -31,7 +31,7 @@ import shadow_skin as ss  # noqa: E402  (TUI.json helpers shared with the other 
 
 args = dict(a.split("=", 1) for a in sys.argv[5:])
 PRESETS = {"default": ("000000", "ffffff"), "inverted": ("ffffff", "000000"), "lowcontrast": ("5c5c5c", "c4c4c4"),
-           # the Machinedrum's own LCD: near-black ink on its orange-red backlight (this port's default)
+           # the Machinedrum's own LCD (this port's default)
            "md": ("5e0c0c", "ff4836"),   # sampled from a photo of the real LCD: maroon pixels on the red backlight
            "red": ("ff3b2e", "1c0403"), "blue": ("5ab0ff", "04112b"), "green": ("52ff70", "031608"), "orange": ("ffa11f", "1e1000")}
 _skin = args.get("skin", "md")
@@ -239,7 +239,7 @@ FR_X, FR_Y, FR_W, FR_H = 1, CONTENT_Y, CW - 1, CELL - CONTENT_Y
 
 
 # ------------------------------------------------------------------ output ----------------------------------------
-NAME, VENDOR = "Machinedrum One", "sd88me"
+NAME, VENDOR = "Machinedrum Module", "sd88me"
 OUT = os.path.join(sys.argv[4], "%s - VST - %s" % (VENDOR, NAME))
 SKIN = os.path.join(OUT, "Plugin Skins")
 os.makedirs(SKIN, exist_ok=True)
@@ -464,7 +464,7 @@ def chassis(windows):
     # the nameplate, on the bezel: plain lettering (no maker's logo)
     try:
         font = ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf", 30)
-        text, x_end = "MACHINEDRUM ONE", OX + PAGES_X0 + PAGES_W
+        text, x_end = "MACHINEDRUM MODULE", OX + PAGES_X0 + PAGES_W
         tracking = 3
         widths = [dr.textlength(ch, font=font) for ch in text]
         x = x_end - int(sum(widths) + tracking * (len(text) - 1))
