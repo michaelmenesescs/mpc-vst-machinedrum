@@ -600,6 +600,72 @@ Steps:
     reusing one static capture) or move to the SYN1-8 "touched" tracking, whichever the user
     prioritizes.
 
+- **2026-09-28: the static-whole-screen-capture skin approach doesn't scale — the user called it
+  out (a single captured screen's labels are only accurate for the machine that happened to be
+  showing when it was captured; the SYN page's labels are per-machine, so one static image can't
+  serve all 16 tracks correctly). Agreed direction: rebuild "the Monomodule way" — reusable font/
+  icon assets composited freely per screen/state, not baked screenshots. Plan below, not yet
+  started; this is the resume point after compaction.**
+
+  ## Skin plan: the Monomodule way (not started)
+
+  The difference from Monomodule: upstream Monomodule already reverse-engineered the Monomachine's
+  font/icon storage as data (`RomArt.cpp`/`SpecData.cpp`), so `mnm_artdump.cpp` just calls those
+  decoders and `mk_skin.py` composites the result. We have no equivalent decoder for the
+  Machinedrum's ROM. But we have something Monomodule's approach doesn't need: a full-system
+  emulator (`gearmulator-md-mm`) that renders real pixels for anything we tell it to display, plus
+  the bit-exact capture tooling already built and proven this session (`lcdpng`, `capture_screens.py`,
+  full `panel:` navigation). The plan replaces "decode the font table" with "capture known text and
+  slice it" — same end result (a reusable glyph/icon atlas), different, more tractable method for
+  this project.
+
+  **Phase 1 — Font extraction (the key unlock, do this first).**
+  - Machinedrum kit/pattern/track names are user-editable ASCII strings (sysex, or
+    `gearmulator-md-mm`'s automation tooling — `mdautomation.cpp`/`mdsysexautomation.cpp`, already
+    referenced in "The plan" at the top of this doc for scripting parameter changes; check there
+    for the exact rename mechanism first, don't assume).
+  - Set kit/pattern/track names to strings covering every character the skin will ever need: A-Z,
+    0-9, and whatever symbols appear in real captures (`:` `.` `-` `>` seen already in "KIT:01",
+    "125.0", "TRX►B2", "PATTERN A01" — check for others once more screens are captured).
+  - Capture the screen(s) showing those strings with `lcdpng` (already built and proven).
+  - The font is fixed-pitch (visible in every capture so far — compare letter spacing in "TRX UW"
+    vs "KIT:01" to get the exact cell pitch in pixels before writing the slicer). Slice the known
+    grid into per-glyph 1-bit bitmaps at that pitch. This is a small new script (not started),
+    output as a JSON atlas — same shape as Monomodule's own font dump (glyph index → bitmap rows),
+    so `mk_skin.py`-equivalent code can reuse rendering logic in the same spirit.
+  - Verify by re-rendering a captured string from the extracted glyphs and diffing pixel-for-pixel
+    against the original capture — the gate before trusting the atlas for anything else.
+
+  **Phase 2 — Icon assets.**
+  - The small rotating dial-pointer icons next to AMD/EQF/etc. and the LEV bar-meter blocks are a
+    bounded set of visual states (not text). Sweep the relevant parameter across its range while
+    capturing (a loop over `sysex:`/param-set actions + `lcdpng` per step, extending
+    `capture_screens.py`'s pattern) and slice out each distinct icon frame the same way as Phase 1's
+    glyphs, into the same kind of atlas (frame index → bitmap).
+
+  **Phase 3 — UI structure (hand-authored, not extracted — the one part with no ROM-derived
+  shortcut).**
+  - Unlike fonts/icons, page layout (which labels go where, which screens exist, which are
+    per-machine) has to be encoded by hand from what we observe navigating the real menus, the same
+    kind of manual encoding Monomodule's own `SpecData.cpp` represents for the Monomachine (that
+    file is also hand-written domain knowledge, not decoded from ROM). For the Machinedrum: enumerate
+    the screens the plugin needs (Kit/Track overview, SYN page, AMP/EFX page, ...; check what else
+    real navigation reaches - LFO page? routing?), and for each, its exact label positions. The one
+    part of this that *is* already programmatic: per-machine SYN1-8 label sets come straight out of
+    `MachineRunner`'s existing descriptor table (`MachineInfo::params`), no manual transcription
+    needed there.
+
+  **Phase 4 — Compositor.**
+  - A script (this project's `mk_skin.py` equivalent, not started) that, given the font/icon atlas
+    plus the Phase 3 UI spec plus the VST param list, draws each control's real-LCD-style label
+    (and relevant icon) into the skin's PNGs at build time, correctly **for whichever machine is
+    actually assigned to a given track** — not tied to one fixed capture. Live numeric values stay
+    MPC's own native knob overlay, same division of responsibility as Monomodule's skin.
+
+  **Scope note**: this is genuinely comparable in size to Monomodule's own `mk_skin.py` (~800
+  lines) plus the font/icon extraction Monomodule got for free from upstream and we don't have —
+  a multi-session build, not a quick patch. Resume at Phase 1.
+
 ## Relationship between the projects
 
 Monomodule (Shnolk) and gearmulator-md-mm (Joe Landers) share no code and neither credits the other. md-mm is
