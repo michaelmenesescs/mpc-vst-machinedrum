@@ -962,13 +962,32 @@ Steps:
      16 tracks), zero errors.
   5. **Live-value-text and native-label-text questions** - answered above, no work needed, both
      automatic.
-  6. **Machine picker button wiring into layout.conf** - **NOT DONE**, still the single biggest
-     remaining piece. `build_machine_picker.py`/`build_machine_bar.py` only produce standalone image
-     assets; actually placing 131 per-machine toggle buttons with `IndexedEnabling` gating (matching
-     `mk_skin.py`'s hand-rolled approach, which calls `shadow_skin.py`'s internal `ss._local`/
-     `_placed`/`_button` primitives directly, bypassing the layout.conf DSL entirely) needs either a
-     bespoke Python generator script (mirroring `mk_skin.py`'s own architecture) or a new generic
-     widget kind added to `shadow_skin.py` itself (a separate repo, bigger commitment). Not started.
+  6. ~~Machine picker button wiring into layout.conf~~ **FIXED (2026-09-28), dry-run verified.**
+     Turned out NOT to need either a full `mk_skin.py`-scale rewrite or a new `shadow_skin.py` widget
+     kind - `shadow_skin.build()` already returns the exact `(componentDefinitions, tabs, qmap)`
+     Python structures `write_skin()` would otherwise serialize; `write_skin()` itself is short enough
+     to duplicate. `tools/mdtrace/build_skin_with_picker.py` calls `build()` normally, then injects the
+     picker directly with `shadow_skin`'s own primitives (`ss._local`/`_placed`/`_button`/`_bounds`) -
+     same technique as `mk_skin.py`, just added on top of the existing pipeline instead of replacing
+     it. Per track: a machine-bar field (tap toggles `track%d_machine__open`, added to `gen_params.py`
+     with `popup_of` set - confirmed by reading `wrapper/vst2_wrap.c` directly that this is handled
+     generically by the wrapper itself, `popup_set()`/`popup_picked()`, no engine.cpp changes needed
+     regardless of whether a real `popup` layout widget exists anywhere), one bar image per machine
+     shown via `IndexedEnabling` on `track%d_machine`, the static panel shown via `IndexedEnabling` on
+     the open flag, and one transparent radio-button per machine (the exact mechanism a layout
+     `popup`'s own option buttons use) that sets the machine and auto-closes via `popup_picked()`.
+     **Dry-run verified** with a stubbed `art_bin`/PIL (not the full Docker `html_art` renderer): ran
+     the whole pipeline end to end, got a valid `TUI.json`, and confirmed TRACK 1's page carries
+     exactly 264 machine-related components (131 bar images + 1 bar field + 131 option buttons + 1
+     panel), bound to the correct parameter index (`Parameter 274` = `track0_machine__open`, exactly
+     where it should land after 274 regular params). **This same dry run caught a real, independent
+     bug**: the flat 17-key qlinks list (MACHINE + 8 FX + 8 ROUTE) exceeded MPC's own 16-per-page cap -
+     `shadow_skin.build()` raised `SystemExit` on it directly, not a guess. Fixed by splitting each
+     track into two Q-Link sub-pages in `gen_layout.py` (confirmed the two subpages share the same
+     underlying `componentsData` list object, so the picker only needs adding once per track, not
+     once per subpage). **Not yet done**: the real Docker `html_art` build and an on-device test -
+     the dry run proves the JSON is well-formed and internally consistent, not that it renders/behaves
+     correctly on a real Force.
   7. **Digit font gap** (label font missing `0 2 3 5 6 7 8 9`) - **NOT DONE**. Blocks the machine
      picker/bar from showing fully legible machine names (e.g. "TRXB2" renders as "TRXB"). Needs its
      own short capture pass; a promising unexplored lead is that `mdmachine`'s own listing could pick
