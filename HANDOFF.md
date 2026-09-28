@@ -784,12 +784,49 @@ Steps:
     already independently verified earlier this session) - its overlay reads `PTCH DEC RAMP HOLD /
     TIC NOIS DIRT DIST` correctly (only "TICK" short its K, since K isn't in the 22-letter label font
     yet - a small, known, easily-closed gap, not a structural problem).
-  - **Not yet done - this is the real next phase of work, likely its own session**: wire
-    `gen_syn_label_overlays.py`'s output into `vst/gen_layout.py` as `when=track%d_machine:<id>`
-    components (one set per track, referencing the shared 53 PNGs), verify the resulting
-    `layout.conf`/skin actually builds and shows correctly on the Force, and extend the label font to
-    cover the handful of currently-missing letters (J, K, X, Z at minimum - check the full 53-combo
-    set for exactly which letters are actually needed first, rather than guessing).
+  - **AMP/EFX dial icons wired into the real skin build (2026-09-28) - the first atlas output actually
+    reaching `vst/gen_layout.py`, not just a standalone verification script.** Wrote
+    `tools/mdtrace/build_knob_filmstrip.py` (expands one `dial_atlas.json`'s deduped rotation states
+    into the 128-frame vertical filmstrip PNG `mpc-vst-plugins/tools/skin_assets.py`'s `knob
+    strip=... frames=128` expects - confirmed the frame-stacking direction and count requirements by
+    reading `skin_assets.strip_layout()` directly, not guessing) and
+    `tools/mdtrace/build_amp_fx_knob_strips.py` (drives all 8 AMP/EFX dials through capture + convert,
+    output named by fx key - `amd.png`, `amf.png`, etc. - so `gen_layout.py` can reference them
+    directly). Ran the full pipeline for real: all 8 filmstrips built (42x36 per frame x 128 frames
+    each), spot-checked `amd.png`'s frames 0/32/64/96/127 by direct pixel dump - the pointer visibly
+    rotates all the way around, matching Phase 2's already-verified rotation sweep.
+  - `vst/gen_layout.py` now emits `strip=build/knobs/<fxkey>.png frames=128` on the 8 AMD..SRR knobs
+    (MACHINE/VOL/PAN/DIST keep the generic look for now - see next point). **Validated against the
+    actual toolchain code**, not just eyeballed: imported `mpc-vst`'s own `shadow_skin.parse_layout()`
+    and `skin_assets.look_of()`/`check()` directly and ran them against the generated `layout.conf` -
+    all 17 tabs parse, the strip knob's `look_of()` resolves correctly, `check()` returns `None` (no
+    validation error), and `skin_assets.strip_layout()` reads back exactly `(42, 4608, 128, True)` -
+    128 frames, stacked down, as intended. This is real static asset generation, verified to be
+    well-formed by the same code that will actually consume it - a full local `build_so.sh`/Docker
+    build and an on-device deploy are the remaining verification steps, not attempted this session
+    (no device access requested/available this turn).
+  - **How the SYN page's per-machine labels would connect (found this session, not yet wired):**
+    Monomodule doesn't dynamically redraw anything - it bakes one static label image **per machine**
+    and gates each with MPC's own native `IndexedEnabling` skin feature (confirmed working for VST2
+    params on real Force hardware, `/home/sam/mpc-vst/docs/NOTES.md` "Conditional visibility works for
+    VST2 params"). Our own toolchain already has a layout-level shorthand for exactly this: the
+    `picture` widget kind (`shadow_skin.py`'s docstring: "one image per option of the parameter...a
+    when= art line per option"), also verified on device. **The blocker isn't the skin mechanism - it's
+    that `cond()` requires the bound parameter to have an `options` list of >=2 real entries in
+    params.json**, and `track%d_machine` currently only has `min`/`max` (a raw int range, no options
+    list) - so `picture key=track%d_machine files=...` can't be wired until that's added. Any option
+    *names* added there must not be real Elektron machine-name strings (`docs/FIRMWARE.md`'s
+    firmware-derived-content policy covers this repo's own committed source same as it covers `.syx`/
+    `.bin`) - plain placeholders (`"M0".."M191"`) are enough, since `cond()`'s matching falls back to
+    the numeric index when the option string isn't a name match anyway.
+  - **Not yet done - this is the real next phase of work, likely its own session**: add the placeholder
+    `options` list to `track%d_machine` in `gen_params.py`; wire `gen_syn_label_overlays.py`'s output
+    into `vst/gen_layout.py` as a `picture key=track%d_machine files=<192 entries from manifest.json>`
+    line per track (or the expanded `when=` form directly); this SYN tab is separately blocked on
+    exposing SYN1-8 params at all, which needs "touched" tracking in `engine.cpp` first (see
+    `gen_params.py`'s own docstring) - a real C++ engine change, not just skin generation; and extend
+    the label font to cover the handful of currently-missing letters (J, K, X, Z at minimum - check the
+    full 53-combo set for exactly which letters are actually needed first, rather than guessing).
 
   **Phase 1 progress (2026-09-28): rename mechanism confirmed empirically, unblocks capture.**
   - No sysex/data API sets a kit/pattern/track name (checked `mdautomation.cpp`/`mdsysexautomation.cpp`/
