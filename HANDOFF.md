@@ -1186,3 +1186,26 @@ from it.
     wrapper feature, "dynamic_display" (mpc-vst-plugins claude/dynamic-param-names: effGetParamDisplay
     asks the DSP for "<key>_display"), drawn by MPC's native value label. The LFO page replaces the
     per-track LEV column (LEV stays on the GLOBAL mixer and the track's Q-Links).
+
+- **2026-09-28: kits, randomise, GLOBAL first, picker trimmed; renamed Machinedrum Module.**
+  - Renamed to **Machinedrum Module** (UID `MdOn` and `machinedrum_one.so` kept, so saved projects still load).
+    Skin: one big LCD (colours sampled from a photo of the real one: 5e0c0c on ff4836) inside a thin
+    glossy bezel on a brushed faceplate. GLOBAL is the first tab (MIXER, GLOBAL, KITS pages).
+  - Machine picker: MID/CTR (no audio), INP (no audio input) and RAM (no sampling) are no longer
+    offered; their bars remain for kits that use them. **ROM machines are silent in this port** (the
+    sample flash isn't loaded - smoke test peak 0 for ROM01): open question for the user, since most
+    factory kits put ROM machines on tracks 13-16.
+  - **Kits**: the MD's own kit sysex ($52, 1233 bytes). Layout (verified against the emulated MD's own
+    dumps): name at $0a (16 bytes, $7F first = empty slot), 16x24 params at $1a (HostModel raw
+    order), 16 levels at $19a, 7-bit-encoded machines at $1aa (74 bytes -> 16 big-endian words, id =
+    low byte), 7-bit-encoded LFOs at $1f4 (664 bytes -> 16x36: dest track, dest param, shp1, shp2,
+    update, ...). Factory kits: `tools/mdkits/make_factory.py` boots the emulated MD from the user's
+    flash image, sends the MD's kit request ($53) for all 64 slots (new mdProbe `kitdump:DIR`) and
+    keeps the 16 named ones (TRX UW .. SEACLONES) as FACTORY.syx - per-user build output, installed to
+    <data>/factory (release.py --extra). User packs: any .syx in <data>/kits or
+    "Force Documents/Machinedrum Kits", rescanned every ~3 s (Monomodule's scan design); BANK = file.
+    KIT prev/next loads all 16 tracks (machine, 24 params, LEV, LFO) with SYN "touched" so the kit's
+    values win; the name shows " *" once edited. Master FX in kits are ignored (parked).
+  - Randomise (GLOBAL toggles, Monomodule's momentary hold-1.5 s design): machines on all / 1-8 / 9-16
+    tracks from TRX/EFM/E12/P-I (SYN reset to the new machine's defaults), and RND KIT = a random kit
+    from the current bank.

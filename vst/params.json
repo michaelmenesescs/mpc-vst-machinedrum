@@ -4272,6 +4272,92 @@
    "max": 2,
    "default": 0,
    "display": "int"
+  },
+  {
+   "key": "bank_prev",
+   "name": "Bank Prev",
+   "min": 0,
+   "max": 1,
+   "momentary": true
+  },
+  {
+   "key": "bank_next",
+   "name": "Bank Next",
+   "min": 0,
+   "max": 1,
+   "momentary": true
+  },
+  {
+   "key": "bank_name",
+   "name": "Bank",
+   "min": 0,
+   "max": 0,
+   "display": "string"
+  },
+  {
+   "key": "kit_prev",
+   "name": "Kit Prev",
+   "min": 0,
+   "max": 1,
+   "momentary": true
+  },
+  {
+   "key": "kit_next",
+   "name": "Kit Next",
+   "min": 0,
+   "max": 1,
+   "momentary": true
+  },
+  {
+   "key": "kit_name",
+   "name": "Kit",
+   "min": 0,
+   "max": 0,
+   "display": "string"
+  },
+  {
+   "key": "randomize_all",
+   "name": "Randomise Machines",
+   "options": [
+    "OFF",
+    "ON"
+   ],
+   "default": 0,
+   "momentary": true,
+   "hold_ms": 1500
+  },
+  {
+   "key": "randomize_1_8",
+   "name": "Randomise Machines 1-8",
+   "options": [
+    "OFF",
+    "ON"
+   ],
+   "default": 0,
+   "momentary": true,
+   "hold_ms": 1500
+  },
+  {
+   "key": "randomize_9_16",
+   "name": "Randomise Machines 9-16",
+   "options": [
+    "OFF",
+    "ON"
+   ],
+   "default": 0,
+   "momentary": true,
+   "hold_ms": 1500
+  },
+  {
+   "key": "randomize_kit",
+   "name": "Randomise Kit",
+   "options": [
+    "OFF",
+    "ON"
+   ],
+   "default": 0,
+   "momentary": true,
+   "hold_ms": 1500
   }
  ],
  "sections": [

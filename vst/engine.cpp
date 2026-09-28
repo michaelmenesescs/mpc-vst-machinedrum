@@ -20,11 +20,16 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <ctime>
 #include <memory>
 #include <string>
 #include <thread>
+#include <vector>
 
+#include <dirent.h>
 #include <pthread.h>
+#include <strings.h>
+#include <sys/stat.h>
 #include <sched.h>
 #include <unistd.h>
 
@@ -161,6 +166,125 @@ struct MachineTable
 	char names[256][kNumSyn][8] = {};
 };
 
+// Kits: the MD's own kit sysex messages ($52, 1233 bytes: header, name, 16x24 track params, 16 levels, then 7-bit
+// encoded machines and LFO settings - see HANDOFF.md, "kits"), from any .syx in the watched folders. The factory kits
+// are the OS's own, dumped from the emulated MD at build time (tools/mdkits) and installed as <data dir>/factory.
+struct Kit
+{
+	char name[17];
+	char bank[24];	// the .syx file it came from (basename, upper case, no extension)
+	uint8_t machine[kTracks];
+	uint8_t params[kTracks][24];	// HostModel raw order: SYN1-8, AMD..SRR, DIST, VOL, PAN, DEL, REV, LFOS, LFOD, LFOM
+	uint8_t level[kTracks];
+	uint8_t lfo[kTracks][kNumLfo];	// destination track, destination param, shape 1, shape 2, update
+};
+struct Catalog { std::vector<Kit> kits; std::vector<std::string> banks; uint64_t signature = 0; };
+
+// Elektron's 7-bit packing: each group of up to 7 bytes is preceded by a byte holding their top bits
+std::vector<uint8_t> decode7(const uint8_t* _p, size_t _n)
+{
+	std::vector<uint8_t> out;
+	for(size_t i = 0; i < _n; i += 8)
+		for(size_t j = 1; j < 8 && i + j < _n; ++j)
+			out.push_back(static_cast<uint8_t>(_p[i + j] | ((_p[i] << j) & 0x80)));
+	return out;
+}
+
+bool parseKit(const uint8_t* _m, size_t _n, Kit& _k)
+{
+	static constexpr uint8_t kHeader[] = {0xf0, 0x00, 0x20, 0x3c, 0x02, 0x00, 0x52};
+	if(_n < 0x4d1 || std::memcmp(_m, kHeader, sizeof kHeader)) return false;
+	if(_m[0x0a] == 0x7f || _m[0x0a] == 0) return false;	// an empty slot
+	std::memset(&_k, 0, sizeof _k);
+	for(int i = 0; i < 16 && _m[0x0a + i] >= 0x20 && _m[0x0a + i] < 0x7f; ++i) _k.name[i] = static_cast<char>(_m[0x0a + i]);
+	for(int t = 0; t < kTracks; ++t)
+	{
+		for(int i = 0; i < 24; ++i) _k.params[t][i] = _m[0x1a + t * 24 + i] & 0x7f;
+		_k.level[t] = _m[0x19a + t] & 0x7f;
+	}
+	const auto mach = decode7(_m + 0x1aa, 74);
+	const auto lfo = decode7(_m + 0x1f4, 664);
+	if(mach.size() < 64 || lfo.size() < kTracks * 36) return false;
+	for(int t = 0; t < kTracks; ++t)
+	{
+		_k.machine[t] = mach[t * 4 + 3];	// a 32-bit big-endian word; the machine id is its low byte
+		for(int i = 0; i < kNumLfo; ++i) _k.lfo[t][i] = static_cast<uint8_t>(std::clamp<int>(lfo[t * 36 + i], 0, kLfoMax[i]));
+	}
+	return true;
+}
+
+// A cheap signature of every .syx in the watched folders (name, size, mtime), re-sampled every few seconds on a
+// background thread: the catalog is only rebuilt when it changes (as mpc-vst-monomodule's dump scan).
+uint64_t scanKits(const std::vector<std::string>& _dirs, std::vector<std::string>* _files)
+{
+	uint64_t h = 1469598103934665603ull;
+	auto mix = [&](uint64_t _v) { h ^= _v; h *= 1099511628211ull; };
+	std::vector<std::string> found;
+	for(const auto& dir : _dirs)
+		if(DIR* d = opendir(dir.c_str()))
+		{
+			while(dirent* e = readdir(d))
+			{
+				const size_t n = std::strlen(e->d_name);
+				if(n > 4 && strcasecmp(e->d_name + n - 4, ".syx") == 0) found.push_back(dir + "/" + e->d_name);
+			}
+			closedir(d);
+		}
+	std::sort(found.begin(), found.end());
+	for(const auto& path : found)
+	{
+		for(char c : path) mix(static_cast<uint8_t>(c));
+		struct stat st{};
+		if(stat(path.c_str(), &st) == 0) { mix(static_cast<uint64_t>(st.st_size)); mix(static_cast<uint64_t>(st.st_mtime)); }
+	}
+	if(_files) *_files = found;
+	return h;
+}
+
+Catalog* buildCatalog(const std::vector<std::string>& _dirs, uint64_t _sig)
+{
+	auto* cat = new Catalog();
+	cat->signature = _sig;
+	std::vector<std::string> files;
+	scanKits(_dirs, &files);
+	for(const auto& path : files)
+	{
+		std::string bank = path.substr(path.find_last_of('/') + 1);
+		bank.resize(bank.size() - 4);
+		for(auto& ch : bank) ch = static_cast<char>(std::toupper(static_cast<unsigned char>(ch)));
+		if(bank.size() > 23) bank.resize(23);
+		std::FILE* f = std::fopen(path.c_str(), "rb");
+		if(!f) continue;
+		std::vector<uint8_t> data;
+		uint8_t buf[65536];
+		size_t n;
+		while((n = std::fread(buf, 1, sizeof buf, f)) > 0 && data.size() < (16u << 20)) data.insert(data.end(), buf, buf + n);
+		std::fclose(f);
+		bool any = false;
+		for(size_t i = 0; i < data.size(); ++i)	// every sysex message in the file; kits are the $52 ones
+		{
+			if(data[i] != 0xf0) continue;
+			size_t e = i + 1;
+			while(e < data.size() && data[e] != 0xf7) ++e;
+			Kit k;
+			if(e < data.size() && parseKit(&data[i], e - i + 1, k))
+			{
+				std::snprintf(k.bank, sizeof k.bank, "%s", bank.c_str());
+				cat->kits.push_back(k);
+				any = true;
+			}
+			i = e;
+		}
+		if(any && std::find(cat->banks.begin(), cat->banks.end(), bank) == cat->banks.end()) cat->banks.push_back(bank);
+	}
+	std::sort(cat->banks.begin(), cat->banks.end());
+	return cat;
+}
+
+// Randomise: the machines that make sound in this port (TRX, EFM, E12, P-I) - not GND, the ROM machines (their
+// samples aren't loaded yet), MID/CTR (no audio) or INP/RAM (no audio input, no sampling here)
+bool randomPoolMachine(int _id) { return (_id >= 16 && _id < 80); }
+
 struct Inst
 {
 	std::string osPath;
@@ -176,7 +300,15 @@ struct Inst
 
 	alignas(64) int16_t ring[kRing][kFrames * 2];
 	std::atomic<uint32_t> rWrite{0}, rRead{0};
-	std::thread th;
+	std::thread th, catTh;
+
+	// kits: the catalog (rebuilt by catTh), the selected bank ("" = ALL) and kit (-1 = none loaded yet) - host thread
+	std::atomic<Catalog*> cat{nullptr};
+	std::vector<Catalog*> retiredCats;	// freed at destroy: a concurrent get_param() may still hold an old pointer
+	std::vector<std::string> kitDirs;
+	std::string bankName;
+	int kitIdx = -1;
+	int snap[kNumSlots] = {};	// the loaded kit's values, to show "modified"
 
 	Inst()
 	{
@@ -203,6 +335,92 @@ struct Inst
 	}
 
 	void run();
+
+	// A machine change, as the host makes it: SYN1-8 go back to "untouched", taking the new machine's defaults.
+	void setMachine(int _t, int _v)
+	{
+		const int slot = kSlotTrack + _t * kSlotsPerTrack;
+		if(param[slot].exchange(_v, std::memory_order_relaxed) == _v) return;
+		const bool known = machines.ready.load(std::memory_order_acquire) && _v >= 0 && _v < 256 && machines.valid[_v];
+		for(int i = 0; i < kNumSyn; ++i)
+		{
+			if(known) param[slot + kSlotSyn + i].store(machines.defaults[_v][i], std::memory_order_relaxed);
+			synUntouched[_t][i].store(true);
+		}
+	}
+
+	std::vector<int> kitsInBank() const
+	{
+		std::vector<int> out;
+		if(const Catalog* c = cat.load())
+			for(size_t i = 0; i < c->kits.size(); ++i)
+				if(bankName.empty() || bankName == c->kits[i].bank) out.push_back(static_cast<int>(i));
+		return out;
+	}
+	std::vector<std::string> bankList() const
+	{
+		std::vector<std::string> out{""};
+		if(const Catalog* c = cat.load()) for(auto& b : c->banks) out.push_back(b);
+		return out;
+	}
+	void stepBank(int _dir)
+	{
+		const auto banks = bankList();
+		int idx = 0;
+		for(size_t i = 0; i < banks.size(); ++i) if(banks[i] == bankName) idx = static_cast<int>(i);
+		const int n = static_cast<int>(banks.size());
+		bankName = banks[static_cast<size_t>(((idx + _dir) % n + n) % n)];
+		kitIdx = -1;	// the kit list changed: the next KIT press starts at its first/last kit
+	}
+	std::string bankLabel() const { return bankName.empty() ? "ALL" : bankName; }
+	void stepKit(int _dir)
+	{
+		const auto list = kitsInBank();
+		if(list.empty()) return;
+		const int n = static_cast<int>(list.size());
+		loadKit(kitIdx < 0 ? (_dir > 0 ? 0 : n - 1) : ((kitIdx + _dir) % n + n) % n);
+	}
+	void loadKit(int _idx)
+	{
+		const auto list = kitsInBank();
+		const Catalog* c = cat.load();
+		if(!c || _idx < 0 || _idx >= static_cast<int>(list.size())) return;
+		const Kit& k = c->kits[static_cast<size_t>(list[static_cast<size_t>(_idx)])];
+		static constexpr int kRawToSlot[24] = {
+			kSlotSyn + 0, kSlotSyn + 1, kSlotSyn + 2, kSlotSyn + 3, kSlotSyn + 4, kSlotSyn + 5, kSlotSyn + 6, kSlotSyn + 7,
+			3, 4, 5, 6, 7, 8, 9, 10,	// AMD..SRR
+			3 + kNumFx + 0, 1, 2,	// DIST, VOL, PAN
+			3 + kNumFx + 1, 3 + kNumFx + 2, 3 + kNumFx + 3, 3 + kNumFx + 4, 3 + kNumFx + 5};	// DEL REV LFOS LFOD LFOM
+		for(int t = 0; t < kTracks; ++t)
+		{
+			const int base = kSlotTrack + t * kSlotsPerTrack;
+			for(int i = 0; i < kNumSyn; ++i) synUntouched[t][i].store(false);	// the kit's SYN values, not the machine's defaults
+			param[base].store(k.machine[t], std::memory_order_relaxed);
+			for(int i = 0; i < 24; ++i) param[base + kRawToSlot[i]].store(k.params[t][i], std::memory_order_relaxed);
+			param[base + kSlotLevel].store(k.level[t], std::memory_order_relaxed);
+			for(int i = 0; i < kNumLfo; ++i) param[base + kSlotLfo + i].store(k.lfo[t][i], std::memory_order_relaxed);
+		}
+		kitIdx = _idx;
+		for(int i = 0; i < kSlotTempo; ++i) snap[i] = param[i].load(std::memory_order_relaxed);
+	}
+	std::string kitLabel() const
+	{
+		const auto list = kitsInBank();
+		const Catalog* c = cat.load();
+		if(!c || kitIdx < 0 || kitIdx >= static_cast<int>(list.size())) return list.empty() ? "NO KITS" : "-";
+		std::string name = c->kits[static_cast<size_t>(list[static_cast<size_t>(kitIdx)])].name;
+		for(int i = 0; i < kSlotTempo; ++i)
+			if(param[i].load(std::memory_order_relaxed) != snap[i]) return name + " *";
+		return name;
+	}
+	void randomiseMachines(int _first, int _last)
+	{
+		std::vector<int> pool;
+		for(int id = 0; id < 256; ++id)
+			if(randomPoolMachine(id) && machines.valid[id]) pool.push_back(id);
+		if(pool.empty()) return;
+		for(int t = _first; t <= _last; ++t) setMachine(t, pool[static_cast<size_t>(std::rand()) % pool.size()]);
+	}
 };
 
 void Inst::run()
@@ -377,8 +595,29 @@ void Inst::run()
 void* eCreate(const char* dataDir)
 {
 	auto* in = new Inst();
+	std::srand(static_cast<unsigned>(std::time(nullptr)));	// the randomise actions: different each session
 	if(const char* p = std::getenv("MD_OS")) in->osPath = p;
 	else in->osPath = std::string(dataDir && *dataDir ? dataDir : ".") + "/Elektron_SPS1-1UW_OS1.63.syx";
+	const std::string base = dataDir && *dataDir ? dataDir : ".";
+	// factory: the installer's copy of the OS's own kits; kits: the user's packs (SD card copy, or MPC's Documents browser)
+	in->kitDirs = {base + "/factory", base + "/kits", "/sdcard/Force Documents/Machinedrum Kits"};
+	in->catTh = std::thread([in] {
+		while(!in->stop.load(std::memory_order_acquire))
+		{
+			const uint64_t sig = scanKits(in->kitDirs, nullptr);
+			const Catalog* cur = in->cat.load(std::memory_order_relaxed);
+			if(!cur || cur->signature != sig)
+			{
+				Catalog* next = buildCatalog(in->kitDirs, sig);
+				if(Catalog* old = in->cat.exchange(next, std::memory_order_release)) in->retiredCats.push_back(old);
+			}
+			for(int i = 0; i < 30 && !in->stop.load(std::memory_order_acquire); ++i)	// ~3 s between scans
+			{
+				struct timespec ts{0, 100000000};
+				nanosleep(&ts, nullptr);
+			}
+		}
+	});
 	in->th = std::thread([in] { in->run(); });
 	return in;
 }
@@ -388,6 +627,9 @@ void eDestroy(void* p)
 	auto* in = static_cast<Inst*>(p);
 	in->stop.store(true, std::memory_order_release);
 	if(in->th.joinable()) in->th.join();
+	if(in->catTh.joinable()) in->catTh.join();
+	for(auto* c : in->retiredCats) delete c;
+	delete in->cat.load();
 	delete in;
 }
 
@@ -414,22 +656,27 @@ void eSet(void* p, const char* key, const char* val)
 		in->param[kSlotHostBpm].store(static_cast<int>(std::lround(std::atof(val) * 100.0)), std::memory_order_relaxed);
 		return;
 	}
+	// momentary actions (the wrapper springs them back; they read back as 0)
+	const bool on = std::atof(val) > 0.5;
+	if(!std::strcmp(key, "kit_prev") || !std::strcmp(key, "kit_next")) { if(on) in->stepKit(key[4] == 'n' ? 1 : -1); return; }
+	if(!std::strcmp(key, "bank_prev") || !std::strcmp(key, "bank_next")) { if(on) in->stepBank(key[5] == 'n' ? 1 : -1); return; }
+	if(!std::strcmp(key, "randomize_all")) { if(on) in->randomiseMachines(0, 15); return; }
+	if(!std::strcmp(key, "randomize_1_8")) { if(on) in->randomiseMachines(0, 7); return; }
+	if(!std::strcmp(key, "randomize_9_16")) { if(on) in->randomiseMachines(8, 15); return; }
+	if(!std::strcmp(key, "randomize_kit"))
+	{
+		const auto list = in->kitsInBank();
+		if(on && !list.empty()) in->loadKit(std::rand() % static_cast<int>(list.size()));
+		return;
+	}
 	const int slot = slotOf(key);
 	if(slot < 0) return;
 	const int v = std::atoi(val);
 	const int t = (slot - kSlotTrack) / kSlotsPerTrack, s = (slot - kSlotTrack) % kSlotsPerTrack;
 	if(slot >= kSlotTempo)
 		in->param[slot].store(v, std::memory_order_relaxed);
-	else if(s == 0)	// machine: SYN1-8 go back to "untouched", taking the new machine's defaults
-	{
-		if(in->param[slot].exchange(v, std::memory_order_relaxed) == v) return;
-		const bool known = in->machines.ready.load(std::memory_order_acquire) && v >= 0 && v < 256 && in->machines.valid[v];
-		for(int i = 0; i < kNumSyn; ++i)
-		{
-			if(known) in->param[kSlotTrack + t * kSlotsPerTrack + kSlotSyn + i].store(in->machines.defaults[v][i], std::memory_order_relaxed);
-			in->synUntouched[t][i].store(true);
-		}
-	}
+	else if(s == 0)
+		in->setMachine(t, v);
 	else
 	{
 		if(s >= kSlotSyn) in->synUntouched[t][s - kSlotSyn].store(false);
@@ -440,6 +687,10 @@ void eSet(void* p, const char* key, const char* val)
 int eGet(void* p, const char* key, char* buf, int bufLen)
 {
 	auto* in = static_cast<Inst*>(p);
+	if(!std::strcmp(key, "kit_name")) return std::snprintf(buf, static_cast<size_t>(bufLen), "%s", in->kitLabel().c_str()) > 0;
+	if(!std::strcmp(key, "bank_name")) return std::snprintf(buf, static_cast<size_t>(bufLen), "%s", in->bankLabel().c_str()) > 0;
+	if(!std::strncmp(key, "kit_", 4) || !std::strncmp(key, "bank_", 5) || !std::strncmp(key, "randomize_", 10))
+		return std::snprintf(buf, static_cast<size_t>(bufLen), "0") > 0;	// momentary: always reads back off
 	if(!std::strcmp(key, "ready"))
 		return std::snprintf(buf, static_cast<size_t>(bufLen), "%d", in->ready.load(std::memory_order_acquire) ? 1 : 0) > 0;
 	if(!std::strcmp(key, "underruns"))

@@ -94,6 +94,18 @@ for t in range(16):
     params.append({"key": "track%d_lfo_shp2" % t, "name": "T%d LFO Shape 2" % (t + 1), "min": 0, "max": 5, "default": 0, "display": "int"})
     params.append({"key": "track%d_lfo_type" % t, "name": "T%d LFO Update" % (t + 1), "min": 0, "max": 2, "default": 0, "display": "int"})
 
+# Kits (engine.cpp: the factory kits and any .syx kit packs): BANK and KIT rows as mpc-vst-monomodule's BANK/PRESET -
+# prev/next are momentary, the names live text. Then the GLOBAL page's randomise toggles (momentary, held ON 1.5 s).
+params.append({"key": "bank_prev", "name": "Bank Prev", "min": 0, "max": 1, "momentary": True})
+params.append({"key": "bank_next", "name": "Bank Next", "min": 0, "max": 1, "momentary": True})
+params.append({"key": "bank_name", "name": "Bank", "min": 0, "max": 0, "display": "string"})
+params.append({"key": "kit_prev", "name": "Kit Prev", "min": 0, "max": 1, "momentary": True})
+params.append({"key": "kit_next", "name": "Kit Next", "min": 0, "max": 1, "momentary": True})
+params.append({"key": "kit_name", "name": "Kit", "min": 0, "max": 0, "display": "string"})
+for key, name in (("randomize_all", "Randomise Machines"), ("randomize_1_8", "Randomise Machines 1-8"),
+                  ("randomize_9_16", "Randomise Machines 9-16"), ("randomize_kit", "Randomise Kit")):
+    params.append({"key": key, "name": name, "options": ["OFF", "ON"], "default": 0, "momentary": True, "hold_ms": 1500})
+
 json.dump({"name": "Machinedrum Module", "params": params,
            "sections": [{"label": l, "keys": k} for l, k in sections]},
           open("params.json", "w"), indent=1)

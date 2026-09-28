@@ -70,6 +70,27 @@ int main(int argc, char** argv)
 	}
 	e->set_param(in, "track0_lfo_track", "0");
 	e->set_param(in, "track0_lfo_param", "0");
+	// kits (<data dir>/factory etc.): step through the first two, show what loaded; randomise machines 9-16
+	{
+		char kn[32] = "?", bn[32] = "?", m0[8] = "?", m12[8] = "?";
+		e->set_param(in, "kit_next", "1");
+		e->get_param(in, "kit_name", kn, sizeof kn);
+		e->get_param(in, "bank_name", bn, sizeof bn);
+		e->get_param(in, "track0_machine", m0, sizeof m0);
+		e->get_param(in, "track12_machine", m12, sizeof m12);
+		printf("kit: bank %s, kit %s, track 1 machine %s, track 13 machine %s\n", bn, kn, m0, m12);
+		dumpSyn(0);
+		e->set_param(in, "track0_syn1", "5");
+		e->get_param(in, "kit_name", kn, sizeof kn);
+		printf("after an edit: %s\n", kn);
+		e->set_param(in, "kit_next", "1");
+		e->get_param(in, "kit_name", kn, sizeof kn);
+		printf("next kit: %s\n", kn);
+		e->set_param(in, "randomize_9_16", "1");
+		printf("randomised 9-16:");
+		for(int t = 0; t < 16; ++t) { char k[32], v[8]; snprintf(k, sizeof k, "track%d_machine", t); e->get_param(in, k, v, sizeof v); printf(" %s", v); }
+		printf("\n");
+	}
 
 	const int secs = argc > 2 ? std::atoi(argv[2]) : 8;
 	static int16_t out[128 * 2];

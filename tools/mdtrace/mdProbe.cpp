@@ -319,6 +319,37 @@ int main(int argc, char** argv)
 			}
 			continue;
 		}
+		if(kind == "kitdump")	// kitdump:DIR -- ask the MD for each of its 64 kits (sysex kit request $53) and write each
+		{	// reply as DIR/kit_NN.syx, exactly as the unit sends it (the factory kits, on a freshly initialised flash)
+			const std::string dir = s.substr(8);
+			std::vector<synthLib::SMidiEvent> out;
+			int got = 0;
+			for(int slot = 0; slot < 64; ++slot)
+			{
+				synthLib::SMidiEvent rq(synthLib::MidiEventSource::Host);
+				for(const uint8_t b : {0xf0, 0x00, 0x20, 0x3c, 0x02, 0x00, 0x53, slot, 0xf7}) rq.sysex.push_back(static_cast<uint8_t>(b));
+				hw.sendMidi(rq);
+				std::vector<uint8_t> dump;
+				for(int f = 0; f < 44100 * 2 && (dump.empty() || dump.back() != 0xf7); f += 512)
+				{
+					hw.advance(512);
+					out.clear();
+					hw.readMidiOut(out);
+					for(const auto& e : out)
+					{
+						if(!e.sysex.empty()) dump.insert(dump.end(), e.sysex.begin(), e.sysex.end());
+						else if(!dump.empty() || e.a == 0xf0) { dump.push_back(e.a); if(e.b != 0 || e.c != 0) { dump.push_back(e.b); dump.push_back(e.c); } }
+					}
+				}
+				if(dump.size() < 16 || dump.front() != 0xf0 || dump.back() != 0xf7) { std::cerr << "   slot " << slot << ": no dump\n"; continue; }
+				char name[512];
+				std::snprintf(name, sizeof name, "%s/kit_%02d.syx", dir.c_str(), slot);
+				std::ofstream(name, std::ios::binary).write(reinterpret_cast<const char*>(dump.data()), static_cast<std::streamsize>(dump.size()));
+				++got;
+			}
+			std::cerr << "   " << got << " kits dumped\n";
+			continue;
+		}
 		synthLib::SMidiEvent ev(synthLib::MidiEventSource::Host);
 		if(kind == "note") { ev.a = static_cast<uint8_t>(synthLib::M_NOTEON | v.at(0)); ev.b = static_cast<uint8_t>(v.at(1)); ev.c = static_cast<uint8_t>(v.at(2)); }
 		else if(kind == "off") { ev.a = static_cast<uint8_t>(synthLib::M_NOTEOFF | v.at(0)); ev.b = static_cast<uint8_t>(v.at(1)); ev.c = 0; }
