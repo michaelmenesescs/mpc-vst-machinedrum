@@ -11,9 +11,16 @@ transcribed from a 26-frame sweep this session), then auto-slice each word into 
 this font's measured 4px pitch (confirmed by comparing the constant word "DEC", which appears in every
 frame regardless of machine, and "PTCH": both show letters starting exactly 4px apart).
 
-This gets ~20 of 26 letters "for free" from one sweep. It's not exhaustive (no J/K/Q/X/Z in this
-particular word set) - extend WORDS_BY_FRAME with a longer sweep (or a second one starting from a
-different machine) to cover the rest before Phase 4 needs to render arbitrary machine names.
+This gets ~20 of 26 letters "for free" from one sweep. It's not exhaustive (no J/Z in this particular
+word set - X/K came from the breadcrumb source below) - extend WORDS_BY_FRAME with a longer sweep (or
+a second one starting from a different machine) to cover the rest before Phase 4 needs to render
+arbitrary machine names.
+
+All 10 digits come from a third source: the live numeric readout under a turned ROUTE-page knob
+(VALUE_DELTAS_AND_WORDS below) - reliable and fully controllable via `DataEntryA`, unlike
+`SoundSelection` (which turned out to loop within a bounded ~13-machine subset regardless of jump
+size or direction, discovered while hunting digits the machine-sweep way - see HANDOFF.md). Only
+J and Z are still missing.
 
 usage: build_label_font_atlas.py <mdProbe binary> <flash.bin> <out dir>
 """
@@ -41,6 +48,16 @@ MAX_FRAME = max(WORDS_BY_FRAME)
 # Found by inspecting the same 26-frame sweep used for WORDS_BY_FRAME, at these two extra steps.
 BREADCRUMB_Y = (57, 62)
 BREADCRUMB_WORDS_BY_FRAME = {4: "TRX*XC*SYNT", 20: "ROM14*ATAK*S"}
+
+# The live numeric readout under a turned ROUTE-page knob (e.g. "20" under DIST after
+# encoder:DataEntryA:20 - HANDOFF.md, "Digit font gap") is the SAME small font, 5px tall, and gives
+# reliable access to every digit via `DataEntryA` (unlike `SoundSelection`, which turned out to loop
+# within a bounded ~13-machine subset regardless of jump size or direction - see HANDOFF.md). Values
+# are cumulative deltas from a fresh ROUTE-page boot (panel:SynthesisEffectsRouting x2); each capture
+# also re-confirms digits from earlier steps (e.g. "0" appears at 30, 50, and 70), all matching.
+VALUE_Y = (26, 31)
+VALUE_DELTAS_AND_WORDS = [(30, "30"), (20, "50"), (20, "70"), (8, "78"), (5, "83"),
+                          (9, "92"), (-66, "26")]
 
 LABEL_Y = (3, 8)          # half-open row range within the LCD (see module docstring)
 COL_X0 = [48, 68, 88, 108]  # column left edges (same pitch as DIAL_GRID's label_col_pitch)
@@ -154,6 +171,15 @@ def main() -> int:
     frame_paths.append(("amp_fx_row0", amp_fx_words[0], amp_fx_path))
     # row 1 (FLTF..SRR) is a separate y-band (LABEL_Y shifted by the grid's row pitch) - handled below.
 
+    value_args = [str(mdprobe), str(flash), str(flashcache),
+                  "panel:SynthesisEffectsRouting", "panel:SynthesisEffectsRouting"]
+    value_paths = []
+    for delta, word in VALUE_DELTAS_AND_WORDS:
+        p = ppm_dir / f"val{word}.ppm"
+        value_args += [f"encoder:DataEntryA:{delta}", f"lcdpng:{p}"]
+        value_paths.append((word, p))
+    subprocess.run(value_args, check=True, capture_output=True)
+
     atlas = {}
     for step, words, p in frame_paths:
         w, h, pix = load_ppm(p)
@@ -176,6 +202,11 @@ def main() -> int:
         for letter, rows in slice_word_at(inv, w, 0, word, BREADCRUMB_Y).items():
             if letter != "*":
                 atlas.setdefault(letter, rows)
+
+    for word, p in value_paths:
+        w, h, pix = load_ppm(p)
+        for letter, rows in slice_word_at(pix, w, 48, word, VALUE_Y).items():
+            atlas.setdefault(letter, rows)
 
     print(f"{len(atlas)} letters extracted: {''.join(sorted(atlas))}", file=sys.stderr)
 
@@ -202,6 +233,8 @@ def main() -> int:
         for _, p in breadcrumb_paths:
             p.unlink()
         for _, _, p in frame_paths:
+            p.unlink()
+        for _, p in value_paths:
             p.unlink()
         ppm_dir.rmdir()
 
