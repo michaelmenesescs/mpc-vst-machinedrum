@@ -99,7 +99,8 @@ static_assert(sizeof(kRouteRawParam) / sizeof(kRouteRawParam[0]) == kNumRoute);
 
 constexpr int kNumSyn = 8;
 constexpr int kSlotSyn = 3 + kNumFx + kNumRoute;	// within a track's slots
-constexpr int kSlotTrack = 0, kSlotsPerTrack = kSlotSyn + kNumSyn;	// machine, vol, pan, FX, ROUTE, SYN
+constexpr int kSlotLevel = kSlotSyn + kNumSyn;	// the kit's track LEV (HostModel::setLevel), 0-127
+constexpr int kSlotTrack = 0, kSlotsPerTrack = kSlotLevel + 1;	// machine, vol, pan, FX, ROUTE, SYN, LEV
 constexpr int kSlotTempo = kSlotTrack + kTracks * kSlotsPerTrack;
 constexpr int kSlotMaxVoices = kSlotTempo + 1;
 constexpr int kNumSlots = kSlotMaxVoices + 1;
@@ -115,6 +116,8 @@ int slotOf(const char* key)
 		return kSlotTrack + t * kSlotsPerTrack + 1;
 	if(std::sscanf(key, "track%d_pan%n", &t, &consumed) == 1 && key[consumed] == '\0' && t >= 0 && t < kTracks)
 		return kSlotTrack + t * kSlotsPerTrack + 2;
+	if(std::sscanf(key, "track%d_level%n", &t, &consumed) == 1 && key[consumed] == '\0' && t >= 0 && t < kTracks)
+		return kSlotTrack + t * kSlotsPerTrack + kSlotLevel;
 	if(std::sscanf(key, "track%d_%n", &t, &consumed) == 1 && t >= 0 && t < kTracks)
 	{
 		const char* fxKey = key + consumed;
@@ -180,6 +183,7 @@ struct Inst
 		{
 			param[kSlotTrack + t * kSlotsPerTrack + 1].store(100);	// vol
 			param[kSlotTrack + t * kSlotsPerTrack + 2].store(64);	// pan (centre)
+			param[kSlotTrack + t * kSlotsPerTrack + kSlotLevel].store(100);	// LEV (HostModel's own default)
 			for(int i = 0; i < kNumFx; ++i)
 				param[kSlotTrack + t * kSlotsPerTrack + 3 + i].store(kFxDefaults[i]);
 			for(int i = 0; i < kNumRoute; ++i)
@@ -240,9 +244,10 @@ void Inst::run()
 		int appliedFx[kTracks][kNumFx];
 		int appliedRoute[kTracks][kNumRoute];
 		int appliedSyn[kTracks][kNumSyn];
+		int appliedLevel[kTracks];
 		for(int t = 0; t < kTracks; ++t)
 		{
-			appliedMachine[t] = appliedVol[t] = appliedPan[t] = -1;
+			appliedMachine[t] = appliedVol[t] = appliedPan[t] = appliedLevel[t] = -1;
 			for(int i = 0; i < kNumFx; ++i) appliedFx[t][i] = -1;
 			for(int i = 0; i < kNumRoute; ++i) appliedRoute[t][i] = -1;
 			for(int i = 0; i < kNumSyn; ++i) appliedSyn[t][i] = -1;
@@ -285,6 +290,8 @@ void Inst::run()
 				// VOL (param 17, read by the mixer's own gain formula) - not setLevel(), a separate kit LEV
 				// knob (HostModel.h) that also gates level but isn't what mdrender.cpp's working demo kit uses.
 				if(vol != appliedVol[t]) { appliedVol[t] = vol; h.setParam(t, 17, vol); }
+				const int lev = std::clamp(param[kSlotTrack + t * kSlotsPerTrack + kSlotLevel].load(std::memory_order_relaxed), 0, 127);
+				if(lev != appliedLevel[t]) { appliedLevel[t] = lev; h.setLevel(t, lev); }
 				const int pan = std::clamp(param[kSlotTrack + t * kSlotsPerTrack + 2].load(std::memory_order_relaxed), 0, 127);
 				if(pan != appliedPan[t]) { appliedPan[t] = pan; h.setParam(t, 18, pan); }
 				for(int i = 0; i < kNumFx; ++i)

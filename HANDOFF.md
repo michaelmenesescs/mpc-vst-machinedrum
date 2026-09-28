@@ -999,9 +999,14 @@ Steps:
      `build_label_font_atlas.py` and its atlas output**, fully reproducible from a clean run, not a
      one-off capture. Only `J`/`Z` remain missing from the label font (24 of 26 letters, all 10
      digits) - low priority, neither has come up in any real label/machine-name text yet.
-  8. **SYN1-8 params + "touched" tracking in `engine.cpp`** - **NOT DONE**, unchanged blocker, a real
-     engine feature (not skin work) needed before the SYN quadrant can show anything but an empty
-     frame.
+  8. ~~SYN1-8 params + "touched" tracking~~ **DONE (2026-09-28).** `track%d_syn1..8` (appended). The
+     engine owns their values (the wrapper's getParameter reads eGet): a machine change resets every
+     SYN knob not set since to the machine's own defaults (synchronously in eSet once the machine table
+     is loaded, else by the DSP thread when it applies the machine); a value set after the change wins,
+     which is exactly a project restore's order (machine has the lower VST index). Each knob's current
+     label is served as `track%d_syn%d_name` for a new opt-in wrapper feature, `"dynamic_name"`
+     (mpc-vst-plugins branch `claude/dynamic-param-names`: effGetParamName asks the DSP first; MPC
+     re-reads names on UpdateDisplay per docs/NOTES.md). `md-vst-smoke` checks all four cases.
   9. **Real build - DONE and verified (2026-09-28); on-device test still pending.** Ran the actual
      build pipeline for the first time this session, both halves:
      - `vst/build_so.sh /tmp/recomp_inc /home/sam/mpc-vst` against the real `md-armhf-builder` Docker
@@ -1025,11 +1030,28 @@ Steps:
        done**: actually loading the plugin onto a track and playing/exercising it in MPC's own UI -
        the install put the new build in place, but exercising it interactively is the user's own
        next step at the device.
-  10. **PARKED (2026-09-28, explicit user direction).** LEV bar-meter - not investigated further.
-      User suggested (2026-09-28) a lead for the still-missing J/Z label-font letters worth trying
-      next time this is picked up: MPC's/the Machinedrum's own on-screen keyboard when naming a file
-      (a hit, a project) may expose them - not yet tried, parked alongside LEV per explicit
-      direction to stop for now.
+  10. ~~LEV / J-Z~~ **RESOLVED (2026-09-28) by the skin redo below.** LEV is the kit's per-track
+      level *setting* (`HostModel::setLevel`, default 100), not a live meter: now a real param,
+      `track%d_level`, drawn as Monomodule's own LEV column. J/Z: moot - the skin now draws with
+      Monomodule's art.json fonts (the Monomachine OS's own Elektron LCD fonts), which have them.
+
+- **2026-09-28: skin redone as a port of mpc-vst-monomodule's own `vst/skin/mk_skin.py` (user
+  direction, after the deployed layout.conf skin came out nowhere near the proposed designs: raw
+  white LCD crops as knobs, no visible picker bar, a MACHINE knob clipped under the header, empty SYN).**
+  `tools/mdskin/mk_skin.py` is that file (at monomodule 56cb8e0, its "2x2" layout) with its drawing
+  code kept: same LCD look, knob cells (filmstrip + invisible touch knob), machine bar, full-width
+  picker, LEV column. Changes are only what the MD needs - 16 tabs (one per track, each Monomodule's
+  2x2: SYN | AMP/EFX over ROUTE | TRACK n with LEV), machines from `mdmachine` (now a CMake target;
+  135 incl. the 4 GND machines, so a new track's GND-- has a bar to tap), machine param = raw id so
+  IndexedEnabling/button ids use n=192, ROM split into 16-row picker columns (12 columns, no
+  scrolling), SYN dials once per track with a per-machine label overlay over them (transparent over
+  live cells, opaque over unused ones) instead of per-machine dials (131x16 would be ~33k components;
+  this is 459 per tab). No preset strip (no presets) and "MD" in place of the Shnolk logo.
+  Build: `tools/mdskin/build_skin.sh <MD OS.syx> <monomodule vst/build/art.json> [mpc-vst checkout]`
+  (writes vst/build/skin + preview PNGs). `vst.json` is now `custom_skin`; the layout.conf path
+  (gen_layout.py, build_skin_with_picker.py, build_machine_bar/picker.py) is removed.
+  Previewed (track, picker open, a 3-param machine, a fresh GND track): all match Monomodule's look.
+  Release 0.2.0 packaged (`/tmp/md_release`); **not deployed yet** - waiting on the user's go-ahead.
 
   **Phase 1 progress (2026-09-28): rename mechanism confirmed empirically, unblocks capture.**
   - No sysex/data API sets a kit/pattern/track name (checked `mdautomation.cpp`/`mdsysexautomation.cpp`/

@@ -78,6 +78,12 @@ for t in range(16):
         params.append({"key": "track%d_syn%d" % (t, p), "name": "T%d SYN%d" % (t + 1, p),
                         "min": 0, "max": 127, "default": 0, "display": "int", "dynamic_name": True})
 
+# LEV (the kit's per-track level, HostModel::setLevel - separate from VOL), appended last. Default 100 is
+# HostModel's own startup level.
+for t in range(16):
+    params.append({"key": "track%d_level" % t, "name": "T%d LEV" % (t + 1), "min": 0, "max": 127,
+                    "default": 100, "display": "int"})
+
 json.dump({"name": "Machinedrum One", "params": params,
            "sections": [{"label": l, "keys": k} for l, k in sections]},
           open("params.json", "w"), indent=1)

@@ -27,6 +27,10 @@ target_include_directories(mdcore PRIVATE
   libs/gearmulator-md-mm/source libs/gearmulator-md-mm/source/mc68k)
 target_link_libraries(mdcore PUBLIC dsp56kEmu 68kEmu)
 
+# mdmachine: lists the OS's machine table (names, SYN labels) - the skin generator's input (tools/mdskin)
+add_executable(mdmachine tools/mdmachine/mdmachine.cpp)
+target_link_libraries(mdmachine PRIVATE mdcore pthread)
+
 # machinedrum_one: the same engine source (vst/engine.cpp) built against the shared wrapper
 # (mpc-vst-plugins' vst2_wrap.c). Needs its generated params.h (mpc-vst's gen_vst.py --params-h, run by
 # vst/build_so.sh) on its include path first (vst/build/).
