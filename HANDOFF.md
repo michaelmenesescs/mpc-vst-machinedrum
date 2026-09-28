@@ -708,16 +708,34 @@ Steps:
     screens exist beyond SYN/AMP-EFX (LFO page? routing page? - `panel:DataPageForward/Backward` had
     no visible effect when tried from the AMP/EFX page, logged under the parked LEV investigation).
 
-  **Phase 4 — Compositor.**
-  - A script (this project's `mk_skin.py` equivalent, not started) that, given the font/icon atlas
-    plus the Phase 3 UI spec plus the VST param list, draws each control's real-LCD-style label
-    (and relevant icon) into the skin's PNGs at build time, correctly **for whichever machine is
-    actually assigned to a given track** — not tied to one fixed capture. Live numeric values stay
-    MPC's own native knob overlay, same division of responsibility as Monomodule's skin.
+  **Phase 4 — Compositor. First working version 2026-09-28.**
+  - Wrote `tools/mdtrace/compose_skin.py` (committed): given the font atlas, one dial-pointer atlas
+    per knob, and `ui_spec.py`'s `DIAL_GRID`, it draws a screen's 8 dial icons + labels for a chosen
+    set of live values into a PNG. Ran it for the AMP/EFX screen (all values 0): **the 8 dial icons
+    composited correctly** - right shape, right position, aligned with the grid's divider ticks, a
+    real structural proof that the font/icon atlases and the hand-authored grid geometry all agree
+    with each other.
+  - **Found a real gap while looking at the result, not by inspection alone: the header label text
+    overlaps between columns** (e.g. "AMD"/"AMF" run together as "AMDAMF" with no gap). Measured why:
+    the label text band is `y=3-7` (5px tall), but `build_font_atlas.py`'s font (extracted from the
+    kit-rename "Enter name:" screen) is `13px` tall - **these are two different fonts at two different
+    sizes**, not one font reused. The name-entry font's glyphs are simply too wide for the ~20px label
+    columns here. Reusing the name-entry atlas for header labels was an unverified assumption in the
+    original Phase 1/3 plan text (which only ever explicitly needed the name-entry font for kit/track/
+    pattern *names*, not dial labels) - now corrected.
+  - Not yet done, and the concrete next step: extract a **second, smaller font atlas** for this label
+    band, using the same diff-across-a-capture-sweep technique as `build_font_atlas.py` but sourced
+    from the AMP/EFX and SYN page label rows themselves (their content varies with which machine is
+    assigned - Phase 3 already showed `MachineInfo::params` gives real, varied label text for free, so
+    swapping machines and diffing the label band across several different machines' SYN pages should
+    reveal this small font's glyphs the same way the name-entry sweep did for the large one). Once
+    that exists, `compose_skin.py` should render clean, non-overlapping labels; the dial-icon half of
+    the compositor is already working and shouldn't need changes.
 
   **Scope note**: this is genuinely comparable in size to Monomodule's own `mk_skin.py` (~800
   lines) plus the font/icon extraction Monomodule got for free from upstream and we don't have —
-  a multi-session build, not a quick patch. Resume at Phase 1.
+  a multi-session build. All four phases now have a working first pass; the small-label-font
+  extraction above is the most concrete remaining gap before the compositor is presentation-ready.
 
   **Phase 1 progress (2026-09-28): rename mechanism confirmed empirically, unblocks capture.**
   - No sysex/data API sets a kit/pattern/track name (checked `mdautomation.cpp`/`mdsysexautomation.cpp`/
