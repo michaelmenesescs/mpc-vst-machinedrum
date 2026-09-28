@@ -988,11 +988,28 @@ Steps:
      once per subpage). **Not yet done**: the real Docker `html_art` build and an on-device test -
      the dry run proves the JSON is well-formed and internally consistent, not that it renders/behaves
      correctly on a real Force.
-  7. **Digit font gap** (label font missing `0 2 3 5 6 7 8 9`) - **NOT DONE**. Blocks the machine
-     picker/bar from showing fully legible machine names (e.g. "TRXB2" renders as "TRXB"). Needs its
-     own short capture pass; a promising unexplored lead is that `mdmachine`'s own listing could pick
-     an exact target machine name containing each missing digit, then compute (or just empirically
-     find) the `SoundSelection` tap count to reach it - not attempted yet.
+  7. **Digit font gap - partially closed (2026-09-28), and a real correction to an earlier
+     assumption.** Tried the "compute the tap count to a target machine" lead from the note this
+     replaces: **it doesn't work**, because `SoundSelection` does NOT cycle linearly through all 135
+     machines the way `mdmachine`'s listing order would predict. Confirmed by direct testing: large
+     jumps (`encoder:SoundSelection:60`, even `:-1` x40) all land within the *same* small ~13-machine
+     loop (`TRXB2 TRXSD TRXXC TRXXT TRXCP TRXRS TRXCB TRXCH TRXOH TRXCY ROM14 ROM06 ROM29`, repeating
+     regardless of direction or magnitude) - this control is likely a bounded quick-select of some
+     kind, not the full machine browser. Also found: single-step taps chained immediately after a
+     large jump frequently don't register at all (several fully-identical consecutive frames in a
+     10-tap probe) - a real timing/debounce quirk, not a scripting mistake.
+     - **Digits captured and verified this session**: `2` and `9` (from "ROM29", breadcrumb capture,
+       R/O/M came out correctly shaped alongside them, so trusted) join the existing `1`/`4`. `6` is a
+       weaker capture (self-consistent shape, but its neighbor slot in the same capture showed
+       drift-corrupted output, so the surrounding context that would normally confirm it is suspect).
+       **`0` was attempted twice and rejected both times** - one attempt looked like a plausible
+       "slashed zero" but couldn't be independently confirmed, the other was clearly drift-corrupted
+       (identical to a neighboring digit, which can't be right). Better to leave `0` missing than ship
+       a guessed glyph.
+     - **Not yet done**: a *reproducible, fresh-boot* action sequence for `2`/`9`/`6` - they were found
+       via one-off exploratory sequences (large jumps, reverse sweeps) that aren't yet distilled into
+       a clean recipe `build_label_font_atlas.py` could re-run deterministically, so they are NOT yet
+       added to the committed script or its atlas output. Still fully missing: `0 3 5 7 8`.
   8. **SYN1-8 params + "touched" tracking in `engine.cpp`** - **NOT DONE**, unchanged blocker, a real
      engine feature (not skin work) needed before the SYN quadrant can show anything but an empty
      frame.
