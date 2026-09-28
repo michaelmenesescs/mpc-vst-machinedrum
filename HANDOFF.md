@@ -908,6 +908,33 @@ Steps:
     per-machine SYN labels actually become dynamic" note, same mechanism); and a real device
     build/test.
 
+  **Tab layout confirmed with the user against a real Monomodule VST screenshot (2026-09-28).** User
+  shared an actual screenshot of their Monomodule port: top-left machine picker as a black pill (logo +
+  name + dropdown arrow), top-right bank/preset pickers, a 2x2 grid of sub-pages each with its own solid
+  black title bar, live numeric value text under every knob, and a bottom tab strip paging between two
+  2x2 screens (6 sub-pages total: SYN/AMP/FILT/EFX, then LFO1/LFO2).
+  - **What carries over to the Machinedrum port, and what doesn't**: the black title bars, the picker
+    pill style, and per-knob live value text all apply directly. The bank/preset pickers do NOT apply -
+    Machinedrum machines have no factory-patch library like Monomachine's (just SYN1-8 raw params), so
+    there's nothing to put there. The bottom tab-paging layer does NOT apply either - Monomachine needs
+    it for 6 sub-pages, but the Machinedrum only has 3 confirmed real per-track pages (SYN, AMP/EFX,
+    ROUTE - see the "found the third per-track page" entry above), all fitting in one 2x2 grid already.
+  - **Asked the user what goes in the 4th grid quadrant** (since we only have 3 real pages): confirmed
+    **leave it reserved/blank for now**, not a kit-info panel and not collapsing to a 1x3 row.
+  - Built an updated mockup (`mockup_option_B_alt_titled2.png`, scratch only, not committed - it's a
+    disposable visual aid, not a build asset) adding black title bars (own quick drawing, but the REAL
+    build gets this for free: `shadow_skin.py`'s `frame title="..."` widget already renders a boxed
+    frame with a title bar from the skin's own theme - confirmed by reading its docstring, no new work
+    needed there) to the three real quadrants plus the reserved hatched 4th, under the machine-bar pill
+    from the previous mockup. This is now the **confirmed target layout** for `gen_layout.py`'s next
+    rewrite: top machine-bar pill (tap to open the big picker), 2x2 grid below with SYN/AMP-EFX/ROUTE
+    quadrants (native `frame title=` bars) and one reserved quadrant.
+  - Not yet done: the live numeric value-under-knob text - need to check whether `shadow_skin.py`'s
+    `knob` widget already draws this natively (likely yes, matching the Monomodule screenshot) or needs
+    an explicit flag; actually rewriting `gen_layout.py` to the confirmed layout (still emits the old
+    flat 12-knob-per-track layout today); and everything already flagged above (digit font gap, picker
+    button wiring, ROUTE's own dial atlas, device build/test).
+
   **Phase 1 progress (2026-09-28): rename mechanism confirmed empirically, unblocks capture.**
   - No sysex/data API sets a kit/pattern/track name (checked `mdautomation.cpp`/`mdsysexautomation.cpp`/
     `mdrom.cpp`/`mdromdata.cpp`/`mdflash.cpp`/`mdsim.cpp` — none). Confirmed real hardware behavior:
