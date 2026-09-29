@@ -105,6 +105,8 @@ namespace md::engine
 		int m_blockCount = 0;
 		uint32_t m_tickCount = 0;
 		int m_maxActive = kTracks * 2;
+		std::array<bool, kTracks> m_silenceNext{};	// budget victims to silence on their next tick
+		std::array<float, kTracks> m_costEma{};	// DSP instructions per block a track costs while it sounds (moving average), for group balancing
 		std::vector<int> m_activeOrder;	// least- to most-recently-triggered
 	};
 }

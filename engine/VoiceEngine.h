@@ -21,7 +21,7 @@ namespace md::engine
 	public:
 		static constexpr int kVoices = 16;
 		static constexpr int kBlockFrames = 32;
-		static constexpr int kSlotWords = 13;
+		static constexpr int kSlotWords = 32;	// machine functions return 0-21 words (the slot is 0x40 wide); 13 truncated EFM-CY and dropped the trigger of 0-word machines
 		static constexpr uint32_t kSlotBase = 0x800, kSlotStride = 0x40;
 
 		using Block = std::array<std::array<int32_t, kBlockFrames>, kVoices>;	// [voice][frame], 24-bit signed
@@ -46,6 +46,7 @@ namespace md::engine
 		uint32_t readP(uint32_t _addr) const;
 
 		uint64_t instructionsLastBlock() const { return m_lastInstructions; }
+		uint32_t voiceInstructions(int _voice) const { return m_voiceInstr[static_cast<size_t>(_voice)]; }	// DSP instructions the voice used in the last block
 		int activeVoicesLastBlock() const { return m_lastActive; }	// voices that rendered (flag 1) in the last block
 		const std::string& faultReason() const { return m_fault; }
 		dsp56k::DSP& dsp() { return *m_dsp; }
@@ -64,6 +65,7 @@ namespace md::engine
 		std::unique_ptr<dsp56k::DSP> m_dsp;
 		uint64_t m_lastInstructions = 0;
 		int m_lastActive = 0;
+		std::array<uint32_t, kVoices> m_voiceInstr{};
 		std::string m_fault;
 	};
 }

@@ -37,7 +37,9 @@ namespace md::engine
 		// Call a machine's coefficient function. params: at least the 8 SYN values as 16-bit (value << 7, up to
 		// $3fff); out receives the words the OS writes (out[0] is left 0: it is the caller's trigger word).
 		// Returns the word count the function reports, or -1 on a fault.
-		int compute(uint8_t _machineId, const uint16_t* _params, uint32_t* _out, int _outCapacity);
+		// _trigger: the OS sets out[0] (the trigger flag) before calling a machine function, and some of them (TRX XT/CP/MA/CL/XC)
+		// start with `tst.l (out)` and return no words at all when it is 0: they only compute on a trigger tick.
+		int compute(uint8_t _machineId, const uint16_t* _params, uint32_t* _out, int _outCapacity, bool _trigger = false);
 
 		// Call any OS routine (C calling convention, up to 4 32-bit arguments). Returns d0, or -1 on a fault.
 		int64_t call(uint32_t _address, std::initializer_list<uint32_t> _args);

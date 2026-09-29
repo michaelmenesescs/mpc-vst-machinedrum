@@ -42,7 +42,7 @@ extern "C" {
 
 namespace {
 
-using md::engine::Engine;
+using Engine = md::engine::ParallelEngine;	// voices split over kGroups DSP2 instances on persistent threads (1 = the plain single-thread path)
 
 // One engine per core, never the UI core (MPC's main thread lives on cpu0): take the least busy of
 // cores 1..N-1 (sampled from /proc/stat over 100 ms). Same approach as mpc-vst-monomodule's chooseCore().
@@ -81,9 +81,36 @@ int chooseCore()
 	return best;
 }
 
+// Cores ranked by how busy they have been since boot (least busy first, core 0 last: MPC's housekeeping runs there).
+// A 100 ms sample at load time can't see MPC's steady audio work (one AudioWorker is several times busier than the
+// others), so the long-term share picks better homes for the engine and voice threads.
+std::vector<int> rankCores()
+{
+	std::vector<std::pair<double, int>> load;
+	if(std::FILE* f = std::fopen("/proc/stat", "r"))
+	{
+		char line[256];
+		while(std::fgets(line, sizeof line, f))
+		{
+			int c; unsigned long long u, ni, s, id, io, ir, so, st;
+			if(std::sscanf(line, "cpu%d %llu %llu %llu %llu %llu %llu %llu %llu", &c, &u, &ni, &s, &id, &io, &ir, &so, &st) == 9 && c >= 0)
+			{
+				const double busy = static_cast<double>(u + ni + s + ir + so + st), total = busy + static_cast<double>(id + io);
+				load.emplace_back((c == 0 ? 10.0 : 0.0) + (total > 0 ? busy / total : 0.0), c);
+			}
+		}
+		std::fclose(f);
+	}
+	std::sort(load.begin(), load.end());
+	std::vector<int> cores;
+	for(const auto& l : load) cores.push_back(l.second);
+	return cores;
+}
+
+constexpr int kDefaultGroups = 2;	// DSP2 instances (voice threads); 1 = single thread
 constexpr int kFrames = 128;					// the host's block size
 constexpr int kInner = kFrames / Engine::kBlock;	// 32-sample engine blocks per host block
-constexpr int kRing = 4, kAhead = 2;	// 2 blocks (5.8 ms) rendered ahead: as low as it goes, latency matters for feel (a deeper ring rode out CPU spikes: x86 churn test 158 underruns at 2, 0 at 3+, the fallback if crackle returns)
+constexpr int kRing = 5, kAheadDefault = 3;	// blocks rendered ahead: 3 (8.7 ms) rides out the 7-8 ms stalls seen on the Force with 2 voice threads (2 = 5.8 ms glitched on a busy E12 kit); /tmp/md-ahead overrides
 constexpr int kTracks = Engine::kTracks;
 constexpr int kBaseNote = 36;					// MPC/GM kick; note 36 = track 0, 37 = track 1, ...
 
@@ -293,7 +320,8 @@ int romSlotOf(int _id) { return _id >= 128 && _id < 160 ? _id - 128 : _id >= 176
 // The ROM machines' sample memory (tools/mdkits: the voice DSP's sample directory and sample data as the MD sets
 // them up from its sample flash at boot, extracted from the user's own flash image): "MDS1", then records
 // [u32 address][u32 count][count x u32 word], ending with count 0. Returns the words loaded.
-size_t loadSamples(md::engine::VoiceEngine& _voices, const std::string& _path)
+template<class V>
+size_t loadSamples(V& _voices, const std::string& _path)
 {
 	std::FILE* f = std::fopen(_path.c_str(), "rb");
 	if(!f) return 0;
@@ -349,8 +377,8 @@ struct Inst
 		for(auto& p : param) p.store(0);
 		for(auto& t : synUntouched) for(auto& u : t) u.store(true);
 		param[kSlotTempo].store(120);
-		param[kSlotRomEnabled].store(1);
-		param[kSlotMaxVoices].store(5);	// the VOICES knob's default (gen_params.py): a cost budget, ROM voices count double
+		param[kSlotRomEnabled].store(0);
+		param[kSlotMaxVoices].store(4);	// the VOICES knob's default (gen_params.py): a cost budget, ROM voices count double
 		// Matches gen_params.py's declared defaults: the host normally pushes these via set_param right
 		// after create(), but this is what plays if render() is called before that (or from a host that
 		// doesn't restore params on creation).
@@ -476,7 +504,15 @@ void Inst::run()
 	{
 		const auto fwv = md::fw::loadFirmware(osPath);
 		auto c = md::fw::parseContainer(md::fw::parseSysex(md::fw::readFile(osPath)));
-		Engine eng(fwv, std::move(c.sections.at(0).data));
+		int groups = kDefaultGroups;
+		if(const char* e = std::getenv("MD_GROUPS")) groups = std::atoi(e);
+		if(std::FILE* gf = std::fopen("/tmp/md-groups", "r"))	// A/B on the device without env: echo 1 > /tmp/md-groups, re-insert the plugin
+		{
+			int g = 0;
+			if(std::fscanf(gf, "%d", &g) == 1) groups = g;
+			std::fclose(gf);
+		}
+		Engine eng(fwv, std::move(c.sections.at(0).data), std::clamp(groups, 1, 4));
 		auto& h = eng.host();
 		// ROM machines: their samples, if the installer put the extracted sample memory in place
 		if(loadSamples(eng.voices(), dataDir + "/factory/ROM_SAMPLES.bin") > 0)
@@ -501,6 +537,7 @@ void Inst::run()
 		// device, 2026-09-28: this thread at 89% of its core with a 4-track kit). Overloaded, it now drops
 		// only its own blocks (counted as underruns).
 		pthread_setname_np(pthread_self(), "md-engine");
+		std::vector<int> ranked;	// cores, least busy first: the engine thread takes the first, voice group g the g-th
 		{
 			int prio = 5;
 			if(const char* e = std::getenv("MD_FIFO")) prio = std::atoi(e);
@@ -510,7 +547,8 @@ void Inst::run()
 				sp.sched_priority = prio;
 				pthread_setschedparam(pthread_self(), SCHED_FIFO, &sp);
 			}
-			const int c = std::getenv("MD_CPU") ? std::atoi(std::getenv("MD_CPU")) : chooseCore();
+			ranked = rankCores();
+			const int c = std::getenv("MD_CPU") ? std::atoi(std::getenv("MD_CPU")) : ranked.empty() ? chooseCore() : ranked[0];
 			if(c >= 0)
 			{
 				cpu_set_t s;
@@ -520,7 +558,34 @@ void Inst::run()
 			}
 			core.store(c, std::memory_order_relaxed);
 		}
+		// Voice worker threads: same real-time class as the engine thread, on the cores after it.
+		eng.voices().tuneWorkers([ranked](int _g)
+		{
+			pthread_setname_np(pthread_self(), ("md-voice" + std::to_string(_g)).c_str());
+			int prio = 5;
+			if(const char* e = std::getenv("MD_FIFO")) prio = std::atoi(e);
+			if(prio > 0)
+			{
+				sched_param sp{};
+				sp.sched_priority = prio;
+				pthread_setschedparam(pthread_self(), SCHED_FIFO, &sp);
+			}
+			if(static_cast<size_t>(_g) < ranked.size())
+			{
+				cpu_set_t s;
+				CPU_ZERO(&s);
+				CPU_SET(ranked[static_cast<size_t>(_g)], &s);	// group g takes the g-th least busy core
+				sched_setaffinity(0, sizeof s, &s);
+			}
+		});
 
+		int ahead = kAheadDefault;	// blocks rendered ahead of the host: /tmp/md-ahead (1-3) overrides, for A/B on the device
+		if(std::FILE* af = std::fopen("/tmp/md-ahead", "r"))
+		{
+			int a = 0;
+			if(std::fscanf(af, "%d", &a) == 1) ahead = std::clamp(a, 1, kRing - 1);
+			std::fclose(af);
+		}
 		int appliedTempo = -1, appliedMaxVoices = -1;
 		int appliedMachine[kTracks], appliedEff[kTracks], appliedVol[kTracks], appliedPan[kTracks];
 		int appliedFx[kTracks][kNumFx];
@@ -543,7 +608,13 @@ void Inst::run()
 		// mean 4.4 ms per 2.9 ms block, MPC's main thread blocked on that lock until this thread was demoted). So over a
 		// ~30 ms window it may use at most kMaxDuty of its core's CPU time; the rest of the window it sleeps. An
 		// overload then costs it dropped blocks (crackle, counted as underruns), never MPC's UI.
-		const double kMaxDuty = std::getenv("MD_DUTY") ? std::atof(std::getenv("MD_DUTY")) : 0.7;	// MD_DUTY: test override
+		double kMaxDuty = std::getenv("MD_DUTY") ? std::atof(std::getenv("MD_DUTY")) : 0.95;	// MD_DUTY: test override
+		if(std::FILE* df = std::fopen("/tmp/md-duty", "r"))	// same on the device without env: echo 0.95 > /tmp/md-duty, re-insert
+		{
+			double d = 0;
+			if(std::fscanf(df, "%lf", &d) == 1 && d >= 0.3 && d <= 1.0) kMaxDuty = d;
+			std::fclose(df);
+		}
 		auto cpuNow = [] { timespec ts; clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts); return ts.tv_sec * 1e6 + ts.tv_nsec / 1e3; };
 		double winCpu0 = cpuNow();
 		auto winWall0 = std::chrono::steady_clock::now();
@@ -554,12 +625,13 @@ void Inst::run()
 		int nUs = 0, maxActive = 0;
 		double pTick = 0, pDsp = 0, pFx = 0, pMix = 0;	// stage timers at the last stats line (Engine::timingOn, only with stats on)
 		eng.timingOn = statsOn;
+		eng.voices().timingOn = statsOn;
 		ready.store(true);
 
 		while(!stop.load(std::memory_order_acquire))
 		{
 			const uint32_t w = rWrite.load(std::memory_order_relaxed);
-			if(int32_t(w - rRead.load(std::memory_order_acquire)) >= kAhead)
+			if(int32_t(w - rRead.load(std::memory_order_acquire)) >= ahead)
 			{
 				struct timespec ts{0, 400000};
 				nanosleep(&ts, nullptr);
@@ -696,6 +768,14 @@ void Inst::run()
 					if(FILE* f = std::fopen(("/tmp/md-stats." + std::to_string(getpid())).c_str(), "a"))
 					{
 						std::fprintf(f, "underruns=%u naps=%u worst_us=%.0f mean_us=%.0f worst_gap_us=%.0f active=%d rom=%d budget=%d tick=%.0f dsp=%.0f fx=%.0f mix=%.0f\n", underruns.load(), dutyNaps.load(), worstUs, sumUs / std::max(1, nUs), worstGap, maxActive, param[kSlotRomEnabled].load(), param[kSlotMaxVoices].load(), (h.tickUs - pTick) / std::max(1, nUs), (h.dspUs - pDsp) / std::max(1, nUs), (eng.fxUs - pFx) / std::max(1, nUs), (eng.mixUs - pMix) / std::max(1, nUs));
+						auto& vg = eng.voices();
+						std::fprintf(f, "  groups:");
+						for(int g = 0; g < vg.groupCount(); ++g)
+						{
+							std::fprintf(f, " g%d_us=%.0f g%d_voices=%.2f", g, vg.groupUs[g] / std::max(1, nUs), g, vg.groupVoices[g] / std::max(1, nUs));
+							vg.groupUs[g] = vg.groupVoices[g] = 0;
+						}
+						std::fprintf(f, "\n");
 						std::fclose(f);
 					}
 					pTick = h.tickUs; pDsp = h.dspUs; pFx = eng.fxUs; pMix = eng.mixUs;

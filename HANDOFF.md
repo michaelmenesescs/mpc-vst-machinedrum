@@ -1358,3 +1358,70 @@ Open, in the order I would take them:
    emulating that section and a native translation; REV/DEL currently do nothing.
 5. ROM output is not verified bit-exact against the emulated MD; the ARM recompiled ROM path is covered by no hash.
 6. `libs/gearmulator-md-mm` has local mdtrace patches (uncommitted in the submodule); `mdProbe` needs them (tools/mdtrace/README.md).
+
+- **2026-09-29 (v0.2 work, branch claude/v0.2-roadmap): voice split over persistent threads.**
+  - `ParallelVoiceEngine` now keeps persistent worker threads (condvar wake per block) instead of spawning per block;
+    ROM samples are written to every group; `tuneWorkers()` sets name/FIFO 5/core on each worker after boot.
+    The plugin uses `ParallelEngine` with `kDefaultGroups = 2` (`MD_GROUPS=1..4` overrides; 1 = the old single thread).
+  - Exact: `md-hash` (with ROM) = `15746c0610a40ddb` for 1, 2 and 4 groups on x86, and on the Force (ARM recompiled) for 1-3.
+  - Force, offline `md-hash` (12 s, dense 16-track pattern, MPC running): 1 group 42 s, 2 groups 30 s, 3 groups 30 s.
+    So 2 groups is about 1.4x; a third adds nothing (voice `v % n` assignment is static, and MPC uses the other cores).
+    Memory: each group is its own DSP2 instance (its own P memory). **Not yet run inside MPC** (needs an MPC restart).
+  - **Track effects on the group threads** (Engine::fxTrack, one TrackFx per group; tracks run on their voice's group thread right
+    after its voices render, no extra latency). Still bit-exact (same md-hash for 1/2/4 groups). On the Force, E12 kit, ROM on,
+    5 voices: 1 group ~3.5 ms/block and ~65 underruns/s; 2 groups with serial FX ~2.5 ms, ~35/s; 2 groups with FX split
+    **1.9 ms mean, worst ~5 ms, underruns flat (no new ones)**. A/B on the device: `echo N > /tmp/md-groups`, re-insert the plugin.
+  - **Ring lead default 3 blocks (8.7 ms)**, user-confirmed on the Force: block gaps reach 7-8.5 ms, 2 blocks (5.8 ms) glitched.
+    `/tmp/md-ahead` (1-3) overrides for A/B, like `/tmp/md-groups` (voice threads 1-4, default 2).
+  - **Voice budget did nothing before (fixed 2026-09-29).** Two bugs: (1) the cut wrote a silence slot that the same tick's
+    `updateVoice` overwrote (now `m_silenceNext`, applied in the victim's own updateVoice; a victim triggered earlier in
+    the same block has its trigger cancelled); (2) the harness skip check `cmp a,b` never matched persisted code 1 (the
+    empty machine GND--), so a silenced voice kept rendering; now `sub b,a / tst a`. Offline (`MD_BUDGET=n md-hash`):
+    budget 5 -> mean 3 rendered voices (was 16). Unlimited budget keeps hash `15746c0610a40ddb`. Tails of stolen tracks are
+    now really cut.
+  - **Cores:** MPC's AudioWorker1 (core 1) is steadily 4x busier than the others; the engine now ranks cores by load since boot
+    (`rankCores`, core 0 last): engine on the least busy (core 3 on the test Force), voice group g on the g-th.
+  - **Group balancing:** a track that was not sounding picks the voice group with the least measured cost (per-voice DSP
+    instructions from the harness flags, moving average in `HostModel::m_costEma`); `ParallelVoiceEngine::moveVoice`. Stats
+    line `groups: g0_us g0_voices ...` (voices are summed over the 4 engine blocks per host block: /4).
+  - **Force capacity, TRX kit, MPC busy:** ~600-900 us per sounding voice, and each group has a fixed ~300-600 us (idle voice
+    loop + wake), so 2 groups give ~4 voices without crackle, not 8. Latest run: 6 voices, g0 4 voices 2.98 ms, g1 2 voices
+    1.86 ms per block, still 3.9 ms mean, underruns ~90/s. The lever left is the per-voice cost itself (the recompiled DSP).
+  - **Duty cap default 0.95 (was 0.7), user-tested on the Force:** at 0.7 the main thread (2.7 ms of a 2.9 ms block) hit the cap
+    ~25x/s and the naps caused the glitching. With the cap off and 2 threads, TRX kit: budget 3-5 clean (0-6 underruns per
+    10-40 s), budget 6 not (~300 underruns, mean 3.0 ms). Shipped defaults: VOICES 5, ring lead 3 (4 also fine: 11.6 ms,
+    ring is 5 slots), ROM off. Device overrides: `/tmp/md-groups`, `/tmp/md-ahead`, `/tmp/md-duty`.
+  - **Five TRX machines were silent (found 2026-09-29, user report): TRX XT, CP, MA, CL, XC.** The OS sets `out[0]` (the trigger
+    flag) before calling a machine function; these five start with `tst.l (a1)` and return 0 words when it is 0, so they only
+    compute on a trigger tick. `MachineRunner::compute` cleared out[0] and HostModel skipped the slot on n == 0. Fixed:
+    `compute(..., trigger)` and n == 0 still writes the trigger word. Also `kSlotWords` 13 -> 32 (EFM-CY returns 15 words). Found
+    by comparing with the emulated MD (mdProbe: `sysex:f000203c02005b<track><machine>00f7`, `note:0:36:110`, `wait:N` prints
+    the peak; `trace:on` + `tools/mdtrace/analysis/voice.py` shows the slot words the OS sends). New audio hashes (ROM samples):
+    `e2b514e70c173c33` (1 and 2 voice groups); without ROM samples `04ef1db4fe767721`. `MD_SWEEP=1 md-hash` plays every machine
+    on a fresh engine; the release build now fails if any offered machine is silent (all 82 offered ones make sound).
+    The recompiler discovery now uses the same trigger protocol (code = id + 1) so these machines' DSP code is covered.
+
+## STATE AT END OF SESSION (2026-09-29, late) - read this first if resuming
+- Branch `claude/v0.2-roadmap` (off `claude/trusting-maxwell-hx3i7b`; PR #2 to main is still open/unmerged; nothing of v0.2 is pushed).
+  Everything below is committed locally except this note.
+- **Deployed on the Force (192.168.1.44)**: `machinedrum_one.so` md5 `fa1876b2781de4bb48d37a9fd6975aed` (VOICES default 4) (built by the full
+  `release/build_release.sh`, gates passed: recompiled == interpreter, every offered machine sounds) and the rebuilt skin in
+  `/sdcard/Synths/sd88me - VST - Machinedrum Module` (ROM toggle now shows OFF). Re-insert the plugin in MPC to load both; the skin
+  needs an MPC restart to be re-read if the GLOBAL tab still shows ROM ON. **Not yet listened to** on the device after the
+  silent-machine fix: play TRX XT/CP/MA/CL/XC, then re-test the busy TRX pattern at budget 4-5.
+- Defaults now: VOICES 4 (user-tested: 4 clean, 5 glitchy on the busy TRX pattern), ROM off, 2 voice threads (track FX on the same threads), ring lead 3 blocks (ring is 5 slots), duty cap 0.95.
+  Device overrides (files in /tmp, cleared by reboot, then re-insert the plugin): `md-groups` (1-4), `md-ahead` (1-4), `md-duty`
+  (0.3-1.0); stats: `/tmp/md-stats-on` -> `/tmp/md-stats.<pid>` (with per-group `groups:` lines).
+- What this session found (details in the entries above): the voice budget never cut anything (two bugs, fixed); TRX
+  XT/CP/MA/CL/XC were silent (trigger flag, fixed); MPC's AudioWorker1 makes core 1 busy so cores are ranked by load; the 70% duty
+  cap caused glitches; two threads help but capacity is still ~4-5 TRX/EFM voices (600-900 us per voice on a busy Force).
+- `dist/Machinedrum-Module-0.1.0-7-g884948d-mpc-armv7.zip` was built before the version fix below (its version string is not X.Y.Z
+  so the catalog check refused it): rerun `release/build_release.sh <OS.syx> <flash.bin>` (about 25 min, one core mostly: it compiles the
+  1.1 MB generated DSP file several times) to get a conformant zip; the script now derives X.Y.Z from `git describe`.
+- Open, in order: (1) listen-test the fix; (2) cut the per-voice DSP cost (the recompiled DSP) - the only route to more polyphony;
+  (3) faster release builds (build the two gate binaries in parallel, split the generated .inl); (4) bank/kit picker list;
+  (5) master FX; (6) push `claude/v0.2-roadmap` and open a PR when happy (the v0.1.0 tag predates all of this).
+- 2026-09-29 late: user confirmed TRX XT/CP/MA/CL/XC now play and sound right; VOICES default changed 5 -> 4.
+  **Pending:** the rebuilt skin (VOICES knob shows 4) is in `vst/build/skin` but could not be copied: the Force went unreachable
+  (No route to host). Deploy with: `cd vst/build/skin && tar -czf - "sd88me - VST - Machinedrum Module" | ssh root@192.168.1.44
+  'cd /sdcard/Synths && tar -xzf -'` (then restart MPC to re-read the skin). Only the knob's first-paint image differs.
