@@ -1400,3 +1400,24 @@ Open, in the order I would take them:
     `e2b514e70c173c33` (1 and 2 voice groups); without ROM samples `04ef1db4fe767721`. `MD_SWEEP=1 md-hash` plays every machine
     on a fresh engine; the release build now fails if any offered machine is silent (all 82 offered ones make sound).
     The recompiler discovery now uses the same trigger protocol (code = id + 1) so these machines' DSP code is covered.
+
+## STATE AT END OF SESSION (2026-09-29, late) - read this first if resuming
+- Branch `claude/v0.2-roadmap` (off `claude/trusting-maxwell-hx3i7b`; PR #2 to main is still open/unmerged; nothing of v0.2 is pushed).
+  Everything below is committed locally except this note.
+- **Deployed on the Force (192.168.1.44)**: `machinedrum_one.so` md5 `d317b8dc024f757b8e8b1544e18efc4c` (built by the full
+  `release/build_release.sh`, gates passed: recompiled == interpreter, every offered machine sounds) and the rebuilt skin in
+  `/sdcard/Synths/sd88me - VST - Machinedrum Module` (ROM toggle now shows OFF). Re-insert the plugin in MPC to load both; the skin
+  needs an MPC restart to be re-read if the GLOBAL tab still shows ROM ON. **Not yet listened to** on the device after the
+  silent-machine fix: play TRX XT/CP/MA/CL/XC, then re-test the busy TRX pattern at budget 4-5.
+- Defaults now: VOICES 5, ROM off, 2 voice threads (track FX on the same threads), ring lead 3 blocks (ring is 5 slots), duty cap 0.95.
+  Device overrides (files in /tmp, cleared by reboot, then re-insert the plugin): `md-groups` (1-4), `md-ahead` (1-4), `md-duty`
+  (0.3-1.0); stats: `/tmp/md-stats-on` -> `/tmp/md-stats.<pid>` (with per-group `groups:` lines).
+- What this session found (details in the entries above): the voice budget never cut anything (two bugs, fixed); TRX
+  XT/CP/MA/CL/XC were silent (trigger flag, fixed); MPC's AudioWorker1 makes core 1 busy so cores are ranked by load; the 70% duty
+  cap caused glitches; two threads help but capacity is still ~4-5 TRX/EFM voices (600-900 us per voice on a busy Force).
+- `dist/Machinedrum-Module-0.1.0-7-g884948d-mpc-armv7.zip` was built before the version fix below (its version string is not X.Y.Z
+  so the catalog check refused it): rerun `release/build_release.sh <OS.syx> <flash.bin>` (about 25 min, one core mostly: it compiles the
+  1.1 MB generated DSP file several times) to get a conformant zip; the script now derives X.Y.Z from `git describe`.
+- Open, in order: (1) listen-test the fix; (2) cut the per-voice DSP cost (the recompiled DSP) - the only route to more polyphony;
+  (3) faster release builds (build the two gate binaries in parallel, split the generated .inl); (4) bank/kit picker list;
+  (5) master FX; (6) push `claude/v0.2-roadmap` and open a PR when happy (the v0.1.0 tag predates all of this).

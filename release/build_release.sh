@@ -18,7 +18,7 @@ usage() { sed -n '2,15p' "$0"; exit 2; }
 OS=$(realpath "$1"); FLASH=$(realpath "$2"); shift 2
 VERSION=""; DEVICE=""; MV="${MPC_VST_DIR:-}"
 while getopts "v:d:m:h" o; do case $o in v) VERSION=$OPTARG;; d) DEVICE=$OPTARG;; m) MV=$OPTARG;; *) usage;; esac; done
-if [ -z "$VERSION" ]; then VERSION=$(git -C "$ROOT" describe --tags --always 2>/dev/null | sed 's/^v//'); fi
+if [ -z "$VERSION" ]; then VERSION=$(git -C "$ROOT" describe --tags --always 2>/dev/null | sed -E 's/^v//; s/^([0-9]+\.[0-9]+\.[0-9]+)-.*/\1/'); fi   # commits after a tag: still X.Y.Z (the catalog check needs it); pass -v to name a release
 case "$VERSION" in [0-9]*) ;; *) VERSION="0.0.0-dev.$VERSION";; esac
 if [ -z "$MV" ]; then
   if [ -d "$ROOT/../mpc-vst" ]; then MV="$ROOT/../mpc-vst"
