@@ -4,7 +4,7 @@ The Elektron Machinedrum SPS-1 UW sound engine as a native VST2 instrument for A
 (built and tested on the Force), with its own touchscreen skin and Q-Link support. All 16 Machinedrum tracks play
 from one plugin instance, using the Machinedrum's own DSP code and its own machine, LFO and mixer maths.
 
-**v0.1.0, pre-release.** It plays, saves and reloads with the project, and it is tested on a real Force. There is
+**v0.1.0, pre-release.** It plays, saves and reloads with the project, and it is tested on a real Force (MPC OS 3.9.1). There is
 no downloadable build: it needs your own Machinedrum firmware, so you build the installer yourself with one script (see
 [Building](#building)). Master effects (reverb, delay and the rest of the master section) are not in yet.
 
@@ -13,7 +13,7 @@ needs your own Machinedrum OS 1.63 file and a flash image (see [What you need](#
 
 ## Features
 
-- **16 tracks, one instance.** Notes 36-51 (C1-D#2) play tracks 1-16, the way the Machinedrum's own MIDI map works.
+- **16 tracks, one instance.** MIDI notes 36-51 play tracks 1-16 (the Machinedrum's own note-to-track map).
   Each track keeps the Machinedrum's own voice, effects and routing.
 - **The machines:** GND, TRX (808-style), EFM, E12, P-I and the ROM sample machines. RAM, INP and MID/CTR machines
   are not offered (no sampling, no audio input and no MIDI output here); a kit that uses one shows a blank bar.
@@ -42,9 +42,11 @@ needs your own Machinedrum OS 1.63 file and a flash image (see [What you need](#
 
 - **Master effects:** the reverb and delay sends are computed but no effect consumes them, so REV and DEL do nothing.
   The master section (rhythm echo, gate box/reverb, EQ, dynamix) is the next big piece.
-- **CPU.** About 4-5 voices can sound at once on one Force core (a machine costs roughly 0.3-0.8 ms of a 2.9 ms audio block, depending on how busy MPC is; the ROM machines, P-I and EFM machines cost the most, and track effects add about 0.1 ms per playing track). A dense 16-track pattern is beyond what one core does
-  in real time on the Force; the voice budget is the guard. The engine thread runs below MPC's own audio threads, so
-  overload drops the plugin's own blocks (crackle) rather than MPC's audio.
+- **CPU.** About 4-5 voices can sound at once on one Force core: a machine costs roughly 0.3-0.8 ms of a 2.9 ms audio
+  block depending on how busy MPC is (the ROM, P-I and EFM machines cost the most), and track effects add about 0.1 ms per
+  playing track. A dense 16-track pattern is beyond what one core does in real time on the Force; the voice budget is the
+  guard. The engine thread runs below MPC's own audio threads and is capped to a share of its core, so overload drops the
+  plugin's own blocks (crackle) rather than MPC's audio or its screen.
 - **First load is slower** than later ones (the skin is large: MPC reads and decodes it from the card).
 - **ROM machines** are silent unless the sample data was extracted at build time (it is, if you build with your
   flash image). ROM33-48 are empty on the factory image.
@@ -70,8 +72,9 @@ Master-effect settings inside a kit are ignored for now.
 
 ## Building
 
-The build reads your firmware and writes an installer zip containing the plugin, the skin and your extracted kits; the
-result contains firmware-derived code and data, so it is for your own devices only.
+The build reads your firmware and writes an installer zip containing the plugin, the skin, your extracted kits and ROM
+samples, and your OS file (the plugin reads it at run time); the result contains firmware-derived code and data, so it is
+for your own devices only.
 
 ```bash
 git clone --recursive <this repo> && cd mpc-vst-machinedrum
@@ -96,11 +99,12 @@ build of Monomodule's skin (its `art.json`, made from a Monomachine OS file), so
 
 ### Plugin catalog
 
-The installer zip is catalog-conformant in format: `mpc-plugin.json` (id `machinedrum-module`, license `AGPL-3.0-only`, source
-repo) is generated, and the build runs mpc-vst-plugins' `catalog_check.py --catalog` as its last step. The plugin locates its
-data next to the `.so` (`MODULE_SUBDIR`), not at a fixed path. It is **not** listed in the public catalog and its zip must
-never be published as a release: the catalog only takes zips without closed binaries or copyrighted ROMs, and this one contains
-firmware-derived code and data by design (like Monomodule's, it is built per user).
+This is a **build-it-yourself** plugin: the installer zip contains firmware-derived code and data, so it is built per user and
+must never be published as a release (a catalog entry for it links to this repo and its build instructions, not to a
+download). The zip is still catalog-conformant in format: `mpc-plugin.json` (id `machinedrum-module`, license
+`AGPL-3.0-only`, source repo) is generated, and the build runs mpc-vst-plugins' `catalog_check.py --catalog` as its last step.
+The plugin locates its data next to the `.so` (`MODULE_SUBDIR`), not at a fixed path. Device testing is recorded in
+`tested.json` (v0.1.0: Akai Force, MPC OS 3.9.1).
 
 ## How it works
 
@@ -155,4 +159,4 @@ The work behind this, in order (`HANDOFF.md` has the full log and `docs/` the pr
   installer for MPC OS.
 - Built with [Claude Code](https://claude.com/claude-code).
 
-Licensed AGPL-3.0, like Monomodule (whose decoder is adapted here); dsp56300 is GPL-3.0.
+Licensed AGPL-3.0-only, like Monomodule (whose decoder is adapted here); dsp56300 is GPL-3.0.
