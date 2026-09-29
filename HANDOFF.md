@@ -1391,3 +1391,12 @@ Open, in the order I would take them:
     ~25x/s and the naps caused the glitching. With the cap off and 2 threads, TRX kit: budget 3-5 clean (0-6 underruns per
     10-40 s), budget 6 not (~300 underruns, mean 3.0 ms). Shipped defaults: VOICES 5, ring lead 3 (4 also fine: 11.6 ms,
     ring is 5 slots), ROM off. Device overrides: `/tmp/md-groups`, `/tmp/md-ahead`, `/tmp/md-duty`.
+  - **Five TRX machines were silent (found 2026-09-29, user report): TRX XT, CP, MA, CL, XC.** The OS sets `out[0]` (the trigger
+    flag) before calling a machine function; these five start with `tst.l (a1)` and return 0 words when it is 0, so they only
+    compute on a trigger tick. `MachineRunner::compute` cleared out[0] and HostModel skipped the slot on n == 0. Fixed:
+    `compute(..., trigger)` and n == 0 still writes the trigger word. Also `kSlotWords` 13 -> 32 (EFM-CY returns 15 words). Found
+    by comparing with the emulated MD (mdProbe: `sysex:f000203c02005b<track><machine>00f7`, `note:0:36:110`, `wait:N` prints
+    the peak; `trace:on` + `tools/mdtrace/analysis/voice.py` shows the slot words the OS sends). New audio hashes (ROM samples):
+    `e2b514e70c173c33` (1 and 2 voice groups); without ROM samples `04ef1db4fe767721`. `MD_SWEEP=1 md-hash` plays every machine
+    on a fresh engine; the release build now fails if any offered machine is silent (all 82 offered ones make sound).
+    The recompiler discovery now uses the same trigger protocol (code = id + 1) so these machines' DSP code is covered.

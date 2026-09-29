@@ -1,8 +1,12 @@
 // mdhash: a hash of 12 s of a fixed 16-track pattern (random machines incl. ROM, routing, triggers) through the whole engine:
 // equal hashes = identical audio. Compare builds (recompiled vs plain interpreter, ARM vs x86, skip paths on/off).
 // usage: md-hash <OS.syx> [ROM_SAMPLES.bin]   (with the ROM samples, the pattern plays two ROM machines too)
+//   MD_GROUPS=n   voices split over n DSP2 instances (must give the same hash)
+//   MD_SWEEP=1    plays every machine on a fresh engine and prints "SWEEP id name peak" (release gate: none of the offered ones silent)
+//   MD_BUDGET=n   voice budget n; prints the max/mean number of voices that rendered
 #include <cstdio>
 #include <cstdlib>
+#include <algorithm>
 #include <cstdint>
 #include <vector>
 #include "Engine.h"
@@ -57,6 +61,44 @@ int main(int argc, char** argv)
 {
 	const auto fwv = md::fw::loadFirmware(argv[1]);
 	auto c = md::fw::parseContainer(md::fw::parseSysex(md::fw::readFile(argv[1])));
+	if(getenv("MD_SWEEP"))	// every machine on a fresh engine: does it make sound? (MD_SWEEP=1)
+	{
+		std::vector<int> ids;
+		{
+			md::engine::Engine e0(fwv, std::vector<uint8_t>(c.sections.at(0).data));
+			for(const auto& mc : e0.os().machines()) ids.push_back(mc.id);
+		}
+		for(const int id : ids)
+		{
+			md::engine::Engine e(fwv, std::vector<uint8_t>(c.sections.at(0).data));
+			if(argc > 2)
+				if(FILE* rf = fopen(argv[2], "rb"))
+				{
+					char magic[4]; std::vector<uint32_t> words; uint32_t head[2];
+					if(fread(magic, 1, 4, rf) == 4)
+						while(fread(head, 4, 2, rf) == 2 && head[1] > 0 && head[1] < 0x800000)
+						{
+							words.resize(head[1]);
+							if(fread(words.data(), 4, head[1], rf) != head[1]) break;
+							e.voices().writeP(head[0], words.data(), words.size());
+						}
+					fclose(rf);
+				}
+			auto& hh = e.host();
+			const auto* mc = e.os().machine(uint8_t(id));
+			hh.setMachine(2, uint8_t(id));
+			for(int q = 0; q < 8; ++q) hh.setParam(2, q, mc->defaults[q]);
+			hh.setParam(2, 13, 127); hh.setParam(2, 17, 100);
+			md::engine::Engine::Output o;
+			for(int b = 0; b < 40; ++b) e.render(o);
+			hh.trigger(2, 100);
+			int peak = 0;
+			for(int b = 0; b < 700; ++b) { e.render(o); for(int f = 0; f < 32; ++f) peak = std::max(peak, std::abs(int(o.tracks[2][f] >> 8))); }
+			printf("SWEEP %3d %-8s peak %d\n", id, mc->name.c_str(), peak);
+			fflush(stdout);
+		}
+		return 0;
+	}
 	// MD_GROUPS=n (n>1): the voices split across n DSP2 instances on persistent threads; must give the same hash
 	const int groups = getenv("MD_GROUPS") ? atoi(getenv("MD_GROUPS")) : 1;
 	if(groups > 1)

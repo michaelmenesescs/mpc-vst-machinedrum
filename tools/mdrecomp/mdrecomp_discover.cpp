@@ -151,21 +151,21 @@ int main(int argc, char** argv)
 				uint16_t params[8];
 				for(auto& p : params) p = static_cast<uint16_t>(synDist(rng) << 7);
 
-				uint32_t words[13] = {};
-				const int n = os.compute(m.id, params, words, 13);
+				uint32_t words[32] = {};
+				const int n = os.compute(m.id, params, words, 32, true);	// as the OS on a trigger tick (some machines only compute then)
 				if(n < 0) continue;
-				words[0] = m.id;	// trigger this machine on voice 0
+				words[0] = static_cast<uint32_t>(m.id) + 1;	// trigger this machine on voice 0 (its code is id + 1)
 
 				VoiceEngine::Block b;
-				eng.setSlot(0, words, 13);
+				eng.setSlot(0, words, VoiceEngine::kSlotWords);
 				for(int blk = 0; blk < 64; ++blk)
 				{
 					if(!eng.renderBlock(b)) break;
 					if(blk == 40)	// re-trigger mid-decay to exercise restart/retrigger paths too
 					{
-						uint32_t retrig[13];
+						uint32_t retrig[32];
 						std::copy(std::begin(words), std::end(words), retrig);
-						eng.setSlot(0, retrig, 13);
+						eng.setSlot(0, retrig, VoiceEngine::kSlotWords);
 					}
 				}
 			}

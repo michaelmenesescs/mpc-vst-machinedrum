@@ -200,11 +200,11 @@ namespace md::engine
 		{
 			m_silenceNext[_track] = false;
 			uint32_t out[32];
-			const int n = m_os.compute(id, voiceParams(_track), out, 32);
-			if(n > 0)
+			const int n = m_os.compute(id, voiceParams(_track), out, 32, m_trigger[_track]);
+			if(n >= 0)	// n == 0 (TRX CP/MA/CL: no parameter words) still carries the trigger word
 			{
 				out[0] = m_trigger[_track] ? static_cast<uint32_t>(id) + 1 : 0;
-				m_voices.setSlot(_track, out, std::min(n, TVoices::kSlotWords));
+				m_voices.setSlot(_track, out, std::clamp(n, 1, static_cast<int>(TVoices::kSlotWords)));
 			}
 		}
 		updateMixer(_track);

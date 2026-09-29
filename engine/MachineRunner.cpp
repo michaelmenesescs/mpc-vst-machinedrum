@@ -155,7 +155,7 @@ namespace md::engine
 		return cpu.getDReg(0);
 	}
 
-	int MachineRunner::compute(const uint8_t _machineId, const uint16_t* _params, uint32_t* _out, const int _outCapacity)
+	int MachineRunner::compute(const uint8_t _machineId, const uint16_t* _params, uint32_t* _out, const int _outCapacity, const bool _trigger)
 	{
 		const auto* m = machine(_machineId);
 		if(!m) { m_fault = "unknown machine"; return -1; }
@@ -163,6 +163,7 @@ namespace md::engine
 			poke16(kParams + 2 * k, k < 8 ? _params[k] : 0);
 		for(uint32_t k = 0; k < 32; ++k)
 			poke32(kOut + 4 * k, 0);
+		poke32(kOut, _trigger ? 1 : 0);
 		const auto count = call(m->function, {kOut, kParams});
 		if(count < 0) return -1;
 		for(int k = 0; k < _outCapacity; ++k)

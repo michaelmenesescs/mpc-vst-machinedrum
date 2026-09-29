@@ -61,6 +61,9 @@ done
 H_INTERP=$("$WORK/gate-interp/md-hash" "$OS" vst/build/factory/ROM_SAMPLES.bin 2>/dev/null | grep '^hash')
 H_RECOMP=$("$WORK/gate-recomp/md-hash" "$OS" vst/build/factory/ROM_SAMPLES.bin 2>/dev/null | grep '^hash')
 echo "   interpreter: $H_INTERP"; echo "   recompiled:  $H_RECOMP"
+# Every machine the plugin offers must make sound (TRX XT/CP/MA/CL/XC were silent until their function was given the trigger flag).
+SILENT=$(MD_SWEEP=1 "$WORK/gate-recomp/md-hash" "$OS" vst/build/factory/ROM_SAMPLES.bin 2>/dev/null | awk '/^SWEEP/ && $5+0 < 100 && $3 !~ /^(GND--|INP|MID|CTR|RAM)/ && !($3 ~ /^ROM/ && substr($3,4)+0 > 32) {print $3}' | tr '\n' ' ')
+[ -z "$SILENT" ] || { echo "GATE FAILED: these offered machines make no sound: $SILENT" >&2; exit 1; }
 [ -n "$H_INTERP" ] && [ "$H_INTERP" = "$H_RECOMP" ] || { echo "GATE FAILED: the recompiled build does not match the interpreter - not building for the device" >&2; exit 1; }
 
 echo "== 5/7 skin"

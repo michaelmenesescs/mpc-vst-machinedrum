@@ -167,6 +167,7 @@ namespace md::engine
 			emit(pc, "sub b,a");
 			emit(pc, "tst a");
 			emit(pc, "jeq " + hex(kSkipSilent));
+			emit(pc, "add b,a");	// a back to the machine code, as the compare left it
 			emit(pc, "jmp " + hex(kSkipNormal));
 		}
 		{

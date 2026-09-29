@@ -21,7 +21,7 @@ namespace md::engine
 	public:
 		static constexpr int kVoices = 16;
 		static constexpr int kBlockFrames = 32;
-		static constexpr int kSlotWords = 13;
+		static constexpr int kSlotWords = 32;	// machine functions return 0-21 words (the slot is 0x40 wide); 13 truncated EFM-CY and dropped the trigger of 0-word machines
 		static constexpr uint32_t kSlotBase = 0x800, kSlotStride = 0x40;
 
 		using Block = std::array<std::array<int32_t, kBlockFrames>, kVoices>;	// [voice][frame], 24-bit signed
