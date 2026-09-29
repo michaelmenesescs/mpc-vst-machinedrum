@@ -69,6 +69,14 @@ if(MPC_VST_DIR)
   set_target_properties(machinedrum_tap PROPERTIES PREFIX "" C_VISIBILITY_PRESET hidden CXX_VISIBILITY_PRESET hidden)
   target_link_options(machinedrum_tap PRIVATE -Wl,--no-undefined,--exclude-libs,ALL,-Bsymbolic -static-libstdc++ -static-libgcc)
 
+  # machinedrum_tapfx: the same tap as an audio effect for an MPC return/FX track (vst/tapfx): outputs the tapped source
+  add_library(machinedrum_tapfx SHARED vst/tap/tap_engine.cpp "${MPC_VST_DIR}/wrapper/vst2_wrap.c")
+  target_compile_definitions(machinedrum_tapfx PRIVATE TAP_FX=1)
+  target_include_directories(machinedrum_tapfx PRIVATE "${MPC_VST_DIR}/wrapper" "${CMAKE_CURRENT_SOURCE_DIR}/vst/tapfx/build" "${CMAKE_CURRENT_SOURCE_DIR}/vst")
+  target_link_libraries(machinedrum_tapfx PRIVATE dl)
+  set_target_properties(machinedrum_tapfx PROPERTIES PREFIX "" C_VISIBILITY_PRESET hidden CXX_VISIBILITY_PRESET hidden)
+  target_link_options(machinedrum_tapfx PRIVATE -Wl,--no-undefined,--exclude-libs,ALL,-Bsymbolic -static-libstdc++ -static-libgcc)
+
   add_executable(md-vst-smoke vst/smoke.cpp vst/engine.cpp)
   target_include_directories(md-vst-smoke PRIVATE "${MPC_VST_DIR}/wrapper" "${CMAKE_CURRENT_SOURCE_DIR}/vst/build")
   target_link_libraries(md-vst-smoke PRIVATE mdcore pthread)

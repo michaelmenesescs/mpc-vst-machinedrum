@@ -1,0 +1,40 @@
+{
+ "name": "Machinedrum Tap FX",
+ "params": [
+  {
+   "key": "source",
+   "name": "Source",
+   "options": [
+    "Off",
+    "Track 1",
+    "Track 2",
+    "Track 3",
+    "Track 4",
+    "Track 5",
+    "Track 6",
+    "Track 7",
+    "Track 8",
+    "Track 9",
+    "Track 10",
+    "Track 11",
+    "Track 12",
+    "Track 13",
+    "Track 14",
+    "Track 15",
+    "Track 16",
+    "Reverb send",
+    "Delay send"
+   ],
+   "default": 17
+  },
+  {
+   "key": "through",
+   "name": "Input through",
+   "options": [
+    "Off",
+    "On"
+   ],
+   "default": 0
+  }
+ ]
+}

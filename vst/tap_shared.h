@@ -20,6 +20,7 @@ namespace mdtap
 		std::atomic<const void*> owner{nullptr};	// the primary that publishes (the first one created)
 		std::atomic<uint32_t> written{0};			// blocks published
 		std::atomic<uint32_t> hostRead{0};			// blocks the primary's host has taken
+		std::atomic<int64_t> hostCallUs{0};			// steady-clock time (us) of the primary's last host call
 		std::atomic<int> tapped[kTracks];			// taps reading each track: that track leaves the primary's main mix
 		std::atomic<int> tapsRev{0}, tapsDel{0};
 		alignas(64) int16_t data[kSlots][kPlanes][kFrames];

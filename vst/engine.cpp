@@ -591,8 +591,6 @@ void Inst::run()
 		}
 		int appliedTempo = -1, appliedMaxVoices = -1;
 		const bool tapOwner = [this] { const void* none = nullptr; return g_tap.owner.compare_exchange_strong(none, this); }();
-		int appliedTapRoute[kTracks];
-		for(int& r : appliedTapRoute) r = -1;
 		int appliedMachine[kTracks], appliedEff[kTracks], appliedVol[kTracks], appliedPan[kTracks];
 		int appliedFx[kTracks][kNumFx];
 		int appliedRoute[kTracks][kNumRoute];
@@ -684,11 +682,6 @@ void Inst::run()
 				// knob (HostModel.h) that also gates level but isn't what mdrender.cpp's working demo kit uses.
 				if(vol != appliedVol[t]) { appliedVol[t] = vol; h.setParam(t, 17, vol); }
 				{
-					// A track a tap reads leaves the main mix (route 0: an individual output nobody listens to)
-					const int route = tapOwner && g_tap.tapped[t].load(std::memory_order_relaxed) > 0 ? 0 : md::engine::Mixer::kRouteMain;
-					if(route != appliedTapRoute[t]) { appliedTapRoute[t] = route; h.setRouting(t, route); }
-				}
-				{
 					int v[kNumLfo];
 					bool changed = false;
 					for(int i = 0; i < kNumLfo; ++i)
@@ -729,6 +722,12 @@ void Inst::run()
 			}
 			nRead.store(r, std::memory_order_release);
 
+			if(tapOwner)
+			{
+				uint32_t mask = 0;
+				for(int t = 0; t < kTracks; ++t) if(g_tap.tapped[t].load(std::memory_order_relaxed) > 0) mask |= 1u << t;
+				eng.dryMute = mask;
+			}
 			int16_t* dst = ring[w % kRing];
 			const auto t0 = std::chrono::steady_clock::now();
 			for(int i = 0; i < kInner; ++i)
@@ -988,6 +987,8 @@ void eRender(void* p, int16_t* out, int frames)
 		std::memset(out, 0, sizeof(int16_t) * kFrames * 2);
 		in->underruns.fetch_add(1, std::memory_order_relaxed);
 	}
+	if(g_tap.owner.load(std::memory_order_relaxed) == in)
+		g_tap.hostCallUs.store(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch()).count(), std::memory_order_release);
 }
 
 const mpc_engine_t kEngine = {eCreate, eDestroy, eMidi, eSet, eGet, eRender, nullptr};
