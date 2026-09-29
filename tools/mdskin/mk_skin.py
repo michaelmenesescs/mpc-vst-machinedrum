@@ -749,7 +749,7 @@ mcv.dots_h(0, MW - 1, GRID_Y); mcv.dots_v(TRACKS * MCW, GRID_Y, PAGE_LCD_H - 1);
 mx0, my0 = page_origin("SYN")
 gbg = TRACK_CHASSIS.copy()
 gbg.paste(mcv.image(), (mx0, my0))
-GLOBAL_CELLS = [P("VOICES", default=34, fmt=lambda raw: str(1 + int(round(raw * 15 / 127.0)))),
+GLOBAL_CELLS = [P("VOICES", default=25, fmt=lambda raw: str(1 + int(round(raw * 15 / 127.0)))),
                 P("RND ALL", "toggle"), P("RND 1-8", "toggle"), P("RND 9-16", "toggle"), P("RND KIT", "toggle"), P("ROM", "toggle", default=0)] + [P("") for _ in range(2)]
 GLOBAL_KEYS = ["max_voices", "randomize_all", "randomize_1_8", "randomize_9_16", "randomize_kit", "rom_enabled", None, None]
 gcv = page_canvas("ROUTE", GLOBAL_CELLS, "GLOBAL")

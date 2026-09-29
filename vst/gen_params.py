@@ -56,7 +56,7 @@ for t in range(16):
     sections.append(("TRACK %d" % (t + 1), keys))
 
 params.append({"key": "tempo", "name": "Tempo", "min": 30, "max": 300, "default": 120, "display": "int"})
-params.append({"key": "max_voices", "name": "Voice Budget", "min": 1, "max": 16, "default": 5, "display": "int"})
+params.append({"key": "max_voices", "name": "Voice Budget", "min": 1, "max": 16, "default": 4, "display": "int"})
 sections.append(("GLOBAL", ["tempo", "max_voices", "rom_enabled"]))
 
 # Machine picker "open" flags (HANDOFF.md, "Machine picker: duplicating Monomodule's own design").
