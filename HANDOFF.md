@@ -1373,3 +1373,17 @@ Open, in the order I would take them:
     **1.9 ms mean, worst ~5 ms, underruns flat (no new ones)**. A/B on the device: `echo N > /tmp/md-groups`, re-insert the plugin.
   - **Ring lead default 3 blocks (8.7 ms)**, user-confirmed on the Force: block gaps reach 7-8.5 ms, 2 blocks (5.8 ms) glitched.
     `/tmp/md-ahead` (1-3) overrides for A/B, like `/tmp/md-groups` (voice threads 1-4, default 2).
+  - **Voice budget did nothing before (fixed 2026-09-29).** Two bugs: (1) the cut wrote a silence slot that the same tick's
+    `updateVoice` overwrote (now `m_silenceNext`, applied in the victim's own updateVoice; a victim triggered earlier in
+    the same block has its trigger cancelled); (2) the harness skip check `cmp a,b` never matched persisted code 1 (the
+    empty machine GND--), so a silenced voice kept rendering; now `sub b,a / tst a`. Offline (`MD_BUDGET=n md-hash`):
+    budget 5 -> mean 3 rendered voices (was 16). Unlimited budget keeps hash `15746c0610a40ddb`. Tails of stolen tracks are
+    now really cut.
+  - **Cores:** MPC's AudioWorker1 (core 1) is steadily 4x busier than the others; the engine now ranks cores by load since boot
+    (`rankCores`, core 0 last): engine on the least busy (core 3 on the test Force), voice group g on the g-th.
+  - **Group balancing:** a track that was not sounding picks the voice group with the least measured cost (per-voice DSP
+    instructions from the harness flags, moving average in `HostModel::m_costEma`); `ParallelVoiceEngine::moveVoice`. Stats
+    line `groups: g0_us g0_voices ...` (voices are summed over the 4 engine blocks per host block: /4).
+  - **Force capacity, TRX kit, MPC busy:** ~600-900 us per sounding voice, and each group has a fixed ~300-600 us (idle voice
+    loop + wake), so 2 groups give ~4 voices without crackle, not 8. Latest run: 6 voices, g0 4 voices 2.98 ms, g1 2 voices
+    1.86 ms per block, still 3.9 ms mean, underruns ~90/s. The lever left is the per-voice cost itself (the recompiled DSP).

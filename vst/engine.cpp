@@ -81,6 +81,32 @@ int chooseCore()
 	return best;
 }
 
+// Cores ranked by how busy they have been since boot (least busy first, core 0 last: MPC's housekeeping runs there).
+// A 100 ms sample at load time can't see MPC's steady audio work (one AudioWorker is several times busier than the
+// others), so the long-term share picks better homes for the engine and voice threads.
+std::vector<int> rankCores()
+{
+	std::vector<std::pair<double, int>> load;
+	if(std::FILE* f = std::fopen("/proc/stat", "r"))
+	{
+		char line[256];
+		while(std::fgets(line, sizeof line, f))
+		{
+			int c; unsigned long long u, ni, s, id, io, ir, so, st;
+			if(std::sscanf(line, "cpu%d %llu %llu %llu %llu %llu %llu %llu %llu", &c, &u, &ni, &s, &id, &io, &ir, &so, &st) == 9 && c >= 0)
+			{
+				const double busy = static_cast<double>(u + ni + s + ir + so + st), total = busy + static_cast<double>(id + io);
+				load.emplace_back((c == 0 ? 10.0 : 0.0) + (total > 0 ? busy / total : 0.0), c);
+			}
+		}
+		std::fclose(f);
+	}
+	std::sort(load.begin(), load.end());
+	std::vector<int> cores;
+	for(const auto& l : load) cores.push_back(l.second);
+	return cores;
+}
+
 constexpr int kDefaultGroups = 2;	// DSP2 instances (voice threads); 1 = single thread
 constexpr int kFrames = 128;					// the host's block size
 constexpr int kInner = kFrames / Engine::kBlock;	// 32-sample engine blocks per host block
@@ -511,6 +537,7 @@ void Inst::run()
 		// device, 2026-09-28: this thread at 89% of its core with a 4-track kit). Overloaded, it now drops
 		// only its own blocks (counted as underruns).
 		pthread_setname_np(pthread_self(), "md-engine");
+		std::vector<int> ranked;	// cores, least busy first: the engine thread takes the first, voice group g the g-th
 		{
 			int prio = 5;
 			if(const char* e = std::getenv("MD_FIFO")) prio = std::atoi(e);
@@ -520,7 +547,8 @@ void Inst::run()
 				sp.sched_priority = prio;
 				pthread_setschedparam(pthread_self(), SCHED_FIFO, &sp);
 			}
-			const int c = std::getenv("MD_CPU") ? std::atoi(std::getenv("MD_CPU")) : chooseCore();
+			ranked = rankCores();
+			const int c = std::getenv("MD_CPU") ? std::atoi(std::getenv("MD_CPU")) : ranked.empty() ? chooseCore() : ranked[0];
 			if(c >= 0)
 			{
 				cpu_set_t s;
@@ -531,7 +559,7 @@ void Inst::run()
 			core.store(c, std::memory_order_relaxed);
 		}
 		// Voice worker threads: same real-time class as the engine thread, on the cores after it.
-		eng.voices().tuneWorkers([this](int _g)
+		eng.voices().tuneWorkers([ranked](int _g)
 		{
 			pthread_setname_np(pthread_self(), ("md-voice" + std::to_string(_g)).c_str());
 			int prio = 5;
@@ -542,13 +570,11 @@ void Inst::run()
 				sp.sched_priority = prio;
 				pthread_setschedparam(pthread_self(), SCHED_FIFO, &sp);
 			}
-			const int n = static_cast<int>(std::min<long>(sysconf(_SC_NPROCESSORS_ONLN), 8));
-			const int mine = core.load(std::memory_order_relaxed);
-			if(n > 1 && mine >= 0)
+			if(static_cast<size_t>(_g) < ranked.size())
 			{
 				cpu_set_t s;
 				CPU_ZERO(&s);
-				CPU_SET((mine + _g) % n, &s);	// core 0 is left to MPC when possible
+				CPU_SET(ranked[static_cast<size_t>(_g)], &s);	// group g takes the g-th least busy core
 				sched_setaffinity(0, sizeof s, &s);
 			}
 		});
@@ -593,6 +619,7 @@ void Inst::run()
 		int nUs = 0, maxActive = 0;
 		double pTick = 0, pDsp = 0, pFx = 0, pMix = 0;	// stage timers at the last stats line (Engine::timingOn, only with stats on)
 		eng.timingOn = statsOn;
+		eng.voices().timingOn = statsOn;
 		ready.store(true);
 
 		while(!stop.load(std::memory_order_acquire))
@@ -735,6 +762,14 @@ void Inst::run()
 					if(FILE* f = std::fopen(("/tmp/md-stats." + std::to_string(getpid())).c_str(), "a"))
 					{
 						std::fprintf(f, "underruns=%u naps=%u worst_us=%.0f mean_us=%.0f worst_gap_us=%.0f active=%d rom=%d budget=%d tick=%.0f dsp=%.0f fx=%.0f mix=%.0f\n", underruns.load(), dutyNaps.load(), worstUs, sumUs / std::max(1, nUs), worstGap, maxActive, param[kSlotRomEnabled].load(), param[kSlotMaxVoices].load(), (h.tickUs - pTick) / std::max(1, nUs), (h.dspUs - pDsp) / std::max(1, nUs), (eng.fxUs - pFx) / std::max(1, nUs), (eng.mixUs - pMix) / std::max(1, nUs));
+						auto& vg = eng.voices();
+						std::fprintf(f, "  groups:");
+						for(int g = 0; g < vg.groupCount(); ++g)
+						{
+							std::fprintf(f, " g%d_us=%.0f g%d_voices=%.2f", g, vg.groupUs[g] / std::max(1, nUs), g, vg.groupVoices[g] / std::max(1, nUs));
+							vg.groupUs[g] = vg.groupVoices[g] = 0;
+						}
+						std::fprintf(f, "\n");
 						std::fclose(f);
 					}
 					pTick = h.tickUs; pDsp = h.dspUs; pFx = eng.fxUs; pMix = eng.mixUs;

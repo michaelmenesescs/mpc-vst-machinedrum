@@ -1,6 +1,7 @@
 #include "ParallelVoiceEngine.h"
 
 #include <algorithm>
+#include <chrono>
 
 namespace md::engine
 {
@@ -11,7 +12,10 @@ namespace md::engine
 		for(int g = 0; g < n; ++g)
 			m_groups.push_back(std::make_unique<VoiceEngine>(_fw));
 		m_groupOut.resize(static_cast<size_t>(n));
+		for(int v = 0; v < kVoices; ++v) m_map[static_cast<size_t>(v)] = v % n;
 		m_ok.assign(static_cast<size_t>(n), 0);
+		groupUs.assign(static_cast<size_t>(n), 0.0);
+		groupVoices.assign(static_cast<size_t>(n), 0.0);
 		for(size_t g = 1; g < static_cast<size_t>(n); ++g)
 			m_workers.emplace_back([this, g] { workerMain(g); });
 	}
@@ -25,6 +29,19 @@ namespace md::engine
 		m_wake.notify_all();
 		for(auto& t : m_workers)
 			t.join();
+	}
+
+	void ParallelVoiceEngine::runGroup(const size_t _g)
+	{
+		const auto t0 = timingOn ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
+		m_ok[_g] = m_groups[_g]->renderBlock(m_groupOut[_g]) ? 1 : 0;
+		if(m_ok[_g] && m_post)
+			m_post(static_cast<int>(_g), m_groupOut[_g]);
+		if(timingOn)
+		{
+			groupUs[_g] += std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - t0).count();
+			groupVoices[_g] += m_groups[_g]->activeVoicesLastBlock();
+		}
 	}
 
 	void ParallelVoiceEngine::tuneWorkers(std::function<void(int)> _fn)
@@ -54,9 +71,7 @@ namespace md::engine
 			}
 			if(tune)
 				tune(static_cast<int>(_g));
-			m_ok[_g] = m_groups[_g]->renderBlock(m_groupOut[_g]) ? 1 : 0;
-			if(m_ok[_g] && m_post)
-				m_post(static_cast<int>(_g), m_groupOut[_g]);
+			runGroup(_g);
 			{
 				std::lock_guard<std::mutex> l(m_mx);
 				if(--m_pending == 0)
@@ -97,9 +112,7 @@ namespace md::engine
 			}
 			m_wake.notify_all();
 		}
-		ok[0] = m_groups[0]->renderBlock(m_groupOut[0]) ? 1 : 0;
-		if(ok[0] && m_post)
-			m_post(0, m_groupOut[0]);
+		runGroup(0);
 		if(n > 1)
 		{
 			std::unique_lock<std::mutex> l(m_mx);

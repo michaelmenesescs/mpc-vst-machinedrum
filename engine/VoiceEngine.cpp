@@ -163,8 +163,9 @@ namespace md::engine
 			emit(pc, "move r0,a");
 			emit(pc, "tst a");
 			emit(pc, "jeq " + hex(kSkipSilent));
-			emit(pc, "move #>1,b");
-			emit(pc, "cmp a,b");
+			emit(pc, "move #>1,b");	// (cmp a,b here never matched code 1: an empty-machine voice kept rendering)
+			emit(pc, "sub b,a");
+			emit(pc, "tst a");
 			emit(pc, "jeq " + hex(kSkipSilent));
 			emit(pc, "jmp " + hex(kSkipNormal));
 		}
@@ -268,15 +269,25 @@ namespace md::engine
 	{
 		auto& hi = m_periphX->getHI08();
 		m_lastActive = 0;
+		uint64_t prev = m_dsp->getInstructionCounter();
+		int idx = 0;
 		for(auto& voice : _out)
 		{
 			if(!runUntilTx(1, _maxInstructions))
 				return false;
+			// The DSP reaches voice k's flag after finishing voice k-1's render: the instructions between two flags are
+			// the previous voice's cost (an idle voice costs almost nothing).
+			{
+				const uint64_t now = m_dsp->getInstructionCounter();
+				if(idx > 0) m_voiceInstr[static_cast<size_t>(idx - 1)] = static_cast<uint32_t>(now - prev);
+				prev = now;
+			}
 			const TWord flag = hi.readTX() & 0xffffff;
 			if(flag == 1) ++m_lastActive;
 			if(flag != 1)
 			{
 				voice.fill(0);
+				++idx;
 				continue;
 			}
 			if(!runUntilTx(voice.size(), _maxInstructions))
@@ -286,7 +297,9 @@ namespace md::engine
 				const TWord t = hi.readTX() & 0xffffff;
 				s = static_cast<int32_t>(t << 8) >> 8;
 			}
+			++idx;
 		}
+		m_voiceInstr[kVoices - 1] = static_cast<uint32_t>(m_dsp->getInstructionCounter() - prev);
 		return true;
 	}
 

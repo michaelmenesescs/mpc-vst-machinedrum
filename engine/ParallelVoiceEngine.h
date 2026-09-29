@@ -9,6 +9,7 @@
 // runs it alone), only how the 16 slots' work is scheduled across cores. See HANDOFF.md, "per-machine cost
 // profiled" for the measurement this answers.
 #pragma once
+#include <array>
 #include <condition_variable>
 #include <functional>
 #include <memory>
@@ -45,13 +46,29 @@ namespace md::engine
 		// tracks t with groupOf(t) == group). Gets the group's block, valid for its own voices only.
 		using PostFn = std::function<void(int _group, const Block&)>;
 		void setPost(PostFn _fn) { m_post = std::move(_fn); }
+		// Stats (only meaningful with timing on): per group, microseconds spent (voices + track effects) and voices rendered,
+		// summed over blocks; reset by the caller.
+		bool timingOn = false;
+		std::vector<double> groupUs, groupVoices;
 		int groupCount() const { return static_cast<int>(m_groups.size()); }
-		int groupOf(int _voice) const { return _voice % static_cast<int>(m_groups.size()); }
+		int groupOf(int _voice) const { return m_map[static_cast<size_t>(_voice)]; }
+
+		// Move a voice to another group (call between blocks, from the thread that calls renderBlock). The old group's
+		// copy is silenced with _silence (the empty-machine trigger slot) so it stops costing time there; the voice
+		// starts fresh in the new group on its next trigger.
+		void moveVoice(int _voice, int _group, const uint32_t* _silence, int _count)
+		{
+			const int old = m_map[static_cast<size_t>(_voice)];
+			if(old == _group) return;
+			m_groups[static_cast<size_t>(old)]->setSlot(_voice, _silence, _count);
+			m_map[static_cast<size_t>(_voice)] = _group;
+		}
 
 		// Sample memory etc: written to every group (each has its own P memory).
 		void writeP(uint32_t _addr, const uint32_t* _words, size_t _count);
 		uint32_t readP(uint32_t _addr) const { return m_groups[0]->readP(_addr); }
 		int activeVoicesLastBlock() const;
+		uint32_t voiceInstructions(int _voice) const { return m_groups[static_cast<size_t>(groupOf(_voice))]->voiceInstructions(_voice); }
 		dsp56k::DSP& dsp() { return m_groups[0]->dsp(); }
 
 		uint64_t instructionsLastBlock() const { return m_lastInstructions; }
@@ -59,8 +76,10 @@ namespace md::engine
 
 	private:
 		PostFn m_post;
+		std::array<int, kVoices> m_map{};	// voice -> group
 
 		void workerMain(size_t _g);
+		void runGroup(size_t _g);
 
 		// Persistent workers (a thread spawned per block rebooted the device): woken once per block, they render
 		// their group while the caller renders group 0, then the caller waits for them.
