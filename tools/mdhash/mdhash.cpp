@@ -1,5 +1,6 @@
 // mdhash: a hash of 12 s of a fixed 16-track pattern (random machines incl. ROM, routing, triggers) through the whole engine:
-// equal hashes = identical audio. Compare builds (recompiled vs plain interpreter, ARM vs x86, skip paths on/off).  usage: md-hash <OS.syx>
+// equal hashes = identical audio. Compare builds (recompiled vs plain interpreter, ARM vs x86, skip paths on/off).
+// usage: md-hash <OS.syx> [ROM_SAMPLES.bin]   (with the ROM samples, the pattern plays two ROM machines too)
 #include <cstdio>
 #include <cstdint>
 #include <vector>
@@ -10,6 +11,19 @@ int main(int argc, char** argv)
 	const auto fwv = md::fw::loadFirmware(argv[1]);
 	auto c = md::fw::parseContainer(md::fw::parseSysex(md::fw::readFile(argv[1])));
 	md::engine::Engine eng(fwv, std::move(c.sections.at(0).data));
+	if(argc > 2)
+		if(FILE* rf = fopen(argv[2], "rb"))
+		{
+			char magic[4]; std::vector<uint32_t> words; uint32_t head[2];
+			if(fread(magic, 1, 4, rf) == 4)
+				while(fread(head, 4, 2, rf) == 2 && head[1] > 0 && head[1] < 0x800000)
+				{
+					words.resize(head[1]);
+					if(fread(words.data(), 4, head[1], rf) != head[1]) break;
+					eng.voices().writeP(head[0], words.data(), words.size());
+				}
+			fclose(rf);
+		}
 	auto& h = eng.host();
 	md::engine::Engine::Output out;
 	uint64_t hash = 1469598103934665603ull;

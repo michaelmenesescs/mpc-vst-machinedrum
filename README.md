@@ -4,8 +4,8 @@ The Elektron Machinedrum SPS-1 UW sound engine as a native VST2 instrument for A
 (built and tested on the Force), with its own touchscreen skin and Q-Link support. All 16 Machinedrum tracks play
 from one plugin instance, using the Machinedrum's own DSP code and its own machine, LFO and mixer maths.
 
-**Pre-release (0.4.x).** It plays, saves and reloads with the project, and it is tested on a real Force. There is
-no downloadable build: it needs your own Machinedrum firmware, so you build the installer yourself (see
+**v0.1.0, pre-release.** It plays, saves and reloads with the project, and it is tested on a real Force. There is
+no downloadable build: it needs your own Machinedrum firmware, so you build the installer yourself with one script (see
 [Building](#building)). Master effects (reverb, delay and the rest of the master section) are not in yet.
 
 Not affiliated with Elektron. Nothing of Elektron's is in this repository or distributed from it; the plugin
@@ -29,7 +29,7 @@ needs your own Machinedrum OS 1.63 file and a flash image (see [What you need](#
 - **ROM on/off switch** (GLOBAL tab). Off, tracks on a ROM (sample) machine stay silent and the randomiser leaves ROM
   machines out; each track keeps its ROM setting for when you switch back. ROM machines are the most expensive on the
   Force's CPU, so this is the quickest way to make a busy kit safe.
-- **Voice budget, default 8.** The VOICES knob on GLOBAL is a CPU budget, not a plain voice count. Most machines cost
+- **Voice budget, default 5.** The VOICES knob on GLOBAL is a CPU budget, not a plain voice count. Most machines cost
   1 unit and the ROM (sample) machines cost 2, matching what they cost the Force's CPU (measured on the device: a ROM
   voice adds about 400 us per 2.9 ms audio block, the other machines about 210 us). When a trigger would go past the
   budget, the oldest sounding tracks are cut. The default keeps a busy kit inside what one Force core can do; raise it
@@ -70,25 +70,28 @@ Master-effect settings inside a kit are ignored for now.
 
 ## Building
 
-The build reads your firmware and writes an installer zip containing the plugin, the skin and your extracted kits.
-The installer stops MPC, installs, and restarts it, so run it with the device idle.
+The build reads your firmware and writes an installer zip containing the plugin, the skin and your extracted kits; the
+result contains firmware-derived code and data, so it is for your own devices only.
 
 ```bash
-git submodule update --init --recursive
-# 1. the voice DSP's recompiled program (from your OS file and ROM_SAMPLES.bin; never committed)  tools/mdrecomp/, see HANDOFF.md
-# 2. factory kits and ROM samples (from your flash image)
-python3 tools/mdkits/make_factory.py <mdProbe> build-vst-x86/mdsamples <flash.bin> <OS.syx> vst/build/factory
-# 3. the skin, and 4. the ARM plugin
-tools/mdskin/build_skin.sh <OS.syx> <monomodule art.json> ../mpc-vst
-vst/build_so.sh <dir with dsp56k_recomp.inl> ../mpc-vst
-# 5. the installer zip
-python3 ../mpc-vst/tools/release.py --so vst/build/machinedrum_one.so \
-  --skin "vst/build/skin/sd88me - VST - Machinedrum Module" --entry vst/build/pluginlist-entry.xml \
-  --version 0.4.3 --extra vst/build/factory:vst/machinedrum/factory
+git clone --recursive <this repo> && cd mpc-vst-machinedrum
+release/build_release.sh <Elektron_SPS1-1UW_OS1.63.syx> <flash image.bin>            # -> dist/Machinedrum-Module-<version>-mpc-armv7.zip
+release/build_release.sh <OS.syx> <flash.bin> -d <device-ip>                          # ...and install it on the Force
 ```
 
+Options: `-v <version>` (default from `git describe`), `-d <device-ip>` (copy the zip over and run its installer; this stops
+and restarts MPC, so save your project first), `-m <mpc-vst-plugins checkout>`. It builds, in order: the x86 helper tools,
+the factory kits and ROM samples (by booting the emulated MD from your flash image), the recompiled voice DSP (traced
+from your OS file), a **bit-exactness gate** (the recompiled DSP must give the same audio hash as the plain interpreter,
+ROM machines included, or nothing is built for the device), the skin, the ARM plugin, and the installer zip in `dist/`.
+Prerequisites (each is described at the top of the script): Docker, a checkout of
+[mpc-vst-plugins](https://github.com/sd88me/mpc-vst-plugins) (fetched automatically if `../mpc-vst` is absent; it needs the
+branch with the dynamic parameter names), the `mdProbe` tool built from `tools/mdtrace` (`MDPROBE`), and Monomodule's
+`art.json` for the LCD fonts (`MNM_ART`). To install by hand instead, unzip the result on the device and run `install.sh`
+as root; the installer stops MPC, installs, and restarts it, so run it with the device idle.
+
 `HANDOFF.md` has the full state and every step's details (what `mdProbe` is, the recompiler pass, the device
-workflow). Then unzip on the device and run `install.sh -y` as root. The skin borrows the Elektron LCD fonts from a
+workflow). The skin borrows the Elektron LCD fonts from a
 build of Monomodule's skin (its `art.json`, made from a Monomachine OS file), so that is needed for the skin step.
 
 ## How it works

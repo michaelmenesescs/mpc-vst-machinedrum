@@ -9,6 +9,13 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
 
+# MD_DISCOVERY: build only the recompiler's discovery tool (tools/mdrecomp): the DSP emulator has to be built with its trace
+# hook and on the plain interpreter for it, so this is a separate build directory (release/build_release.sh does it).
+option(MD_DISCOVERY "build mdrecomp-discover (the static recompiler's tracer) instead of the normal targets" OFF)
+if(MD_DISCOVERY)
+  string(APPEND CMAKE_CXX_FLAGS " -DDSP56K_RECOMP_DISCOVERY -DDSP56K_NO_JIT_RUNTIME")
+endif()
+
 set(MPC_VST_DIR "" CACHE PATH "mpc-vst-plugins checkout (the shared VST2 wrapper); only needed for the plugin .so target")
 
 include(cmake/dsp56300.cmake)
@@ -30,6 +37,11 @@ target_link_libraries(mdcore PUBLIC dsp56kEmu 68kEmu)
 # mdmachine: lists the OS's machine table (names, SYN labels) - the skin generator's input (tools/mdskin)
 add_executable(mdmachine tools/mdmachine/mdmachine.cpp)
 target_link_libraries(mdmachine PRIVATE mdcore pthread)
+if(MD_DISCOVERY)
+  add_executable(mdrecomp-discover tools/mdrecomp/mdrecomp_discover.cpp)
+  target_link_libraries(mdrecomp-discover PRIVATE mdcore pthread dl)
+endif()
+
 # mdcost: per-machine cost of one playing voice (instructions and wall time), for the Force
 add_executable(md-cost tools/mdcost/mdcost.cpp)
 target_link_libraries(md-cost PRIVATE mdcore pthread dl)

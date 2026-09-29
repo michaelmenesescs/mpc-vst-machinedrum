@@ -1301,6 +1301,16 @@ from it.
     (3) speed up `TrackFx` (native C++ on 32-bit ARM with 64-bit accumulators, ~120 us/track; NEON or skipping neutral stages),
     (4) a cheaper OS tick (~190 us, OS routines, not cuttable exactly). Until then: VOICES ~5 and prefer light machines.
 
+- **2026-09-29 (end of day): v0.1.0 release flow.** `release/build_release.sh <OS.syx> <flash.bin> [-v ver] [-d ip] [-m plugins]`
+  is the one-command build (mirrors Monomodule's `release/release.sh`): x86 tools -> factory kits + ROM samples -> recompiled DSP
+  (discovery is now a CMake option, `-DMD_DISCOVERY=ON`, in `build-release/`) -> **bit-exactness gate** (x86 interpreter vs
+  recompiled `md-hash`, with the ROM samples; aborts on mismatch) -> skin -> ARM plugin -> installer zip in `dist/`; `-d` copies
+  it to the Force and runs `install.sh -y`. First full run built `dist/Machinedrum-Module-0.1.0-mpc-armv7.zip` (2.2 MB, 339
+  files). Default VOICES is now **5** (measured safe; 8 crackles). LCD background now sits `lcd_margin` (28 px) outside the page
+  panels (`mk_skin.py`: `ALU_H` derived from `OX + PAGES_X0`). Dependency to resolve before anyone else can build: the plugin
+  needs the wrapper's `dynamic_name`/`dynamic_display`, on the unmerged mpc-vst-plugins branch `claude/dynamic-param-names`; the
+  script refuses a wrapper without it. `md-hash` takes the ROM samples as a 2nd argument.
+
 ## RESUME HERE (2026-09-29)
 
 State:

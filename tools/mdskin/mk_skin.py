@@ -434,7 +434,9 @@ default_machine = next(m for m in MACHINES if m["id"] == PREVIEW_MACHINE)
 # The hardware's face (after a photo of the MD): a brushed-aluminium faceplate, a thin glossy black bezel around the edge,
 # and one big LCD inside it holding everything - the machine bar, the nameplate and the pages - with the backlight's
 # darker edges. Components only ever sit well inside it, where it's flat PAPER, so the strips' opaque backgrounds match.
-ALU_H, ALU_V, BEZEL_W = 8, 8, 12                # faceplate border (left/right, top/bottom) and bezel width (skin px)
+LCD_MARGIN_X = int(args.get("lcd_margin", 28))  # the LCD's left/right edge sits this far outside the page panels
+ALU_V, BEZEL_W = 8, 12                          # faceplate border (top/bottom) and bezel width (skin px)
+ALU_H = OX + PAGES_X0 - LCD_MARGIN_X - BEZEL_W  # faceplate border (left/right): whatever leaves the LCD just around the pages
 LCD_RECT = (ALU_H + BEZEL_W, ALU_V + BEZEL_W, SKIN_W - ALU_H - BEZEL_W, SKIN_H - ALU_V - BEZEL_W)
 LCD_PAD = 6                                     # the open picker also covers this much around the pages
 LCD_EDGE = 8                                    # the backlight's darkening towards the LCD's edge
@@ -747,7 +749,7 @@ mcv.dots_h(0, MW - 1, GRID_Y); mcv.dots_v(TRACKS * MCW, GRID_Y, PAGE_LCD_H - 1);
 mx0, my0 = page_origin("SYN")
 gbg = TRACK_CHASSIS.copy()
 gbg.paste(mcv.image(), (mx0, my0))
-GLOBAL_CELLS = [P("VOICES", default=59, fmt=lambda raw: str(1 + int(round(raw * 15 / 127.0)))),
+GLOBAL_CELLS = [P("VOICES", default=34, fmt=lambda raw: str(1 + int(round(raw * 15 / 127.0)))),
                 P("RND ALL", "toggle"), P("RND 1-8", "toggle"), P("RND 9-16", "toggle"), P("RND KIT", "toggle"), P("ROM", "toggle", default=127)] + [P("") for _ in range(2)]
 GLOBAL_KEYS = ["max_voices", "randomize_all", "randomize_1_8", "randomize_9_16", "randomize_kit", "rom_enabled", None, None]
 gcv = page_canvas("ROUTE", GLOBAL_CELLS, "GLOBAL")
