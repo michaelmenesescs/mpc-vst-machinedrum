@@ -78,6 +78,11 @@ The build reads your firmware and writes an installer zip containing the plugin,
 samples, and your OS file (the plugin reads it at run time); the result contains firmware-derived code and data, so it is
 for your own devices only.
 
+**Where to run this: on your own computer (macOS or Linux, with Docker and git), not on the Force.** The build runs
+inside Docker on your computer, and so does the `git clone` below. The Force is only where the finished plugin is
+installed: the `-d <device-ip>` option copies it there over your network and runs the installer, or you copy the zip
+over yourself afterwards. Nothing is built or compiled on the device.
+
 ```bash
 git clone --recursive <this repo> && cd mpc-vst-machinedrum
 release/build_release.sh <Elektron_SPS1-1UW_OS1.63.syx> <flash image.bin>            # -> dist/Machinedrum-Module-<version>-mpc-armv7.zip
