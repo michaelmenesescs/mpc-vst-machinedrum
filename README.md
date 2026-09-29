@@ -6,9 +6,14 @@ from one plugin instance, using the Machinedrum's own DSP code and its own machi
 
 <img width="640" height="400" alt="image" src="https://github.com/user-attachments/assets/30d1c99b-333c-4b98-b9e5-2c3339ef0c29" />
 
-**v0.1.0, pre-release.** It plays, saves and reloads with the project, and it is tested on a real Force (MPC OS 3.9.1). There is
+**v0.2.0.** It plays, saves and reloads with the project, and it is tested on a real Force (MPC OS 3.9.1). There is
 no downloadable build: it needs your own Machinedrum firmware, so you build the installer yourself with one script (see
 [Building](#building)). Master effects (reverb, delay and the rest of the master section) are not in yet.
+
+**New in 0.2.0:** the voices now render on two threads, which is the main reason a busy kit holds up better; the VOICES
+budget really cuts voices now (it did nothing before); TRX XT, CP, MA, CL and XC and EFM CY now play (they were silent);
+ROM machines are off until you switch them on; new instances start at VOICES 4 with an 8.7 ms buffer. Every machine the plugin
+offers is checked to make sound as part of the build.
 
 Not affiliated with Elektron. Nothing of Elektron's is in this repository or distributed from it; the plugin
 needs your own Machinedrum OS 1.63 file and a flash image (see [What you need](#what-you-need)).
@@ -32,10 +37,9 @@ needs your own Machinedrum OS 1.63 file and a flash image (see [What you need](#
   machines out; each track keeps its ROM setting for when you switch back. ROM machines are the most expensive on the
   Force's CPU, so this is the quickest way to make a busy kit safe.
 - **Voice budget, default 4.** The VOICES knob on GLOBAL is a CPU budget, not a plain voice count. Most machines cost
-  1 unit and the ROM (sample) machines cost 2, matching what they cost the Force's CPU (measured on the device: a ROM
-  voice adds about 400 us per 2.9 ms audio block, the other machines about 210 us). When a trigger would go past the
-  budget, the oldest sounding tracks are cut. The default keeps a busy kit inside what one Force core can do; raise it
-  if your patterns are sparse, lower it if you hear crackle.
+  1 unit and the ROM (sample) machines cost 2, matching what they cost the Force's CPU. When a trigger would go past the
+  budget, the oldest sounding track is cut, tail included. Heavy kits (TRX, EFM) play cleanly at 4 on a busy Force; sparse
+  patterns or lighter machines can go higher, so raise it until you hear crackle and back off one.
 - **Tempo follows MPC's**, so the LFOs stay in time with the project.
 - **The skin** is drawn from the Machinedrum's own LCD (fonts, dials, page layout), generated at build time from
   your own firmware, inside a thin hardware-style bezel. Nothing captured from the firmware is stored in the repo.
@@ -47,7 +51,7 @@ needs your own Machinedrum OS 1.63 file and a flash image (see [What you need](#
 - **CPU.** The voices render on two threads (two cores) and the track effects run on the same threads. About 4-5 voices can sound
   at once on a Force with MPC busy: a voice costs roughly 0.3-0.9 ms of a 2.9 ms audio block depending on the machine (ROM, P-I
   and EFM cost the most) and on how busy MPC is. Beyond that the plugin crackles, so the voice budget (default 4) is the guard:
-  it cuts the oldest sounding track, tail included, when a new one would go past it. The engine threads run below MPC's own
+  it cuts the oldest sounding track when a new one would go past it. The engine threads run below MPC's own
   audio threads, so overload drops the plugin's own blocks (crackle) rather than MPC's audio or its screen.
 - **First load is slower** than later ones (the skin is large: MPC reads and decodes it from the card).
 - **ROM machines** are silent unless the sample data was extracted at build time (it is, if you build with your
@@ -93,7 +97,7 @@ Options: `-v <version>` (default from `git describe`), `-d <device-ip>` (copy th
 and restarts MPC, so save your project first), `-m <mpc-vst-plugins checkout>`. It builds, in order: the x86 helper tools,
 the factory kits and ROM samples (by booting the emulated MD from your flash image), the recompiled voice DSP (traced
 from your OS file), a **bit-exactness gate** (the recompiled DSP must give the same audio hash as the plain interpreter,
-ROM machines included, or nothing is built for the device), the skin, the ARM plugin, and the installer zip in `dist/`.
+ROM machines included, and every machine the plugin offers must make sound, or nothing is built for the device), the skin, the ARM plugin, and the installer zip in `dist/`.
 Prerequisites (each is described at the top of the script): Docker, a checkout of
 [mpc-vst-plugins](https://github.com/sd88me/mpc-vst-plugins) (fetched automatically if `../mpc-vst` is absent; its `main` has
 the dynamic parameter names the plugin needs), the `mdProbe` tool built from `tools/mdtrace` (`MDPROBE`), and Monomodule's
@@ -111,7 +115,7 @@ must never be published as a release (a catalog entry for it links to this repo 
 download). The zip is still catalog-conformant in format: `mpc-plugin.json` (id `machinedrum-module`, license
 `AGPL-3.0-only`, source repo) is generated, and the build runs mpc-vst-plugins' `catalog_check.py --catalog` as its last step.
 The plugin locates its data next to the `.so` (`MODULE_SUBDIR`), not at a fixed path. Device testing is recorded in
-`tested.json` (v0.1.0: Akai Force, MPC OS 3.9.1).
+`tested.json` (v0.2.0: Akai Force, MPC OS 3.9.1).
 
 ## How it works
 
@@ -147,8 +151,11 @@ The work behind this, in order (`HANDOFF.md` has the full log and `docs/` the pr
    picker, the LFO page, chassis and bezel.
 9. **Kits and ROM machines:** kit sysex import (factory kits dumped from the emulated MD), and the sample memory the MD
    copies from its flash at boot.
-10. **Performance work on the device:** skipping settled silent tracks, ring depth and priority tuning, trimming the skin
+10. **Performance work on the device (0.1):** skipping settled silent tracks, ring depth and priority tuning, trimming the skin
     and P memory (about 225 MB less RAM in MPC), the voice budget, skipping idle voices in the DSP loop and silent tracks in the mixer.
+11. **0.2:** voices on two threads with the track effects on the same threads, cores chosen by how busy MPC keeps them, a voice
+    budget that really cuts, cost-balanced voice groups, and fixes for machines that stayed silent (found by comparing every
+    machine against the emulated Machinedrum).
 
 ## Credits
 
