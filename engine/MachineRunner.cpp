@@ -1,5 +1,6 @@
 #include "MachineRunner.h"
 
+#include <cstdio>
 #include <cstring>
 #include <stdexcept>
 
@@ -27,13 +28,18 @@ namespace md::engine
 	public:
 		MachineCpu() : Mc68k(M68K_CPU_TYPE_MCF5206E), m_main(kMainSize, 0), m_sram(kSramSize, 0) {}
 
-		uint8_t read8(const uint32_t _addr) override { if(const auto* p = ptr(_addr, 1)) return *p; ++m_badAccesses; return 0; }
-		uint16_t read16(const uint32_t _addr) override { if(const auto* p = ptr(_addr, 2)) return static_cast<uint16_t>(p[0] << 8 | p[1]); ++m_badAccesses; return 0; }
+		uint8_t read8(const uint32_t _addr) override { if(const auto* p = ptr(_addr, 1)) return *p; bad(_addr, 1, false); return 0; }
+		uint16_t read16(const uint32_t _addr) override { if(const auto* p = ptr(_addr, 2)) return static_cast<uint16_t>(p[0] << 8 | p[1]); bad(_addr, 2, false); return 0; }
 		uint16_t readImm16(const uint32_t _addr) override { return read16(_addr); }
-		void write8(const uint32_t _addr, const uint8_t _val) override { if(auto* p = ptr(_addr, 1)) *p = _val; else ++m_badAccesses; }
+		void write8(const uint32_t _addr, const uint8_t _val) override { if(auto* p = ptr(_addr, 1)) *p = _val; else bad(_addr, 1, true); }
 		void write16(const uint32_t _addr, const uint16_t _val) override
 		{
-			if(auto* p = ptr(_addr, 2)) { p[0] = static_cast<uint8_t>(_val >> 8); p[1] = static_cast<uint8_t>(_val); } else ++m_badAccesses;
+			if(auto* p = ptr(_addr, 2)) { p[0] = static_cast<uint8_t>(_val >> 8); p[1] = static_cast<uint8_t>(_val); } else bad(_addr, 2, true);
+		}
+		void bad(const uint32_t _addr, const int _n, const bool _write)
+		{
+			if(m_badAccesses < 8 && std::getenv("MD_BADLOG")) std::fprintf(stderr, "bad %s%d @ %08x pc=%08x\n", _write ? "write" : "read", _n * 8, _addr, m68k_get_reg(getCpuState(), M68K_REG_PC));
+			++m_badAccesses;
 		}
 		uint32_t exec() override { return execInstruction(); }	// CPU only: no on-chip peripherals
 
@@ -67,6 +73,13 @@ namespace md::engine
 		{
 			const size_t n = std::min<size_t>(m_os.size() - (kSramImage - kMainBase), kSramSize);
 			std::memcpy(m_cpu->m_sram.data(), m_os.data() + (kSramImage - kMainBase), n);
+		}
+		// Runtime data the OS's boot writes into its internal SRAM (read from the booted full-system emulation, not in the
+		// OS file). The ROM machines' coefficient function divides by the word at $0100150c ($bb8); left at 0 it takes a
+		// divide-by-zero, returns nothing, and every ROM track played the same, glitchy, all-zero slot (2026-09-29).
+		{
+			static const uint8_t kBootSram[16] = {6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 0, 0, 0x0b, 0xb8};
+			std::memcpy(m_cpu->m_sram.data() + 0x1500, kBootSram, sizeof kBootSram);
 		}
 		m_cpu->setSR(0x2700);	// supervisor, interrupts masked
 		parseMachineTable();

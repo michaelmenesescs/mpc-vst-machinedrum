@@ -2187,10 +2187,10 @@
   },
   {
    "key": "max_voices",
-   "name": "Max Voices",
+   "name": "Voice Budget",
    "min": 1,
    "max": 16,
-   "default": 16,
+   "default": 8,
    "display": "int"
   },
   {
@@ -4358,6 +4358,15 @@
    "default": 0,
    "momentary": true,
    "hold_ms": 1500
+  },
+  {
+   "key": "rom_enabled",
+   "name": "ROM Machines",
+   "options": [
+    "OFF",
+    "ON"
+   ],
+   "default": 1
   }
  ],
  "sections": [
@@ -4717,7 +4726,8 @@
    "label": "GLOBAL",
    "keys": [
     "tempo",
-    "max_voices"
+    "max_voices",
+    "rom_enabled"
    ]
   }
  ]

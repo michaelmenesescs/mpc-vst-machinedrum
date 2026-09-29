@@ -20,7 +20,9 @@ namespace md::engine
 	namespace
 	{
 		// Memory as gearmulator-md-mm models the Machinedrum: external SRAM from $020000 is shared by P, X and Y.
-		constexpr TWord kSizeP = 0x800000, kSizeXY = 0x800000, kBridge = 0x020000;
+		// P is 2M words, not the DSP's 8M: the MD's map stays below $200000 (samples end at $18fc12), and the interpreter's
+		// per-word opcode cache made the full size cost ~300 MB of RAM in MPC. Output is identical.
+		constexpr TWord kSizeP = 0x200000, kSizeXY = 0x800000, kBridge = 0x020000;
 
 		// DSP2 state after the ColdFire's first-stage loader, read from a running gearmulator-md-mm (OS 1.63):
 		// the full SPS-1 UW memory map (AAR0-3) and OMR.
@@ -39,12 +41,10 @@ namespace md::engine
 		constexpr TWord kStub = 0x0c00;			// free internal P RAM (the program's internal P ends at $3e2)
 		constexpr TWord kSkipStub = 0x0c20;	// silent-voice check, replaces kRenderFn's lookup
 		constexpr TWord kSkipNormal = 0x0c30;	// real render fn lookup, resumed
-		constexpr TWord kSkipSilent = 0x0c38;	// r1 = kClearVoice instead
-		constexpr TWord kClearVoice = 0x0c40;	// fast rts routine: 32 zeros into y:(r7), same as machine 0/1's render
+		constexpr TWord kSkipSilent = 0x0c38;	// idle voice: flag 0, straight to the next voice
 
 		constexpr uint64_t kMaxInstrInit = 200'000'000;
 		constexpr uint64_t kMaxInstrBlock = 20'000'000;
-		constexpr size_t kWordsPerBlock = VoiceEngine::kVoices * VoiceEngine::kBlockFrames;
 	}
 
 	VoiceEngine::VoiceEngine(const fw::Firmware& _fw) : m_fw(_fw)
@@ -170,23 +170,19 @@ namespace md::engine
 		}
 		{
 			TWord pc = kSkipNormal;
+			emit(pc, "movep #>1,x:<<$ffffc7");	// this voice will render: flag 1, its 32 samples follow
 			emit(pc, "move y:(r0+$145c77),r1");
 			m_dsp->memWriteP(pc++, 0x0af080);	// jmp >kAfterRenderFn
 			m_dsp->memWriteP(pc++, kAfterRenderFn);
 		}
 		{
+			// An idle voice sends flag 0 and nothing else - no 32-word clear, no 32-word transmit; the host fills its
+			// zeros. Its buffer pointer (mod 32) ends where it started, so going straight to the next voice is the same
+			// state the clear-and-send path left. A voice's 32 samples are only sent when its flag is 1.
 			TWord pc = kSkipSilent;
-			emit(pc, "move #>" + hex(kClearVoice) + ",r1");
-			m_dsp->memWriteP(pc++, 0x0af080);	// jmp >kAfterRenderFn
-			m_dsp->memWriteP(pc++, kAfterRenderFn);
-		}
-		{
-			TWord pc = kClearVoice;
-			emit(pc, "clr a");
-			emit(pc, "do #32," + hex(pc + 3));
-			emit(pc, "move a,y:(r7)+");
-			emit(pc, "nop");
-			emit(pc, "rts");
+			emit(pc, "movep #>0,x:<<$ffffc7");
+			m_dsp->memWriteP(pc++, 0x0af080);	// jmp >kNextVoice
+			m_dsp->memWriteP(pc++, kNextVoice);
 		}
 
 		// 3) after all 16 voices: wait for the host's "go" word (the host updates the voice slots meanwhile)
@@ -225,7 +221,8 @@ namespace md::engine
 		m_dsp->setPC(kEntry);
 
 		// Init runs into the block loop; the first (silent) block comes out and the DSP then waits for "go".
-		if(!runUntilTx(kWordsPerBlock, kMaxInstrInit))
+		Block first;
+		if(!readBlock(first, kMaxInstrInit))
 			throw std::runtime_error("voice DSP init did not complete: " + m_fault);
 		while(hi.hasTX())
 			hi.readTX();
@@ -262,7 +259,32 @@ namespace md::engine
 				return false;
 			}
 		}
-		m_lastInstructions = m_dsp->getInstructionCounter() - start;
+		return true;
+	}
+
+	// One block from the DSP, voice by voice: a flag word (1 = it rendered, its 32 samples follow; 0 = idle, all zeros).
+	// Every voice's slot is read before its flag goes out, so once the 16th flag is in the DSP has consumed every slot.
+	bool VoiceEngine::readBlock(Block& _out, const uint64_t _maxInstructions)
+	{
+		auto& hi = m_periphX->getHI08();
+		for(auto& voice : _out)
+		{
+			if(!runUntilTx(1, _maxInstructions))
+				return false;
+			const TWord flag = hi.readTX() & 0xffffff;
+			if(flag != 1)
+			{
+				voice.fill(0);
+				continue;
+			}
+			if(!runUntilTx(voice.size(), _maxInstructions))
+				return false;
+			for(auto& s : voice)
+			{
+				const TWord t = hi.readTX() & 0xffffff;
+				s = static_cast<int32_t>(t << 8) >> 8;
+			}
+		}
 		return true;
 	}
 
@@ -271,14 +293,10 @@ namespace md::engine
 		auto& hi = m_periphX->getHI08();
 		const TWord go = 1;
 		hi.writeRX(&go, 1);
-		if(!runUntilTx(kWordsPerBlock, kMaxInstrBlock))
+		const auto start = m_dsp->getInstructionCounter();
+		if(!readBlock(_out, kMaxInstrBlock))
 			return false;
-		for(auto& voice : _out)
-			for(auto& s : voice)
-			{
-				const TWord t = hi.readTX() & 0xffffff;
-				s = static_cast<int32_t>(t << 8) >> 8;
-			}
+		m_lastInstructions = m_dsp->getInstructionCounter() - start;
 		return true;
 	}
 }

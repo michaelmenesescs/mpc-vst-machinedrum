@@ -377,6 +377,16 @@ def parse_machines(path):
 
 
 MACHINES = parse_machines(sys.argv[2])
+# Every machine's bar and SYN grid is a component on every track page, and MPC builds all pages up front (memory and
+# UI lag grow with the component count: measured +590 MB in MPC with all 135). So machines that can't sound here get none
+# (a kit using one shows a blank bar and grid): MID/CTR (no audio), INP (no audio input), RAM (no sampling) and the
+# ROM slots the factory image leaves empty (ROM33-48).
+def drawn(m):
+    return m["group"] not in ("MID", "CTR", "INP", "RAM") and not (m["group"] == "ROM" and int(m["short"]) > 32)
+
+
+ALL_DRAWN = [m for m in MACHINES if drawn(m)]
+DRAWN_MACHINES = [] if args.get("nomach") else ALL_DRAWN   # nomach=1: an experiment - no per-machine images at all
 GROUP_TITLE = {"GND": "GND", "P-I": "P-I", "TRX": "TRX", "EFM": "EFM", "E12": "E12", "INP": "INP", "MID": "MID", "CTR": "CTR", "ROM": "ROM", "RAM": "RAM"}
 BAR_H, LOGO_X, LOGO_GAP, ARROW_GAP, ARROW_W, PAD_R = 26, 4, 6, 4, 5, 4
 
@@ -424,7 +434,7 @@ default_machine = next(m for m in MACHINES if m["id"] == PREVIEW_MACHINE)
 # The hardware's face (after a photo of the MD): a brushed-aluminium faceplate, a thin glossy black bezel around the edge,
 # and one big LCD inside it holding everything - the machine bar, the nameplate and the pages - with the backlight's
 # darker edges. Components only ever sit well inside it, where it's flat PAPER, so the strips' opaque backgrounds match.
-ALU_H, ALU_V, BEZEL_W = 18, 8, 12               # faceplate border (left/right, top/bottom) and bezel width (skin px)
+ALU_H, ALU_V, BEZEL_W = 8, 8, 12                # faceplate border (left/right, top/bottom) and bezel width (skin px)
 LCD_RECT = (ALU_H + BEZEL_W, ALU_V + BEZEL_W, SKIN_W - ALU_H - BEZEL_W, SKIN_H - ALU_V - BEZEL_W)
 LCD_PAD = 6                                     # the open picker also covers this much around the pages
 LCD_EDGE = 8                                    # the backlight's darkening towards the LCD's edge
@@ -622,7 +632,7 @@ for t in range(TRACKS):
     syn_keys = [tk("syn%d" % (k + 1)) for k in range(8)]
     cell_dials("SYN", SYN_ANY, syn_keys, t)
     sx, sy = page_origin("SYN")
-    for m in MACHINES:
+    for m in DRAWN_MACHINES:
         image_comp("SYN grid %s" % m["name"], syn_overlay(m), sx, sy + GRID_Y * S, LCD_W * S, (PAGE_LCD_H - GRID_Y) * S, t,
                    cond=enabling(tk("machine"), m["id"], NMACH))
     cell_touch("SYN", SYN_ANY, syn_keys, t)
@@ -637,7 +647,7 @@ for t in range(TRACKS):
     cell_touch("TRACK", LFO_CELLS, [tk(k) for k in LFO_KEYS], t)
 
     # machine bar, one image per machine, shown while it's the track's machine
-    for m in MACHINES:
+    for m in DRAWN_MACHINES:
         fn = "mb_%d.png" % m["id"]
         if not os.path.exists(os.path.join(SKIN, fn)):
             save_png("mb_%d" % m["id"], machine_bar(m))
@@ -653,7 +663,7 @@ pk_x, pk_y, pk_w, pk_h = pk_x - LCD_PAD, pk_y - LCD_PAD, pk_w + 2 * LCD_PAD, pk_
 COL_ROWS = 16
 # not offered: MID/CTR (no audio - MIDI/control machines), INP (no audio input into this instrument) and RAM (no sampling
 # here). Their bars stay, so a kit that uses one still shows it.
-PICK_MACHINES = [m for m in MACHINES if m["group"] not in ("MID", "CTR", "INP", "RAM")]
+PICK_MACHINES = ALL_DRAWN
 cols = []
 for m in PICK_MACHINES:
     col = next((c for c in cols if c["group"] == m["group"] and len(c["ms"]) < COL_ROWS), None)
@@ -737,15 +747,15 @@ mcv.dots_h(0, MW - 1, GRID_Y); mcv.dots_v(TRACKS * MCW, GRID_Y, PAGE_LCD_H - 1);
 mx0, my0 = page_origin("SYN")
 gbg = TRACK_CHASSIS.copy()
 gbg.paste(mcv.image(), (mx0, my0))
-GLOBAL_CELLS = [P("VOICES", default=127, fmt=lambda raw: str(1 + int(round(raw * 15 / 127.0)))),
-                P("RND ALL", "toggle"), P("RND 1-8", "toggle"), P("RND 9-16", "toggle"), P("RND KIT", "toggle")] + [P("") for _ in range(3)]
-GLOBAL_KEYS = ["max_voices", "randomize_all", "randomize_1_8", "randomize_9_16", "randomize_kit", None, None, None]
+GLOBAL_CELLS = [P("VOICES", default=59, fmt=lambda raw: str(1 + int(round(raw * 15 / 127.0)))),
+                P("RND ALL", "toggle"), P("RND 1-8", "toggle"), P("RND 9-16", "toggle"), P("RND KIT", "toggle"), P("ROM", "toggle", default=127)] + [P("") for _ in range(2)]
+GLOBAL_KEYS = ["max_voices", "randomize_all", "randomize_1_8", "randomize_9_16", "randomize_kit", "rom_enabled", None, None]
 gcv = page_canvas("ROUTE", GLOBAL_CELLS, "GLOBAL")
 gbg.paste(gcv.image(), page_origin("ROUTE"))
 gbg.paste(KITS_IMG, (kits_x, kits_y))
-for key_, pk_, x_, y_, w_, h_, img_ in KIT_ROWS:
-    place(key_, pk_, PIDX[pk_], x_, y_, w_, h_, GT, img=img_)
 image_comp("Background", save_png("bg_global", gbg), 0, 0, SKIN_W, SKIN_H, tab=GT)
+for key_, pk_, x_, y_, w_, h_, img_ in KIT_ROWS:   # after the background: later components draw (and take clicks) on top
+    place(key_, pk_, PIDX[pk_], x_, y_, w_, h_, GT, img=img_)
 # the bars: Monomodule's LEV strips (bar rows 1..7 of a 9-wide strip), in segments to keep each image short
 m_inner_y0, m_seg_n = mfy + 2, 3
 m_seg_h = (mfh - 4) // m_seg_n
@@ -778,7 +788,7 @@ tkey = "mdToggleTouch"
 defs[tkey] = ss._local(tkey, [ss._action("Mouse Down", "Q-Link"), ss._action("Enter Pressed", "Toggle Switch")],
                        [ss._focus(TOUCH_W, TOUCH_H), ss._button("clear.png", "clear.png", 1, 1, TOUCH_W, TOUCH_H)])
 gx0, gy0 = page_origin("ROUTE")
-for k_ in range(1, 5):
+for k_ in range(1, 6):   # the four randomise toggles, then ROM on/off (the only one that stays set)
     p_, key_p = GLOBAL_CELLS[k_], GLOBAL_KEYS[k_]
     imgs = {}
     for state, raw in (("on", 127), ("off", 0)):
@@ -788,7 +798,7 @@ for k_ in range(1, 5):
     key = "mdToggle_%s" % key_p
     defs[key] = ss._local(key, [], [ss._button(imgs["on"], imgs["off"], 1, 1, FR_W * S, FR_H * S)])
     place(key, p_.label, PIDX[key_p], gx0 + ((k_ % 4) * CW + FR_X) * S, gy0 + (GRID_Y + (k_ // 4) * CELL + FR_Y) * S, FR_W * S, FR_H * S,
-          GT, img=imgs["off"])
+          GT, img=imgs["on" if key_p == "rom_enabled" else "off"])
     place(tkey, "%s touch" % p_.label, PIDX[key_p], gx0 + ((k_ % 4) * CW + TOUCH_INSET) * S, gy0 + (GRID_Y + (k_ // 4) * CELL + TOUCH_INSET) * S,
           TOUCH_W, TOUCH_H, GT)
 
@@ -796,7 +806,7 @@ for k_ in range(1, 5):
 pages, qmap = [], []
 comp_bg = {"version": 1, "colour": "ff%02x%02x%02x" % PAPER, "image": ""}
 gsets = [("MIXER", ["track%d_level" % c for c in range(TRACKS)]),
-         ("GLOBAL", ["max_voices", "randomize_all", "randomize_1_8", "randomize_9_16", "randomize_kit"])]
+         ("GLOBAL", ["max_voices", "randomize_all", "randomize_1_8", "randomize_9_16", "randomize_kit", "rom_enabled"])]
 for sp, (title, keys) in enumerate(gsets):   # GLOBAL is the first tab
     ql = {"Q-Link %d" % (q + 1): -1 for q in range(16)}
     for s_, k in enumerate(keys):

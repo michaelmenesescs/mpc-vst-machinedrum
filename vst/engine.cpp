@@ -83,7 +83,7 @@ int chooseCore()
 
 constexpr int kFrames = 128;					// the host's block size
 constexpr int kInner = kFrames / Engine::kBlock;	// 32-sample engine blocks per host block
-constexpr int kRing = 4, kAhead = 2;
+constexpr int kRing = 4, kAhead = 2;	// 2 blocks (5.8 ms) rendered ahead: as low as it goes, latency matters for feel (a deeper ring rode out CPU spikes: x86 churn test 158 underruns at 2, 0 at 3+, the fallback if crackle returns)
 constexpr int kTracks = Engine::kTracks;
 constexpr int kBaseNote = 36;					// MPC/GM kick; note 36 = track 0, 37 = track 1, ...
 
@@ -115,12 +115,14 @@ constexpr int kSlotTrack = 0, kSlotsPerTrack = kSlotLfo + kNumLfo;	// machine, v
 constexpr int kSlotTempo = kSlotTrack + kTracks * kSlotsPerTrack;
 constexpr int kSlotMaxVoices = kSlotTempo + 1;
 constexpr int kSlotHostBpm = kSlotMaxVoices + 1;	// MPC's tempo x 100 (wrapper "lfo_bpm", vst.json HAS_LFO_BPM); 0 = none yet
-constexpr int kNumSlots = kSlotHostBpm + 1;
+constexpr int kSlotRomEnabled = kSlotHostBpm + 1;	// ROM machines on (1) / off (0)
+constexpr int kNumSlots = kSlotRomEnabled + 1;
 
 int slotOf(const char* key)
 {
 	if(!std::strcmp(key, "tempo")) return kSlotTempo;
 	if(!std::strcmp(key, "max_voices")) return kSlotMaxVoices;
+	if(!std::strcmp(key, "rom_enabled")) return kSlotRomEnabled;
 	int t = -1, consumed = 0;
 	if(std::sscanf(key, "track%d_machine%n", &t, &consumed) == 1 && key[consumed] == '\0' && t >= 0 && t < kTracks)
 		return kSlotTrack + t * kSlotsPerTrack + 0;
@@ -322,7 +324,7 @@ struct Inst
 	std::atomic<bool> synUntouched[kTracks][kNumSyn];
 	MachineTable machines;
 	std::atomic<bool> stop{false}, ready{false};
-	std::atomic<uint32_t> underruns{0}, blocks{0};
+	std::atomic<uint32_t> underruns{0}, blocks{0}, dutyNaps{0};
 	std::atomic<int> core{-1};
 
 	NoteEv notes[256];
@@ -338,6 +340,8 @@ struct Inst
 	std::vector<std::string> kitDirs;
 	std::string bankName;
 	int kitIdx = -1;
+	std::chrono::steady_clock::time_point born = std::chrono::steady_clock::now();
+	bool defaultKitDone = false;
 	int snap[kNumSlots] = {};	// the loaded kit's values, to show "modified"
 
 	Inst()
@@ -345,7 +349,8 @@ struct Inst
 		for(auto& p : param) p.store(0);
 		for(auto& t : synUntouched) for(auto& u : t) u.store(true);
 		param[kSlotTempo].store(120);
-		param[kSlotMaxVoices].store(kTracks);
+		param[kSlotRomEnabled].store(1);
+		param[kSlotMaxVoices].store(8);	// the VOICES knob's default (gen_params.py): a cost budget, ROM voices count double
 		// Matches gen_params.py's declared defaults: the host normally pushes these via set_param right
 		// after create(), but this is what plays if render() is called before that (or from a host that
 		// doesn't restore params on creation).
@@ -433,6 +438,18 @@ struct Inst
 		kitIdx = _idx;
 		for(int i = 0; i < kSlotTempo; ++i) snap[i] = param[i].load(std::memory_order_relaxed);
 	}
+	// A fresh instance plays the first kit instead of eight empty tracks. The host pushes every param right after
+	// create (a restored project's values too), so "fresh" = the catalog is up, a moment has passed, and every track
+	// is still on GND-- (a restored project or a kit the user already picked always changes that). Host thread only.
+	void maybeDefaultKit()
+	{
+		if(defaultKitDone || !cat.load() || std::chrono::steady_clock::now() - born < std::chrono::milliseconds(1500)) return;
+		defaultKitDone = true;
+		if(kitIdx >= 0) return;
+		for(int t = 0; t < kTracks; ++t)
+			if(param[kSlotTrack + t * kSlotsPerTrack].load(std::memory_order_relaxed) != 0) return;
+		loadKit(0);
+	}
 	std::string kitLabel() const
 	{
 		const auto list = kitsInBank();
@@ -447,7 +464,7 @@ struct Inst
 	{
 		std::vector<int> pool;
 		for(int id = 0; id < 256; ++id)
-			if((randomPoolMachine(id) || (romSlotOf(id) >= 0 && romSlot[romSlotOf(id)])) && machines.valid[id]) pool.push_back(id);
+			if((randomPoolMachine(id) || (param[kSlotRomEnabled].load() && romSlotOf(id) >= 0 && romSlot[romSlotOf(id)])) && machines.valid[id]) pool.push_back(id);
 		if(pool.empty()) return;
 		for(int t = _first; t <= _last; ++t) setMachine(t, pool[static_cast<size_t>(std::rand()) % pool.size()]);
 	}
@@ -505,7 +522,7 @@ void Inst::run()
 		}
 
 		int appliedTempo = -1, appliedMaxVoices = -1;
-		int appliedMachine[kTracks], appliedVol[kTracks], appliedPan[kTracks];
+		int appliedMachine[kTracks], appliedEff[kTracks], appliedVol[kTracks], appliedPan[kTracks];
 		int appliedFx[kTracks][kNumFx];
 		int appliedRoute[kTracks][kNumRoute];
 		int appliedSyn[kTracks][kNumSyn];
@@ -513,14 +530,28 @@ void Inst::run()
 		int appliedLfo[kTracks][kNumLfo];
 		for(int t = 0; t < kTracks; ++t)
 		{
-			appliedMachine[t] = appliedVol[t] = appliedPan[t] = appliedLevel[t] = -1;
+			appliedMachine[t] = appliedEff[t] = appliedVol[t] = appliedPan[t] = appliedLevel[t] = -1;
 			for(int i = 0; i < kNumFx; ++i) appliedFx[t][i] = -1;
 			for(int i = 0; i < kNumRoute; ++i) appliedRoute[t][i] = -1;
 			for(int i = 0; i < kNumSyn; ++i) appliedSyn[t][i] = -1;
 			for(int i = 0; i < kNumLfo; ++i) appliedLfo[t][i] = -1;
 		}
 
+		// Duty cap: this thread runs at a real-time priority (else it is starved and glitches), and overloaded it never
+		// sleeps - it would keep its core 100% busy and starve MPC's own normal-priority threads on it, one of which can
+		// hold a lock the UI thread waits for: the whole MPC froze (measured 2026-09-29: this thread at 100% of core 2,
+		// mean 4.4 ms per 2.9 ms block, MPC's main thread blocked on that lock until this thread was demoted). So over a
+		// ~30 ms window it may use at most kMaxDuty of its core's CPU time; the rest of the window it sleeps. An
+		// overload then costs it dropped blocks (crackle, counted as underruns), never MPC's UI.
+		const double kMaxDuty = std::getenv("MD_DUTY") ? std::atof(std::getenv("MD_DUTY")) : 0.7;	// MD_DUTY: test override
+		auto cpuNow = [] { timespec ts; clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts); return ts.tv_sec * 1e6 + ts.tv_nsec / 1e3; };
+		double winCpu0 = cpuNow();
+		auto winWall0 = std::chrono::steady_clock::now();
 		Engine::Output out;
+		const bool statsOn = std::getenv("MD_STATS") != nullptr || access("/tmp/md-stats-on", F_OK) == 0;
+		auto statT = std::chrono::steady_clock::now(), lastEnd = statT;
+		double worstUs = 0, sumUs = 0, worstGap = 0;
+		int nUs = 0;
 		ready.store(true);
 
 		while(!stop.load(std::memory_order_acquire))
@@ -545,6 +576,7 @@ void Inst::run()
 				if(m != appliedMachine[t])
 				{
 					appliedMachine[t] = m;
+					appliedEff[t] = -1;	// the machine just applied is the real one: the ROM on/off swap below runs again
 					h.setMachine(t, static_cast<uint8_t>(m));	// raw SYN1-8 = the machine's defaults
 					for(int i = 0; i < kNumSyn; ++i)
 					{
@@ -553,6 +585,18 @@ void Inst::run()
 						if(synUntouched[t][i].exchange(false))
 							param[kSlotTrack + t * kSlotsPerTrack + kSlotSyn + i].store(h.param(t, i));
 						appliedSyn[t][i] = -1;
+					}
+				}
+				{
+					// ROM machines off: the track plays the empty machine instead (its own setting is kept). The SYN values are
+					// re-applied over the swapped machine's defaults, so switching back finds them as they were.
+					const bool romOff = param[kSlotRomEnabled].load(std::memory_order_relaxed) == 0;
+					const int eff = romOff && romSlotOf(m) >= 0 ? 0 : m;
+					if(eff != appliedEff[t])
+					{
+						appliedEff[t] = eff;
+						h.setMachine(t, static_cast<uint8_t>(eff));
+						for(int i = 0; i < kNumSyn; ++i) appliedSyn[t][i] = -1;
 					}
 				}
 				const int vol = std::clamp(param[kSlotTrack + t * kSlotsPerTrack + 1].load(std::memory_order_relaxed), 0, 127);
@@ -601,6 +645,7 @@ void Inst::run()
 			nRead.store(r, std::memory_order_release);
 
 			int16_t* dst = ring[w % kRing];
+			const auto t0 = std::chrono::steady_clock::now();
 			for(int i = 0; i < kInner; ++i)
 			{
 				if(!eng.render(out))
@@ -618,6 +663,41 @@ void Inst::run()
 			}
 			rWrite.store(w + 1, std::memory_order_release);
 			blocks.fetch_add(1, std::memory_order_relaxed);
+			{
+				const auto wn = std::chrono::steady_clock::now();
+				const double wall = std::chrono::duration<double, std::micro>(wn - winWall0).count();
+				if(wall >= 30000)
+				{
+					const double cpu = cpuNow() - winCpu0;
+					if(cpu > kMaxDuty * wall)
+					{
+						const double nap = std::min(cpu / kMaxDuty - wall, 20000.0);	// us
+						timespec ts{0, static_cast<long>(nap * 1000)};
+						nanosleep(&ts, nullptr);
+						dutyNaps.fetch_add(1, std::memory_order_relaxed);
+					}
+					winCpu0 = cpuNow();
+					winWall0 = std::chrono::steady_clock::now();
+				}
+			}
+			if(statsOn)	// MD_STATS=1 or a /tmp/md-stats-on file: once a second, /tmp/md-stats.<pid> = underruns, worst/mean render us, worst gap between blocks
+			{
+				const auto t1 = std::chrono::steady_clock::now();
+				const double us = std::chrono::duration<double, std::micro>(t1 - t0).count();
+				const double gap = std::chrono::duration<double, std::micro>(t1 - lastEnd).count();
+				lastEnd = t1;
+				worstUs = std::max(worstUs, us); sumUs += us; ++nUs; worstGap = std::max(worstGap, gap);
+				if(t1 - statT >= std::chrono::seconds(1))
+				{
+					statT = t1;
+					if(FILE* f = std::fopen(("/tmp/md-stats." + std::to_string(getpid())).c_str(), "a"))
+					{
+						std::fprintf(f, "underruns=%u naps=%u worst_us=%.0f mean_us=%.0f worst_gap_us=%.0f\n", underruns.load(), dutyNaps.load(), worstUs, sumUs / std::max(1, nUs), worstGap);
+						std::fclose(f);
+					}
+					worstUs = sumUs = worstGap = 0; nUs = 0;
+				}
+			}
 		}
 	}
 	catch(const std::exception& e)
@@ -686,6 +766,7 @@ void eMidi(void* p, const uint8_t* msg, int len)
 void eSet(void* p, const char* key, const char* val)
 {
 	auto* in = static_cast<Inst*>(p);
+	in->maybeDefaultKit();
 	if(!std::strcmp(key, "lfo_bpm"))
 	{
 		in->param[kSlotHostBpm].store(static_cast<int>(std::lround(std::atof(val) * 100.0)), std::memory_order_relaxed);
@@ -722,6 +803,7 @@ void eSet(void* p, const char* key, const char* val)
 int eGet(void* p, const char* key, char* buf, int bufLen)
 {
 	auto* in = static_cast<Inst*>(p);
+	in->maybeDefaultKit();
 	if(!std::strcmp(key, "kit_name")) return std::snprintf(buf, static_cast<size_t>(bufLen), "%s", in->kitLabel().c_str()) > 0;
 	if(!std::strcmp(key, "bank_name")) return std::snprintf(buf, static_cast<size_t>(bufLen), "%s", in->bankLabel().c_str()) > 0;
 	if(!std::strncmp(key, "kit_", 4) || !std::strncmp(key, "bank_", 5) || !std::strncmp(key, "randomize_", 10))

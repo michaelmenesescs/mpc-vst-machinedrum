@@ -44,7 +44,10 @@ namespace md::engine
 		// real MD behavior, which always runs all 16 track slots, but a performance safety valve for patterns
 		// that never actually need all 16 at once). Default kTracks = disabled (every track its own voice, as
 		// on real hardware). 1-kTracks; out-of-range clamps.
-		void setMaxActiveVoices(int _n) { m_maxActive = std::clamp(_n, 1, kTracks); }
+		// The voice budget, in units: most machines cost 1 and the ROM (sample) machines 2, after what one voice costs the
+		// voice DSP on the Force (measured: ROM +397 us, the others +213 us on average per 128-frame block).
+		void setMaxActiveVoices(int _n) { m_maxActive = std::clamp(_n, 1, kTracks * 2); }
+		static int voiceCost(const uint8_t _machine) { return (_machine >= 128 && _machine < 160) || (_machine >= 176 && _machine < 192) ? 2 : 1; }
 		int maxActiveVoices() const { return m_maxActive; }
 
 		// Track level (kit LEV, 0-127; smoothed by the OS's level slew $100029e), mute, output routing
@@ -72,6 +75,10 @@ namespace md::engine
 
 		// Render one 32-sample block of the 16 voices (runs a tick first when due).
 		bool renderBlock(typename TVoices::Block& _out);
+
+		// Optional stage timing (microseconds, accumulated): the OS tick + trigger updates, and the voice DSP.
+		bool timingOn = false;
+		double tickUs = 0, dspUs = 0, voiceLoopUs = 0, osCallsUs = 0;	// tickUs = voiceLoopUs (machine functions) + osCallsUs (smoothing, LFOs) + pokes
 		void tick();
 		void updateVoice(int _track);	// machine function on the voice's current array -> voice slot
 		void updateMixer(int _track);	// the track's DSP1 words from its current array, level and velocity
@@ -97,7 +104,7 @@ namespace md::engine
 		int m_blocksPerTick = 11;
 		int m_blockCount = 0;
 		uint32_t m_tickCount = 0;
-		int m_maxActive = kTracks;
-		std::vector<int> m_activeOrder;	// least- to most-recently-triggered; only used when m_maxActive < kTracks
+		int m_maxActive = kTracks * 2;
+		std::vector<int> m_activeOrder;	// least- to most-recently-triggered
 	};
 }

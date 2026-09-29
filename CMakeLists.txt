@@ -30,6 +30,12 @@ target_link_libraries(mdcore PUBLIC dsp56kEmu 68kEmu)
 # mdmachine: lists the OS's machine table (names, SYN labels) - the skin generator's input (tools/mdskin)
 add_executable(mdmachine tools/mdmachine/mdmachine.cpp)
 target_link_libraries(mdmachine PRIVATE mdcore pthread)
+# mdcost: per-machine cost of one playing voice (instructions and wall time), for the Force
+add_executable(md-cost tools/mdcost/mdcost.cpp)
+target_link_libraries(md-cost PRIVATE mdcore pthread dl)
+# mdhash: an audio hash of a fixed pattern, to compare builds
+add_executable(md-hash tools/mdhash/mdhash.cpp)
+target_link_libraries(md-hash PRIVATE mdcore pthread dl)
 # mdsamples: extracts the ROM machines' sample memory from a dump of the emulated MD's voice DSP (tools/mdkits)
 add_executable(mdsamples tools/mdkits/mdsamples.cpp)
 target_link_libraries(mdsamples PRIVATE mdcore pthread)

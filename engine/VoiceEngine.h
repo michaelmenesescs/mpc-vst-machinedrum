@@ -53,6 +53,7 @@ namespace md::engine
 		void loadImage(const fw::DspImage& _img);
 		void installHarness();
 		bool runUntilTx(size_t _words, uint64_t _maxInstructions);
+		bool readBlock(Block& _out, uint64_t _maxInstructions);
 
 		const fw::Firmware& m_fw;
 		std::unique_ptr<dsp56k::DefaultMemoryValidator> m_validator;

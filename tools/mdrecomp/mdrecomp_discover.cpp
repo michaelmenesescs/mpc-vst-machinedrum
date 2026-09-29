@@ -10,6 +10,7 @@
 // the same recomp_gen2.py.
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <map>
 #include <random>
 #include <set>
@@ -105,13 +106,32 @@ namespace
 
 int main(int argc, char** argv)
 {
-	if(argc < 3) { std::fprintf(stderr, "usage: mdrecomp-discover <os.syx> <out.txt>\n"); return 2; }
+	if(argc < 3) { std::fprintf(stderr, "usage: mdrecomp-discover <os.syx> <out.txt> [ROM_SAMPLES.bin]\n"); return 2; }
 	try
 	{
 		const auto fwv = md::fw::loadFirmware(argv[1]);
 		auto c = md::fw::parseContainer(md::fw::parseSysex(md::fw::readFile(argv[1])));
 		md::engine::MachineRunner os(std::move(c.sections.at(0).data));
 		md::engine::VoiceEngine eng(fwv);
+		// The ROM machines' sample memory (ROM_SAMPLES.bin, tools/mdkits): without it their playback code never runs, so the
+		// recompiler would leave it on the slow interpreter (on the Force ROM tracks were the most expensive, 2026-09-29).
+		if(argc > 3)
+			if(std::FILE* rf = std::fopen(argv[3], "rb"))
+			{
+				char magic[4] = {};
+				if(std::fread(magic, 1, 4, rf) == 4 && !std::memcmp(magic, "MDS1", 4))
+				{
+					std::vector<uint32_t> words;
+					uint32_t head[2];
+					while(std::fread(head, 4, 2, rf) == 2 && head[1] > 0 && head[1] < 0x800000)
+					{
+						words.resize(head[1]);
+						if(std::fread(words.data(), 4, head[1], rf) != head[1]) break;
+						eng.writeP(head[0], words.data(), words.size());
+					}
+				}
+				std::fclose(rf);
+			}
 		using md::engine::VoiceEngine;
 		DSP::s_recompTraceHook = &hook;
 
