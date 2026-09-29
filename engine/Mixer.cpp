@@ -9,6 +9,11 @@ namespace md::engine
 {
 	using namespace d56;
 
+	int32_t Mixer::solo(const int32_t _sample, const uint32_t _volWord)
+	{
+		return lim(asl(mpy(_sample, sx24(_volWord)), 4));
+	}
+
 	int Mixer::frameChannel(const int _route)
 	{
 		// P:$2c2-$2cb: base + 6, minus 4 when bit 0 is clear, minus route / 2 (a fraction borrows)

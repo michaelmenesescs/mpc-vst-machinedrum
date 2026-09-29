@@ -62,6 +62,13 @@ if(MPC_VST_DIR)
   set_target_properties(machinedrum_one PROPERTIES PREFIX "" C_VISIBILITY_PRESET hidden CXX_VISIBILITY_PRESET hidden)
   target_link_options(machinedrum_one PRIVATE -Wl,--no-undefined,--exclude-libs,ALL,-Bsymbolic -static-libstdc++ -static-libgcc)
 
+  # machinedrum_tap: one track or send of the Machinedrum Module in the same process, mono, for MPC's own mixer (vst/tap)
+  add_library(machinedrum_tap SHARED vst/tap/tap_engine.cpp "${MPC_VST_DIR}/wrapper/vst2_wrap.c")
+  target_include_directories(machinedrum_tap PRIVATE "${MPC_VST_DIR}/wrapper" "${CMAKE_CURRENT_SOURCE_DIR}/vst/tap/build" "${CMAKE_CURRENT_SOURCE_DIR}/vst")
+  target_link_libraries(machinedrum_tap PRIVATE dl)
+  set_target_properties(machinedrum_tap PROPERTIES PREFIX "" C_VISIBILITY_PRESET hidden CXX_VISIBILITY_PRESET hidden)
+  target_link_options(machinedrum_tap PRIVATE -Wl,--no-undefined,--exclude-libs,ALL,-Bsymbolic -static-libstdc++ -static-libgcc)
+
   add_executable(md-vst-smoke vst/smoke.cpp vst/engine.cpp)
   target_include_directories(md-vst-smoke PRIVATE "${MPC_VST_DIR}/wrapper" "${CMAKE_CURRENT_SOURCE_DIR}/vst/build")
   target_link_libraries(md-vst-smoke PRIVATE mdcore pthread)

@@ -35,6 +35,10 @@ namespace md::engine
 
 		static int frameChannel(int _route);
 
+		// One track on its own (no pan, no sends): the individual-output formula, sample x VOL << 4 limited (24-bit).
+		// _volWord: the track's mix word 1 (HostModel::MixerInput::mix[1]).
+		static int32_t solo(int32_t _sample, uint32_t _volWord);
+
 	private:
 		const TrackFx::Tables& m_t;
 	};

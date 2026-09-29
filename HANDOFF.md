@@ -1449,3 +1449,15 @@ Open, in the order I would take them:
   fixed order: a shared engine must be producer/consumer (the existing engine thread + ring already is), taps read their own read
   pointer, never drive the engine from a callback. Design sketch: primary instance (lowest live id, hands over on close) owns engine +
   MIDI; tap instances pick a source (track 1-16 mono-as-stereo, reverb send, delay send, main) and read it from the shared ring.
+- **2026-09-30: "Machinedrum Tap" works on the Force (user-tested: routing a track to its own MPC track).** Built, not yet committed:
+  `vst/tap_shared.h` (state shared in-process), `vst/tap/` (tap_engine.cpp, vst.json uid `MdTp`, params.json: one `source` choice:
+  Off, Track 1-16, Reverb send, Delay send), primary changes in `vst/engine.cpp` (first Inst to claim `g_tap.owner` publishes each track's
+  mono signal = `Mixer::solo` (sample x VOL << 4, no pan) plus rev/del stereo into an 8-slot ring per 128-frame block; a track with a
+  tap is routed to individual out 0 so it leaves the main mix; `md_tap_shared()` exported), `Mixer::solo`, CMake target
+  `machinedrum_tap`, `build_so.sh` builds and strips both. The tap finds the primary with `dlopen(<own dir>/machinedrum_one.so, RTLD_NOLOAD)`
+  + `dlsym`, so both .so must be in the same folder (/sdcard/vst) and the primary loaded first. Registered on the device by hand
+  (`MPC.settings` backup `.bak-tap`); the old `MultiOut Spike` entry (poc/multiout.c, now holding poc/shared.c) is still registered.
+  **Open:** (1) tap skin/layout (plain MPC param screen now); (2) tap-to-primary offset is +-1 block (2.9 ms) by call order, check for
+  phasing between a tap and the main mix; (3) sends: tapped tracks have no REV/DEL send (individual routes carry none), the send taps
+  carry only untapped main-routed tracks; (4) installer/release: ship the tap .so and its plugin-list entry (release/build_release.sh,
+  catalog manifest); (5) remove the two spike entries from MPC.settings; (6) README section; (7) two primaries: the second does not publish.
