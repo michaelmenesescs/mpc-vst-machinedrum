@@ -110,7 +110,7 @@ std::vector<int> rankCores()
 constexpr int kDefaultGroups = 2;	// DSP2 instances (voice threads); 1 = single thread
 constexpr int kFrames = 128;					// the host's block size
 constexpr int kInner = kFrames / Engine::kBlock;	// 32-sample engine blocks per host block
-constexpr int kRing = 4, kAheadDefault = 3;	// blocks rendered ahead: 3 (8.7 ms) rides out the 7-8 ms stalls seen on the Force with 2 voice threads (2 = 5.8 ms glitched on a busy E12 kit); /tmp/md-ahead overrides
+constexpr int kRing = 5, kAheadDefault = 3;	// blocks rendered ahead: 3 (8.7 ms) rides out the 7-8 ms stalls seen on the Force with 2 voice threads (2 = 5.8 ms glitched on a busy E12 kit); /tmp/md-ahead overrides
 constexpr int kTracks = Engine::kTracks;
 constexpr int kBaseNote = 36;					// MPC/GM kick; note 36 = track 0, 37 = track 1, ...
 
@@ -377,7 +377,7 @@ struct Inst
 		for(auto& p : param) p.store(0);
 		for(auto& t : synUntouched) for(auto& u : t) u.store(true);
 		param[kSlotTempo].store(120);
-		param[kSlotRomEnabled].store(1);
+		param[kSlotRomEnabled].store(0);
 		param[kSlotMaxVoices].store(5);	// the VOICES knob's default (gen_params.py): a cost budget, ROM voices count double
 		// Matches gen_params.py's declared defaults: the host normally pushes these via set_param right
 		// after create(), but this is what plays if render() is called before that (or from a host that
@@ -608,7 +608,13 @@ void Inst::run()
 		// mean 4.4 ms per 2.9 ms block, MPC's main thread blocked on that lock until this thread was demoted). So over a
 		// ~30 ms window it may use at most kMaxDuty of its core's CPU time; the rest of the window it sleeps. An
 		// overload then costs it dropped blocks (crackle, counted as underruns), never MPC's UI.
-		const double kMaxDuty = std::getenv("MD_DUTY") ? std::atof(std::getenv("MD_DUTY")) : 0.7;	// MD_DUTY: test override
+		double kMaxDuty = std::getenv("MD_DUTY") ? std::atof(std::getenv("MD_DUTY")) : 0.95;	// MD_DUTY: test override
+		if(std::FILE* df = std::fopen("/tmp/md-duty", "r"))	// same on the device without env: echo 0.95 > /tmp/md-duty, re-insert
+		{
+			double d = 0;
+			if(std::fscanf(df, "%lf", &d) == 1 && d >= 0.3 && d <= 1.0) kMaxDuty = d;
+			std::fclose(df);
+		}
 		auto cpuNow = [] { timespec ts; clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts); return ts.tv_sec * 1e6 + ts.tv_nsec / 1e3; };
 		double winCpu0 = cpuNow();
 		auto winWall0 = std::chrono::steady_clock::now();

@@ -1387,3 +1387,7 @@ Open, in the order I would take them:
   - **Force capacity, TRX kit, MPC busy:** ~600-900 us per sounding voice, and each group has a fixed ~300-600 us (idle voice
     loop + wake), so 2 groups give ~4 voices without crackle, not 8. Latest run: 6 voices, g0 4 voices 2.98 ms, g1 2 voices
     1.86 ms per block, still 3.9 ms mean, underruns ~90/s. The lever left is the per-voice cost itself (the recompiled DSP).
+  - **Duty cap default 0.95 (was 0.7), user-tested on the Force:** at 0.7 the main thread (2.7 ms of a 2.9 ms block) hit the cap
+    ~25x/s and the naps caused the glitching. With the cap off and 2 threads, TRX kit: budget 3-5 clean (0-6 underruns per
+    10-40 s), budget 6 not (~300 underruns, mean 3.0 ms). Shipped defaults: VOICES 5, ring lead 3 (4 also fine: 11.6 ms,
+    ring is 5 slots), ROM off. Device overrides: `/tmp/md-groups`, `/tmp/md-ahead`, `/tmp/md-duty`.

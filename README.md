@@ -26,7 +26,7 @@ needs your own Machinedrum OS 1.63 file and a flash image (see [What you need](#
   `.syx` you drop in (see [Kits](#kits)). A new instance starts on the first kit.
 - **GLOBAL tab:** a 16-track level mixer, the voice budget, randomise (machines on all, tracks 1-8 or tracks 9-16,
   or a random kit) and the bank and kit selectors.
-- **ROM on/off switch** (GLOBAL tab). Off, tracks on a ROM (sample) machine stay silent and the randomiser leaves ROM
+- **ROM on/off switch** (GLOBAL tab, off by default). Off, tracks on a ROM (sample) machine stay silent and the randomiser leaves ROM
   machines out; each track keeps its ROM setting for when you switch back. ROM machines are the most expensive on the
   Force's CPU, so this is the quickest way to make a busy kit safe.
 - **Voice budget, default 5.** The VOICES knob on GLOBAL is a CPU budget, not a plain voice count. Most machines cost
@@ -42,11 +42,11 @@ needs your own Machinedrum OS 1.63 file and a flash image (see [What you need](#
 
 - **Master effects:** the reverb and delay sends are computed but no effect consumes them, so REV and DEL do nothing.
   The master section (rhythm echo, gate box/reverb, EQ, dynamix) is the next big piece.
-- **CPU.** About 4-5 voices can sound at once on one Force core: a machine costs roughly 0.3-0.8 ms of a 2.9 ms audio
-  block depending on how busy MPC is (the ROM, P-I and EFM machines cost the most), and track effects add about 0.1 ms per
-  playing track. A dense 16-track pattern is beyond what one core does in real time on the Force; the voice budget is the
-  guard. The engine thread runs below MPC's own audio threads and is capped to a share of its core, so overload drops the
-  plugin's own blocks (crackle) rather than MPC's audio or its screen.
+- **CPU.** The voices render on two threads (two cores) and the track effects run on the same threads. About 5 voices can sound
+  at once on a Force with MPC busy: a voice costs roughly 0.3-0.9 ms of a 2.9 ms audio block depending on the machine (ROM, P-I
+  and EFM cost the most) and on how busy MPC is. Beyond that the plugin crackles, so the voice budget (default 5) is the guard:
+  it cuts the oldest sounding track, tail included, when a new one would go past it. The engine threads run below MPC's own
+  audio threads, so overload drops the plugin's own blocks (crackle) rather than MPC's audio or its screen.
 - **First load is slower** than later ones (the skin is large: MPC reads and decodes it from the card).
 - **ROM machines** are silent unless the sample data was extracted at build time (it is, if you build with your
   flash image). ROM33-48 are empty on the factory image.

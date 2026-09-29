@@ -108,7 +108,7 @@ for key, name in (("randomize_all", "Randomise Machines"), ("randomize_1_8", "Ra
 
 # ROM machines on/off (appended, like every later param, to keep the indices of saved projects). Off: tracks on a ROM
 # machine stay silent (engine.cpp swaps in the empty machine; the track keeps its ROM setting for when it is back on).
-params.append({"key": "rom_enabled", "name": "ROM Machines", "options": ["OFF", "ON"], "default": 1})
+params.append({"key": "rom_enabled", "name": "ROM Machines", "options": ["OFF", "ON"], "default": 0})
 
 json.dump({"name": "Machinedrum Module", "params": params,
            "sections": [{"label": l, "keys": k} for l, k in sections]},

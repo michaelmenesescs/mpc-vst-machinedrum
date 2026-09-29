@@ -750,7 +750,7 @@ mx0, my0 = page_origin("SYN")
 gbg = TRACK_CHASSIS.copy()
 gbg.paste(mcv.image(), (mx0, my0))
 GLOBAL_CELLS = [P("VOICES", default=34, fmt=lambda raw: str(1 + int(round(raw * 15 / 127.0)))),
-                P("RND ALL", "toggle"), P("RND 1-8", "toggle"), P("RND 9-16", "toggle"), P("RND KIT", "toggle"), P("ROM", "toggle", default=127)] + [P("") for _ in range(2)]
+                P("RND ALL", "toggle"), P("RND 1-8", "toggle"), P("RND 9-16", "toggle"), P("RND KIT", "toggle"), P("ROM", "toggle", default=0)] + [P("") for _ in range(2)]
 GLOBAL_KEYS = ["max_voices", "randomize_all", "randomize_1_8", "randomize_9_16", "randomize_kit", "rom_enabled", None, None]
 gcv = page_canvas("ROUTE", GLOBAL_CELLS, "GLOBAL")
 gbg.paste(gcv.image(), page_origin("ROUTE"))
@@ -800,7 +800,7 @@ for k_ in range(1, 6):   # the four randomise toggles, then ROM on/off (the only
     key = "mdToggle_%s" % key_p
     defs[key] = ss._local(key, [], [ss._button(imgs["on"], imgs["off"], 1, 1, FR_W * S, FR_H * S)])
     place(key, p_.label, PIDX[key_p], gx0 + ((k_ % 4) * CW + FR_X) * S, gy0 + (GRID_Y + (k_ // 4) * CELL + FR_Y) * S, FR_W * S, FR_H * S,
-          GT, img=imgs["on" if key_p == "rom_enabled" else "off"])
+          GT, img=imgs["off"])
     place(tkey, "%s touch" % p_.label, PIDX[key_p], gx0 + ((k_ % 4) * CW + TOUCH_INSET) * S, gy0 + (GRID_Y + (k_ // 4) * CELL + TOUCH_INSET) * S,
           TOUCH_W, TOUCH_H, GT)
 
