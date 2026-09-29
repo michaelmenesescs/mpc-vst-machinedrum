@@ -50,7 +50,7 @@ needs your own Machinedrum OS 1.63 file and a flash image (see [What you need](#
 - **First load is slower** than later ones (the skin is large: MPC reads and decodes it from the card).
 - **ROM machines** are silent unless the sample data was extracted at build time (it is, if you build with your
   flash image). ROM33-48 are empty on the factory image.
-- **Latency:** the engine renders 2 blocks (5.8 ms) ahead, the lowest it goes; if crackle returns on a heavy kit a deeper ring rides out CPU spikes at the cost of a few ms.
+- **Latency:** the engine renders 3 blocks (8.7 ms) ahead, which rides out the stalls MPC's own audio threads cause on a busy kit; 2 (5.8 ms) is lower but crackled on the Force.
 - Bank and kit are chosen with the arrows for now; a picker list like the machine one is planned for the next
   version.
 

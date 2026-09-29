@@ -84,7 +84,7 @@ int chooseCore()
 constexpr int kDefaultGroups = 2;	// DSP2 instances (voice threads); 1 = single thread
 constexpr int kFrames = 128;					// the host's block size
 constexpr int kInner = kFrames / Engine::kBlock;	// 32-sample engine blocks per host block
-constexpr int kRing = 4, kAhead = 2;	// 2 blocks (5.8 ms) rendered ahead: as low as it goes, latency matters for feel (a deeper ring rode out CPU spikes: x86 churn test 158 underruns at 2, 0 at 3+, the fallback if crackle returns)
+constexpr int kRing = 4, kAheadDefault = 3;	// blocks rendered ahead: 3 (8.7 ms) rides out the 7-8 ms stalls seen on the Force with 2 voice threads (2 = 5.8 ms glitched on a busy E12 kit); /tmp/md-ahead overrides
 constexpr int kTracks = Engine::kTracks;
 constexpr int kBaseNote = 36;					// MPC/GM kick; note 36 = track 0, 37 = track 1, ...
 
@@ -553,6 +553,13 @@ void Inst::run()
 			}
 		});
 
+		int ahead = kAheadDefault;	// blocks rendered ahead of the host: /tmp/md-ahead (1-3) overrides, for A/B on the device
+		if(std::FILE* af = std::fopen("/tmp/md-ahead", "r"))
+		{
+			int a = 0;
+			if(std::fscanf(af, "%d", &a) == 1) ahead = std::clamp(a, 1, kRing - 1);
+			std::fclose(af);
+		}
 		int appliedTempo = -1, appliedMaxVoices = -1;
 		int appliedMachine[kTracks], appliedEff[kTracks], appliedVol[kTracks], appliedPan[kTracks];
 		int appliedFx[kTracks][kNumFx];
@@ -591,7 +598,7 @@ void Inst::run()
 		while(!stop.load(std::memory_order_acquire))
 		{
 			const uint32_t w = rWrite.load(std::memory_order_relaxed);
-			if(int32_t(w - rRead.load(std::memory_order_acquire)) >= kAhead)
+			if(int32_t(w - rRead.load(std::memory_order_acquire)) >= ahead)
 			{
 				struct timespec ts{0, 400000};
 				nanosleep(&ts, nullptr);

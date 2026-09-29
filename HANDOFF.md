@@ -1371,3 +1371,5 @@ Open, in the order I would take them:
     after its voices render, no extra latency). Still bit-exact (same md-hash for 1/2/4 groups). On the Force, E12 kit, ROM on,
     5 voices: 1 group ~3.5 ms/block and ~65 underruns/s; 2 groups with serial FX ~2.5 ms, ~35/s; 2 groups with FX split
     **1.9 ms mean, worst ~5 ms, underruns flat (no new ones)**. A/B on the device: `echo N > /tmp/md-groups`, re-insert the plugin.
+  - **Ring lead default 3 blocks (8.7 ms)**, user-confirmed on the Force: block gaps reach 7-8.5 ms, 2 blocks (5.8 ms) glitched.
+    `/tmp/md-ahead` (1-3) overrides for A/B, like `/tmp/md-groups` (voice threads 1-4, default 2).
