@@ -480,6 +480,12 @@ void Inst::run()
 		auto c = md::fw::parseContainer(md::fw::parseSysex(md::fw::readFile(osPath)));
 		int groups = kDefaultGroups;
 		if(const char* e = std::getenv("MD_GROUPS")) groups = std::atoi(e);
+		if(std::FILE* gf = std::fopen("/tmp/md-groups", "r"))	// A/B on the device without env: echo 1 > /tmp/md-groups, re-insert the plugin
+		{
+			int g = 0;
+			if(std::fscanf(gf, "%d", &g) == 1) groups = g;
+			std::fclose(gf);
+		}
 		Engine eng(fwv, std::move(c.sections.at(0).data), std::clamp(groups, 1, 4));
 		auto& h = eng.host();
 		// ROM machines: their samples, if the installer put the extracted sample memory in place

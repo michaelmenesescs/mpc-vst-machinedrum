@@ -1367,3 +1367,7 @@ Open, in the order I would take them:
   - Force, offline `md-hash` (12 s, dense 16-track pattern, MPC running): 1 group 42 s, 2 groups 30 s, 3 groups 30 s.
     So 2 groups is about 1.4x; a third adds nothing (voice `v % n` assignment is static, and MPC uses the other cores).
     Memory: each group is its own DSP2 instance (its own P memory). **Not yet run inside MPC** (needs an MPC restart).
+  - **Track effects on the group threads** (Engine::fxTrack, one TrackFx per group; tracks run on their voice's group thread right
+    after its voices render, no extra latency). Still bit-exact (same md-hash for 1/2/4 groups). On the Force, E12 kit, ROM on,
+    5 voices: 1 group ~3.5 ms/block and ~65 underruns/s; 2 groups with serial FX ~2.5 ms, ~35/s; 2 groups with FX split
+    **1.9 ms mean, worst ~5 ms, underruns flat (no new ones)**. A/B on the device: `echo N > /tmp/md-groups`, re-insert the plugin.

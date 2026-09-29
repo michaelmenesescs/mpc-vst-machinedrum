@@ -55,6 +55,8 @@ namespace md::engine
 			if(tune)
 				tune(static_cast<int>(_g));
 			m_ok[_g] = m_groups[_g]->renderBlock(m_groupOut[_g]) ? 1 : 0;
+			if(m_ok[_g] && m_post)
+				m_post(static_cast<int>(_g), m_groupOut[_g]);
 			{
 				std::lock_guard<std::mutex> l(m_mx);
 				if(--m_pending == 0)
@@ -96,6 +98,8 @@ namespace md::engine
 			m_wake.notify_all();
 		}
 		ok[0] = m_groups[0]->renderBlock(m_groupOut[0]) ? 1 : 0;
+		if(ok[0] && m_post)
+			m_post(0, m_groupOut[0]);
 		if(n > 1)
 		{
 			std::unique_lock<std::mutex> l(m_mx);

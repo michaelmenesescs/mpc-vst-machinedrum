@@ -41,6 +41,13 @@ namespace md::engine
 		void setSlot(int _voice, const uint32_t* _words, int _count = kSlotWords);
 		bool renderBlock(Block& _out);
 
+		// Work to run on each group's own thread right after its voices render (the engine's per-track effects:
+		// tracks t with groupOf(t) == group). Gets the group's block, valid for its own voices only.
+		using PostFn = std::function<void(int _group, const Block&)>;
+		void setPost(PostFn _fn) { m_post = std::move(_fn); }
+		int groupCount() const { return static_cast<int>(m_groups.size()); }
+		int groupOf(int _voice) const { return _voice % static_cast<int>(m_groups.size()); }
+
 		// Sample memory etc: written to every group (each has its own P memory).
 		void writeP(uint32_t _addr, const uint32_t* _words, size_t _count);
 		uint32_t readP(uint32_t _addr) const { return m_groups[0]->readP(_addr); }
@@ -51,7 +58,7 @@ namespace md::engine
 		const std::string& faultReason() const { return m_fault; }
 
 	private:
-		int groupOf(int _voice) const { return _voice % static_cast<int>(m_groups.size()); }
+		PostFn m_post;
 
 		void workerMain(size_t _g);
 
