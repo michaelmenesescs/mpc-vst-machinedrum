@@ -28,8 +28,9 @@ if [ -z "$MV" ]; then
   fi
 fi
 MV=$(realpath "$MV")
-PROBE=$(realpath "${MDPROBE:-$ROOT/libs/gearmulator-md-mm/build/source/elektron/md/mdLibTest/mdProbe}")
-ART=$(realpath "${MNM_ART:-$ROOT/../mpc-vst-monomodule/vst/build/art.json}")
+PROBE=$(realpath -m "${MDPROBE:-$ROOT/libs/gearmulator-md-mm/build/source/elektron/md/mdLibTest/mdProbe}")
+ART=$(realpath -m "${MNM_ART:-$ROOT/../mpc-vst-monomodule/vst/build/art.json}")
+[ -e "$PROBE" ] || { echo "missing: $PROBE (mdProbe: build it first, see tools/mdtrace/README.md 'Build', or set MDPROBE)" >&2; exit 1; }
 for f in "$OS" "$FLASH" "$PROBE" "$ART" "$MV/tools/release.py" "$MV/tools/gen_vst.py"; do [ -e "$f" ] || { echo "missing: $f" >&2; exit 1; }; done
 grep -q "dynamic_name" "$MV/wrapper/vst2_wrap.c" || { echo "$MV's wrapper has no dynamic_name support: use mpc-vst-plugins main (or later)" >&2; exit 1; }
 cd "$ROOT"
@@ -38,7 +39,9 @@ WORK=$ROOT/build-release; mkdir -p "$WORK" vst/build dist
 echo "Machinedrum Module $VERSION  (plugins checkout: $MV)"
 
 echo "== 1/7 x86 tools (mdsamples, mdmachine)"
-cmake -S . -B build-vst-x86 -G Ninja -DCMAKE_BUILD_TYPE=Release >/dev/null
+# On the plain interpreter (no JIT): these tools only read memory, and the JIT (x86-64/arm64 hosts, e.g. an Apple Silicon Mac) can
+# crash while VoiceEngine initialises where the interpreter does not. Same dir as the tools' output: build-vst-x86/.
+cmake -S . -B build-vst-x86 -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS=-DDSP56K_NO_JIT_RUNTIME >/dev/null
 ninja -C build-vst-x86 mdsamples mdmachine >/dev/null
 
 echo "== 2/7 factory kits and ROM samples (from the flash image, by booting the emulated MD)"
