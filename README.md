@@ -4,6 +4,8 @@ The Elektron Machinedrum SPS-1 UW sound engine as a native VST2 instrument for A
 (built and tested on the Force), with its own touchscreen skin and Q-Link support. All 16 Machinedrum tracks play
 from one plugin instance, using the Machinedrum's own DSP code and its own machine, LFO and mixer maths.
 
+<img width="640" height="400" alt="image" src="https://github.com/user-attachments/assets/30d1c99b-333c-4b98-b9e5-2c3339ef0c29" />
+
 **v0.1.0, pre-release.** It plays, saves and reloads with the project, and it is tested on a real Force (MPC OS 3.9.1). There is
 no downloadable build: it needs your own Machinedrum firmware, so you build the installer yourself with one script (see
 [Building](#building)). Master effects (reverb, delay and the rest of the master section) are not in yet.
@@ -75,6 +77,11 @@ Master-effect settings inside a kit are ignored for now.
 The build reads your firmware and writes an installer zip containing the plugin, the skin, your extracted kits and ROM
 samples, and your OS file (the plugin reads it at run time); the result contains firmware-derived code and data, so it is
 for your own devices only.
+
+**Where to run this: on your own computer (macOS or Linux, with Docker and git), not on the Force.** The build runs
+inside Docker on your computer, and so does the `git clone` below. The Force is only where the finished plugin is
+installed: the `-d <device-ip>` option copies it there over your network and runs the installer, or you copy the zip
+over yourself afterwards. Nothing is built or compiled on the device.
 
 ```bash
 git clone --recursive <this repo> && cd mpc-vst-machinedrum
