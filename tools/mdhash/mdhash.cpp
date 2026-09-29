@@ -2,15 +2,14 @@
 // equal hashes = identical audio. Compare builds (recompiled vs plain interpreter, ARM vs x86, skip paths on/off).
 // usage: md-hash <OS.syx> [ROM_SAMPLES.bin]   (with the ROM samples, the pattern plays two ROM machines too)
 #include <cstdio>
+#include <cstdlib>
 #include <cstdint>
 #include <vector>
 #include "Engine.h"
 #include "Firmware.h"
-int main(int argc, char** argv)
+template<class E>
+static void run(E& eng, int argc, char** argv)
 {
-	const auto fwv = md::fw::loadFirmware(argv[1]);
-	auto c = md::fw::parseContainer(md::fw::parseSysex(md::fw::readFile(argv[1])));
-	md::engine::Engine eng(fwv, std::move(c.sections.at(0).data));
 	if(argc > 2)
 		if(FILE* rf = fopen(argv[2], "rb"))
 		{
@@ -25,7 +24,7 @@ int main(int argc, char** argv)
 			fclose(rf);
 		}
 	auto& h = eng.host();
-	md::engine::Engine::Output out;
+	typename E::Output out;
 	uint64_t hash = 1469598103934665603ull;
 	auto mix = [&](int64_t v){ hash ^= uint64_t(v); hash *= 1099511628211ull; };
 	unsigned rs = 99; auto rnd = [&]{ rs = rs * 1664525u + 1013904223u; return rs >> 8; };
@@ -39,4 +38,21 @@ int main(int argc, char** argv)
 		for(int f = 0; f < 32; ++f) for(int ch = 0; ch < 2; ++ch){ mix(out.mix.main[f][ch]); for(int q = 0; q < 6; ++q) mix(out.mix.frame[f][q]); mix(out.mix.rev[f][ch]); mix(out.mix.del[f][ch]); }
 	}
 	printf("hash %016llx\n", (unsigned long long)hash);
+}
+int main(int argc, char** argv)
+{
+	const auto fwv = md::fw::loadFirmware(argv[1]);
+	auto c = md::fw::parseContainer(md::fw::parseSysex(md::fw::readFile(argv[1])));
+	// MD_GROUPS=n (n>1): the voices split across n DSP2 instances on persistent threads; must give the same hash
+	const int groups = getenv("MD_GROUPS") ? atoi(getenv("MD_GROUPS")) : 1;
+	if(groups > 1)
+	{
+		md::engine::ParallelEngine eng(fwv, std::move(c.sections.at(0).data), groups);
+		run(eng, argc, argv);
+	}
+	else
+	{
+		md::engine::Engine eng(fwv, std::move(c.sections.at(0).data));
+		run(eng, argc, argv);
+	}
 }

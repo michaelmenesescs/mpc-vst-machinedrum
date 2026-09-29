@@ -42,7 +42,7 @@ extern "C" {
 
 namespace {
 
-using md::engine::Engine;
+using Engine = md::engine::ParallelEngine;	// voices split over kGroups DSP2 instances on persistent threads (1 = the plain single-thread path)
 
 // One engine per core, never the UI core (MPC's main thread lives on cpu0): take the least busy of
 // cores 1..N-1 (sampled from /proc/stat over 100 ms). Same approach as mpc-vst-monomodule's chooseCore().
@@ -81,6 +81,7 @@ int chooseCore()
 	return best;
 }
 
+constexpr int kDefaultGroups = 2;	// DSP2 instances (voice threads); 1 = single thread
 constexpr int kFrames = 128;					// the host's block size
 constexpr int kInner = kFrames / Engine::kBlock;	// 32-sample engine blocks per host block
 constexpr int kRing = 4, kAhead = 2;	// 2 blocks (5.8 ms) rendered ahead: as low as it goes, latency matters for feel (a deeper ring rode out CPU spikes: x86 churn test 158 underruns at 2, 0 at 3+, the fallback if crackle returns)
@@ -293,7 +294,8 @@ int romSlotOf(int _id) { return _id >= 128 && _id < 160 ? _id - 128 : _id >= 176
 // The ROM machines' sample memory (tools/mdkits: the voice DSP's sample directory and sample data as the MD sets
 // them up from its sample flash at boot, extracted from the user's own flash image): "MDS1", then records
 // [u32 address][u32 count][count x u32 word], ending with count 0. Returns the words loaded.
-size_t loadSamples(md::engine::VoiceEngine& _voices, const std::string& _path)
+template<class V>
+size_t loadSamples(V& _voices, const std::string& _path)
 {
 	std::FILE* f = std::fopen(_path.c_str(), "rb");
 	if(!f) return 0;
@@ -476,7 +478,9 @@ void Inst::run()
 	{
 		const auto fwv = md::fw::loadFirmware(osPath);
 		auto c = md::fw::parseContainer(md::fw::parseSysex(md::fw::readFile(osPath)));
-		Engine eng(fwv, std::move(c.sections.at(0).data));
+		int groups = kDefaultGroups;
+		if(const char* e = std::getenv("MD_GROUPS")) groups = std::atoi(e);
+		Engine eng(fwv, std::move(c.sections.at(0).data), std::clamp(groups, 1, 4));
 		auto& h = eng.host();
 		// ROM machines: their samples, if the installer put the extracted sample memory in place
 		if(loadSamples(eng.voices(), dataDir + "/factory/ROM_SAMPLES.bin") > 0)
@@ -520,6 +524,28 @@ void Inst::run()
 			}
 			core.store(c, std::memory_order_relaxed);
 		}
+		// Voice worker threads: same real-time class as the engine thread, on the cores after it.
+		eng.voices().tuneWorkers([this](int _g)
+		{
+			pthread_setname_np(pthread_self(), ("md-voice" + std::to_string(_g)).c_str());
+			int prio = 5;
+			if(const char* e = std::getenv("MD_FIFO")) prio = std::atoi(e);
+			if(prio > 0)
+			{
+				sched_param sp{};
+				sp.sched_priority = prio;
+				pthread_setschedparam(pthread_self(), SCHED_FIFO, &sp);
+			}
+			const int n = static_cast<int>(std::min<long>(sysconf(_SC_NPROCESSORS_ONLN), 8));
+			const int mine = core.load(std::memory_order_relaxed);
+			if(n > 1 && mine >= 0)
+			{
+				cpu_set_t s;
+				CPU_ZERO(&s);
+				CPU_SET((mine + _g) % n, &s);	// core 0 is left to MPC when possible
+				sched_setaffinity(0, sizeof s, &s);
+			}
+		});
 
 		int appliedTempo = -1, appliedMaxVoices = -1;
 		int appliedMachine[kTracks], appliedEff[kTracks], appliedVol[kTracks], appliedPan[kTracks];

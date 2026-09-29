@@ -1358,3 +1358,12 @@ Open, in the order I would take them:
    emulating that section and a native translation; REV/DEL currently do nothing.
 5. ROM output is not verified bit-exact against the emulated MD; the ARM recompiled ROM path is covered by no hash.
 6. `libs/gearmulator-md-mm` has local mdtrace patches (uncommitted in the submodule); `mdProbe` needs them (tools/mdtrace/README.md).
+
+- **2026-09-29 (v0.2 work, branch claude/v0.2-roadmap): voice split over persistent threads.**
+  - `ParallelVoiceEngine` now keeps persistent worker threads (condvar wake per block) instead of spawning per block;
+    ROM samples are written to every group; `tuneWorkers()` sets name/FIFO 5/core on each worker after boot.
+    The plugin uses `ParallelEngine` with `kDefaultGroups = 2` (`MD_GROUPS=1..4` overrides; 1 = the old single thread).
+  - Exact: `md-hash` (with ROM) = `15746c0610a40ddb` for 1, 2 and 4 groups on x86, and on the Force (ARM recompiled) for 1-3.
+  - Force, offline `md-hash` (12 s, dense 16-track pattern, MPC running): 1 group 42 s, 2 groups 30 s, 3 groups 30 s.
+    So 2 groups is about 1.4x; a third adds nothing (voice `v % n` assignment is static, and MPC uses the other cores).
+    Memory: each group is its own DSP2 instance (its own P memory). **Not yet run inside MPC** (needs an MPC restart).

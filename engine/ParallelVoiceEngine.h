@@ -9,7 +9,10 @@
 // runs it alone), only how the 16 slots' work is scheduled across cores. See HANDOFF.md, "per-machine cost
 // profiled" for the measurement this answers.
 #pragma once
+#include <condition_variable>
+#include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
@@ -29,15 +32,39 @@ namespace md::engine
 		// _groups: how many VoiceEngine instances to split the 16 voices across (each on its own thread during
 		// renderBlock). 1 disables parallelism (behaves like VoiceEngine, minus the thread-per-block overhead).
 		ParallelVoiceEngine(const fw::Firmware& _fw, int _groups);
+		~ParallelVoiceEngine();
+
+		// Run _fn(group) once on each worker thread (group 1..n-1), on its next block: set its name, priority and
+		// core there (real-time priority only once booted, like the caller's own thread).
+		void tuneWorkers(std::function<void(int)> _fn);
 
 		void setSlot(int _voice, const uint32_t* _words, int _count = kSlotWords);
 		bool renderBlock(Block& _out);
+
+		// Sample memory etc: written to every group (each has its own P memory).
+		void writeP(uint32_t _addr, const uint32_t* _words, size_t _count);
+		uint32_t readP(uint32_t _addr) const { return m_groups[0]->readP(_addr); }
+		int activeVoicesLastBlock() const;
+		dsp56k::DSP& dsp() { return m_groups[0]->dsp(); }
 
 		uint64_t instructionsLastBlock() const { return m_lastInstructions; }
 		const std::string& faultReason() const { return m_fault; }
 
 	private:
 		int groupOf(int _voice) const { return _voice % static_cast<int>(m_groups.size()); }
+
+		void workerMain(size_t _g);
+
+		// Persistent workers (a thread spawned per block rebooted the device): woken once per block, they render
+		// their group while the caller renders group 0, then the caller waits for them.
+		std::vector<std::thread> m_workers;
+		std::mutex m_mx;
+		std::condition_variable m_wake, m_done;
+		uint64_t m_gen = 0, m_tuneGen = 0;
+		std::function<void(int)> m_tune;
+		size_t m_pending = 0;
+		bool m_stop = false;
+		std::vector<uint8_t> m_ok;
 
 		std::vector<std::unique_ptr<VoiceEngine>> m_groups;
 		std::vector<Block> m_groupOut;

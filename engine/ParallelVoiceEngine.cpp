@@ -11,6 +11,70 @@ namespace md::engine
 		for(int g = 0; g < n; ++g)
 			m_groups.push_back(std::make_unique<VoiceEngine>(_fw));
 		m_groupOut.resize(static_cast<size_t>(n));
+		m_ok.assign(static_cast<size_t>(n), 0);
+		for(size_t g = 1; g < static_cast<size_t>(n); ++g)
+			m_workers.emplace_back([this, g] { workerMain(g); });
+	}
+
+	ParallelVoiceEngine::~ParallelVoiceEngine()
+	{
+		{
+			std::lock_guard<std::mutex> l(m_mx);
+			m_stop = true;
+		}
+		m_wake.notify_all();
+		for(auto& t : m_workers)
+			t.join();
+	}
+
+	void ParallelVoiceEngine::tuneWorkers(std::function<void(int)> _fn)
+	{
+		std::lock_guard<std::mutex> l(m_mx);
+		m_tune = std::move(_fn);
+		++m_tuneGen;
+	}
+
+	void ParallelVoiceEngine::workerMain(const size_t _g)
+	{
+		uint64_t seen = 0, tuned = 0;
+		for(;;)
+		{
+			std::function<void(int)> tune;
+			{
+				std::unique_lock<std::mutex> l(m_mx);
+				m_wake.wait(l, [&] { return m_stop || m_gen != seen; });
+				if(m_stop)
+					return;
+				seen = m_gen;
+				if(tuned != m_tuneGen)
+				{
+					tuned = m_tuneGen;
+					tune = m_tune;
+				}
+			}
+			if(tune)
+				tune(static_cast<int>(_g));
+			m_ok[_g] = m_groups[_g]->renderBlock(m_groupOut[_g]) ? 1 : 0;
+			{
+				std::lock_guard<std::mutex> l(m_mx);
+				if(--m_pending == 0)
+					m_done.notify_one();
+			}
+		}
+	}
+
+	void ParallelVoiceEngine::writeP(const uint32_t _addr, const uint32_t* _words, const size_t _count)
+	{
+		for(auto& g : m_groups)
+			g->writeP(_addr, _words, _count);
+	}
+
+	int ParallelVoiceEngine::activeVoicesLastBlock() const
+	{
+		int n = 0;
+		for(const auto& g : m_groups)
+			n += g->activeVoicesLastBlock();
+		return n;
 	}
 
 	void ParallelVoiceEngine::setSlot(const int _voice, const uint32_t* _words, const int _count)
@@ -21,14 +85,22 @@ namespace md::engine
 	bool ParallelVoiceEngine::renderBlock(Block& _out)
 	{
 		const auto n = m_groups.size();
-		std::vector<std::thread> threads;
-		std::vector<uint8_t> ok(n, 0);
-		threads.reserve(n - 1);
-		for(size_t g = 1; g < n; ++g)
-			threads.emplace_back([this, g, &ok] { ok[g] = m_groups[g]->renderBlock(m_groupOut[g]) ? 1 : 0; });
+		auto& ok = m_ok;
+		if(n > 1)
+		{
+			{
+				std::lock_guard<std::mutex> l(m_mx);
+				m_pending = n - 1;
+				++m_gen;
+			}
+			m_wake.notify_all();
+		}
 		ok[0] = m_groups[0]->renderBlock(m_groupOut[0]) ? 1 : 0;
-		for(auto& t : threads)
-			t.join();
+		if(n > 1)
+		{
+			std::unique_lock<std::mutex> l(m_mx);
+			m_done.wait(l, [&] { return m_pending == 0; });
+		}
 
 		m_lastInstructions = 0;
 		m_fault.clear();
