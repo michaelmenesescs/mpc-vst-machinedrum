@@ -4,7 +4,8 @@ The Elektron Machinedrum SPS-1 UW sound engine as a native VST2 instrument for A
 (built and tested on the Force), with its own touchscreen skin and Q-Link support. All 16 Machinedrum tracks play
 from one plugin instance, using the Machinedrum's own DSP code and its own machine, LFO and mixer maths.
 
-<img width="909" height="569" alt="image" src="https://github.com/user-attachments/assets/922cbf30-3c33-4bc1-b1b6-ee5f93965cc2" />
+<img width="1280" height="800" alt="image" src="https://github.com/user-attachments/assets/30d1c99b-333c-4b98-b9e5-2c3339ef0c29" />
+
 
 **v0.1.0, pre-release.** It plays, saves and reloads with the project, and it is tested on a real Force (MPC OS 3.9.1). There is
 no downloadable build: it needs your own Machinedrum firmware, so you build the installer yourself with one script (see
