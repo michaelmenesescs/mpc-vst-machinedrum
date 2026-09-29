@@ -85,14 +85,22 @@ the factory kits and ROM samples (by booting the emulated MD from your flash ima
 from your OS file), a **bit-exactness gate** (the recompiled DSP must give the same audio hash as the plain interpreter,
 ROM machines included, or nothing is built for the device), the skin, the ARM plugin, and the installer zip in `dist/`.
 Prerequisites (each is described at the top of the script): Docker, a checkout of
-[mpc-vst-plugins](https://github.com/sd88me/mpc-vst-plugins) (fetched automatically if `../mpc-vst` is absent; it needs the
-branch with the dynamic parameter names), the `mdProbe` tool built from `tools/mdtrace` (`MDPROBE`), and Monomodule's
+[mpc-vst-plugins](https://github.com/sd88me/mpc-vst-plugins) (fetched automatically if `../mpc-vst` is absent; its `main` has
+the dynamic parameter names the plugin needs), the `mdProbe` tool built from `tools/mdtrace` (`MDPROBE`), and Monomodule's
 `art.json` for the LCD fonts (`MNM_ART`). To install by hand instead, unzip the result on the device and run `install.sh`
 as root; the installer stops MPC, installs, and restarts it, so run it with the device idle.
 
 `HANDOFF.md` has the full state and every step's details (what `mdProbe` is, the recompiler pass, the device
 workflow). The skin borrows the Elektron LCD fonts from a
 build of Monomodule's skin (its `art.json`, made from a Monomachine OS file), so that is needed for the skin step.
+
+### Plugin catalog
+
+The installer zip is catalog-conformant in format: `mpc-plugin.json` (id `machinedrum-module`, license `AGPL-3.0-only`, source
+repo) is generated, and the build runs mpc-vst-plugins' `catalog_check.py --catalog` as its last step. The plugin locates its
+data next to the `.so` (`MODULE_SUBDIR`), not at a fixed path. It is **not** listed in the public catalog and its zip must
+never be published as a release: the catalog only takes zips without closed binaries or copyrighted ROMs, and this one contains
+firmware-derived code and data by design (like Monomodule's, it is built per user).
 
 ## How it works
 

@@ -1311,10 +1311,22 @@ from it.
   needs the wrapper's `dynamic_name`/`dynamic_display`, on the unmerged mpc-vst-plugins branch `claude/dynamic-param-names`; the
   script refuses a wrapper without it. `md-hash` takes the ROM samples as a 2nd argument.
 
+- **2026-09-29 (evening): catalog conformance, pushes.** mpc-vst-plugins now has catalog rules (`docs/CATALOG*.md`, `PORTING.md`
+  section 5, CLAUDE.md): releases must carry `mpc-plugin.json` (`release.py --id --repo --license --requires`) and pass
+  `tools/catalog_check.py <zip> --catalog --expect-id --expect-repo`; engines must locate data next to the `.so`
+  (`MODULE_SUBDIR`, `wrapper/plugin_dir.h`), never a fixed `/sdcard`. Done here: `vst.json` defines `MODULE_SUBDIR "machinedrum"`
+  (MODULE_DIR kept as the fallback), `build_release.sh` passes `--id machinedrum-module --repo sd88me/mpc-vst-machinedrum --license
+  AGPL-3.0-only --requires ...` and runs `catalog_check` as its last step. **Policy conflict, needs the user/maintainer:** the catalog
+  only lists zips with no closed binaries or copyrighted ROMs; ours contains firmware-derived code and data (recompiled DSP, ROM
+  samples, the OS file) so it must never be a public GitHub release and cannot be listed as a download (same for Monomodule).
+  No registry PR was made; a "build it yourself" catalog entry type would need to be proposed. The wrapper dependency is resolved:
+  `claude/dynamic-param-names` is already merged into mpc-vst-plugins `main` (the build script just needs a checkout at `main`).
+  Optional `tested.json` (`[{version, device, firmware, date}]`) not added: the Force's MPC OS version is not recorded here.
+
 ## RESUME HERE (2026-09-29)
 
 State:
-- Committed on branch `claude/trusting-maxwell-hx3i7b` (local, NOT pushed). Device (Force at 192.168.1.44, DHCP - ask if it
+- Branch `claude/trusting-maxwell-hx3i7b` (pushed to origin; the `v0.1.0` tag is on it). Device (Force at 192.168.1.44, DHCP - ask if it
   changes) runs this build: `machinedrum_one.so` + skin + factory kits + ROM samples in `/sdcard/vst/machinedrum/`.
 - The link to the Force is flaky: big `scp` and plain tar copies stall for minutes. What works: `gzip -c file | ssh
   root@.. 'gunzip -c > /sdcard/vst/x.new'`, then check `md5sum`, then `mv`; skin via `tar -czf - | ssh 'tar -xzf -'`
@@ -1345,4 +1357,4 @@ Open, in the order I would take them:
 4. **Master FX** (reverb/delay/etc.): `MixerRef::runMaster` (tools/mdmix) runs `$342->$971`; decision pending between
    emulating that section and a native translation; REV/DEL currently do nothing.
 5. ROM output is not verified bit-exact against the emulated MD; the ARM recompiled ROM path is covered by no hash.
-6. Commit/push: nothing is pushed. `libs/gearmulator-md-mm` has local mdtrace patches (not committed to the submodule).
+6. `libs/gearmulator-md-mm` has local mdtrace patches (uncommitted in the submodule); `mdProbe` needs them (tools/mdtrace/README.md).

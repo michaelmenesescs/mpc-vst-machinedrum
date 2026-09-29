@@ -6,8 +6,8 @@
 #
 #   -v  version string (default: from `git describe`, e.g. 0.1.0)
 #   -d  after building, copy the zip to the Force and run its installer (stops and restarts MPC: save your project first)
-#   -m  mpc-vst-plugins checkout (default: $MPC_VST_DIR, ../mpc-vst, else cloned to ~/.cache); it needs the wrapper's
-#       "dynamic_name"/"dynamic_display" support (branch claude/dynamic-param-names or later)
+#   -m  mpc-vst-plugins checkout (default: $MPC_VST_DIR, ../mpc-vst, else cloned to ~/.cache); its main has the wrapper's
+#       "dynamic_name"/"dynamic_display" support this plugin needs, and the catalog checker
 # Other inputs: MDPROBE (the mdProbe tool, see tools/mdtrace/README.md; default libs/gearmulator-md-mm/build/...) and MNM_ART
 # (mpc-vst-monomodule's vst/build/art.json, the Elektron LCD fonts made from YOUR Monomachine OS; default ../mpc-vst-monomodule/...).
 # Needs Docker (images md-armhf-builder and mpc-vst-html-art are built on first use). Output: dist/Machinedrum-Module-<version>-mpc-armv7.zip.
@@ -31,7 +31,7 @@ MV=$(realpath "$MV")
 PROBE=$(realpath "${MDPROBE:-$ROOT/libs/gearmulator-md-mm/build/source/elektron/md/mdLibTest/mdProbe}")
 ART=$(realpath "${MNM_ART:-$ROOT/../mpc-vst-monomodule/vst/build/art.json}")
 for f in "$OS" "$FLASH" "$PROBE" "$ART" "$MV/tools/release.py" "$MV/tools/gen_vst.py"; do [ -e "$f" ] || { echo "missing: $f" >&2; exit 1; }; done
-grep -q "dynamic_name" "$MV/wrapper/vst2_wrap.c" || { echo "$MV's wrapper has no dynamic_name support: use mpc-vst-plugins branch claude/dynamic-param-names (or later)" >&2; exit 1; }
+grep -q "dynamic_name" "$MV/wrapper/vst2_wrap.c" || { echo "$MV's wrapper has no dynamic_name support: use mpc-vst-plugins main (or later)" >&2; exit 1; }
 cd "$ROOT"
 [ -f libs/dsp56300/source/dsp56kEmu/dsp.h ] || git submodule update --init --recursive
 WORK=$ROOT/build-release; mkdir -p "$WORK" vst/build dist
@@ -75,8 +75,12 @@ rm -rf vst/build/payload && mkdir -p vst/build/payload && cp -r vst/build/factor
 python3 "$MV/tools/release.py" --so vst/build/machinedrum_one.so \
   --skin "vst/build/skin/sd88me - VST - Machinedrum Module" --entry vst/build/pluginlist-entry.xml \
   --version "$VERSION" --extra vst/build/payload:vst/machinedrum \
+  --id machinedrum-module --repo sd88me/mpc-vst-machinedrum --license AGPL-3.0-only \
+  --requires "Your own Machinedrum OS 1.63 file and flash image: this zip is built from them, contains Elektron-derived data and is for your own devices only" \
   --about "Machinedrum Module: the Elektron Machinedrum UW sound engine as an MPC OS instrument (built from your own firmware)" -o dist
 ZIP=$(ls dist/Machinedrum-Module-"$VERSION"-*.zip); ls -l "$ZIP"
+# catalog conformance (mpc-vst-plugins docs/CATALOG_SPEC.md): the manifest, layout, checksums, ELF/glibc limits
+python3 "$MV/tools/catalog_check.py" "$ZIP" --catalog --expect-id machinedrum-module --expect-repo sd88me/mpc-vst-machinedrum
 
 if [ -n "$DEVICE" ]; then
   echo "== installing on $DEVICE (stops and restarts MPC)"
