@@ -3,6 +3,7 @@
 // at a time: all 16 tracks, the dry main mix, the reverb/delay sends and each track's own output.
 #pragma once
 #include <algorithm>
+#include <chrono>
 #include <array>
 #include <memory>
 #include <vector>
@@ -62,10 +63,17 @@ namespace md::engine
 			std::array<std::array<int32_t, kBlock>, kTracks> tracks{};			// each track after its effects
 		};
 
+		// Optional stage timing (microseconds, accumulated): track effects, and the mix. The OS tick and the voice DSP
+		// are HostModel's (host().tickUs / dspUs).
+		bool timingOn = false;
+		double fxUs = 0, mixUs = 0;
+
 		bool render(Output& _out)
 		{
+			m_host->timingOn = timingOn;
 			if(!m_host->renderBlock(m_voiceOut))
 				return false;
+			const auto tf0 = timingOn ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
 			std::array<const int32_t*, kTracks> in{};
 			std::array<std::array<uint32_t, 5>, kTracks> mix{};
 			for(int t = 0; t < kTracks; ++t)
@@ -93,7 +101,12 @@ namespace md::engine
 				in[t] = dst;
 				mix[t] = mi.mix;
 			}
+			if(!timingOn) { m_mixer.process(in.data(), mix.data(), _out.mix); return true; }
+			const auto tf1 = std::chrono::steady_clock::now();
 			m_mixer.process(in.data(), mix.data(), _out.mix);
+			const auto tf2 = std::chrono::steady_clock::now();
+			fxUs += std::chrono::duration<double, std::micro>(tf1 - tf0).count();
+			mixUs += std::chrono::duration<double, std::micro>(tf2 - tf1).count();
 			return true;
 		}
 

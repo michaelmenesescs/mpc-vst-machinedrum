@@ -1,5 +1,6 @@
 // Drives mpc_engine() like the host does: 128-frame blocks paced to real time. Prints readiness time, peak
 // and underruns. usage: md-vst-smoke <data-dir> [seconds]
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -18,8 +19,13 @@ int main(int argc, char** argv)
 	void* in = e->create(argc > 1 ? argv[1] : ".");
 	char buf[32];
 	// A project restore arrives before the engine has booted: machine first, then a saved SYN value.
-	e->set_param(in, "track3_machine", "28");	// TRXB2
-	e->set_param(in, "track3_syn2", "5");
+	const bool fresh = std::getenv("MD_SMOKE_FRESH") != nullptr;	// a newly inserted instance: nothing restored
+	if(std::getenv("MD_SMOKE_RESTORED")) e->set_param(in, "track3_machine", "28");	// with MD_SMOKE_FRESH: a project restore
+	if(!fresh)
+	{
+		e->set_param(in, "track3_machine", "28");	// TRXB2
+		e->set_param(in, "track3_syn2", "5");
+	}
 	while(true)
 	{
 		if(e->get_param(in, "ready", buf, sizeof buf) > 0 && buf[0] == '1') break;
@@ -28,6 +34,21 @@ int main(int argc, char** argv)
 	}
 	printf("ready after %.0f ms\n", std::chrono::duration<double, std::milli>(Clock::now() - t0).count());
 
+	if(fresh)	// a newly inserted instance: is the first kit loaded once the catalog is up?
+	{
+		auto show = [&](const char* what)
+		{
+			char kn[64] = "?", m0[16] = "?", m5[16] = "?";
+			e->get_param(in, "kit_name", kn, sizeof kn);
+			e->get_param(in, "track0_machine", m0, sizeof m0);
+			e->get_param(in, "track5_machine", m5, sizeof m5);
+			printf("%-12s kit=%s track1 machine=%s track6 machine=%s\n", what, kn, m0, m5);
+		};
+		show("fresh 0 ms");
+		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+		show("fresh +2 s");
+		return 0;
+	}
 	// machine 0 (GND--) is silent by design; assign real machines to the 3 tracks this test triggers
 	// (ids from the OS's own descriptor table, not guaranteed stable across OS versions - fine for a smoke
 	// test, not something a real preset should hardcode).
@@ -92,6 +113,26 @@ int main(int argc, char** argv)
 		printf("\n");
 	}
 
+	// kit / bank steppers, as the skin's buttons fire them (momentary set_param 1)
+	{
+		std::this_thread::sleep_for(std::chrono::milliseconds(std::getenv("MD_SMOKE_WAIT") ? std::atoi(std::getenv("MD_SMOKE_WAIT")) : 1500));	// the catalog is built by its own thread
+		auto show = [&](const char* what)
+		{
+			char kn[64] = "?", bn[64] = "?", m0[16] = "?";
+			e->get_param(in, "kit_name", kn, sizeof kn);
+			e->get_param(in, "bank_name", bn, sizeof bn);
+			e->get_param(in, "track0_machine", m0, sizeof m0);
+			printf("%-10s bank=%s kit=%s track1 machine=%s\n", what, bn, kn, m0);
+		};
+		show("start");
+
+		e->set_param(in, "kit_next", "1"); show("kit_next");
+		e->set_param(in, "kit_next", "1"); show("kit_next");
+		e->set_param(in, "kit_prev", "1"); show("kit_prev");
+		e->set_param(in, "bank_next", "1"); show("bank_next");
+		e->set_param(in, "kit_next", "1"); show("kit_next");
+		e->set_param(in, "bank_prev", "1"); e->set_param(in, "kit_next", "1"); show("bank_prev+");
+	}
 	const int secs = argc > 2 ? std::atoi(argv[2]) : 8;
 	static int16_t out[128 * 2];
 	int peak = 0;
@@ -110,9 +151,36 @@ int main(int argc, char** argv)
 			while(*p && *p != ',') ++p;
 			if(*p) ++p;
 		}
+	// MD_SMOKE_CHURN=1: all 16 tracks play every 16th and a random track gets a random machine every ~0.5 s;
+	// prints each second that clipped or went quiet - the long-play distortion hunt
+	const bool churn = std::getenv("MD_SMOKE_CHURN") != nullptr;
+	int secPeak = 0, secClip = 0, secBlocks = 0;
+	uint32_t rs = 12345;
+	auto rnd = [&] { rs = rs * 1664525u + 1013904223u; return rs >> 8; };
+	if(std::getenv("MD_SMOKE_ROMOFF")) e->set_param(in, "rom_enabled", "0");
+	if(const char* mv = std::getenv("MD_SMOKE_VOICES")) e->set_param(in, "max_voices", mv);
+	if(churn)
+		for(int t = 0; t < 16; ++t) e->set_param(in, ("track" + std::to_string(t) + "_machine").c_str(), std::to_string(16 + t * 6).c_str());
+	// MD_SMOKE_FX="fltw=0,eqg=127,...": set those per-track FX params on tracks 1-3 first (proves the track FX act)
+	if(const char* fx = std::getenv("MD_SMOKE_FX"))
+		for(const char* q = fx; *q;)
+		{
+			char k[32], v[16];
+			if(std::sscanf(q, "%31[^=]=%15[^,]", k, v) == 2)
+				for(int t = 0; t < 3; ++t) e->set_param(in, ("track" + std::to_string(t) + "_" + k).c_str(), v);
+			while(*q && *q != ',') ++q;
+			if(*q) ++q;
+		}
 	const int blocks = secs * 44100 / 128;
 	for(int b = 0; b < blocks; ++b)
 	{
+		if(churn)
+		{
+			if(b % 43 == 0)
+				for(int t = 0; t < 16; ++t) { const uint8_t on[3] = {0x90, static_cast<uint8_t>(36 + t), 100}; e->midi(in, on, 3); }
+			if(b % 172 == 0)
+				e->set_param(in, ("track" + std::to_string(rnd() % 16) + "_machine").c_str(), std::to_string(16 + rnd() % 112).c_str());
+		}
 		if(kit)
 		{
 			if(b % 43 == 0)
@@ -129,7 +197,17 @@ int main(int argc, char** argv)
 			if(b % 6 == 3) e->midi(in, hat, 3);
 		}
 		e->render(in, out, 128);
-		for(int i = 0; i < 128 * 2; ++i) if(std::abs(out[i]) > peak) peak = std::abs(out[i]);
+		for(int i = 0; i < 128 * 2; ++i)
+		{
+			if(std::abs(out[i]) > peak) peak = std::abs(out[i]);
+			if(churn) { secPeak = std::max(secPeak, std::abs(int(out[i]))); if(std::abs(int(out[i])) >= 32767) ++secClip; }
+		}
+		if(churn && ++secBlocks == 344)
+		{
+			char ur[16]; e->get_param(in, "underruns", ur, sizeof ur);
+			printf("t=%3ds peak=%5d clipped=%5d underruns=%s\n", (b + 1) / 344, secPeak, secClip, ur);
+			secPeak = secClip = secBlocks = 0;
+		}
 		next += std::chrono::microseconds(2902);
 		std::this_thread::sleep_until(next);
 	}

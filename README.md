@@ -1,47 +1,162 @@
-# mpc-vst-machinedrum
+# Machinedrum Module for MPC OS
 
-The Elektron Machinedrum SPS-1 UW sound engine as an Akai Force/MPC OS VST, built the way
-[Monomodule](https://github.com/shnolk/monomodule) builds the Monomachine: the MD's own DSP code runs in the
-[dsp56300](https://github.com/sd88me/dsp56300) emulator, and a small C++ host model stands in for the main
-processor. The sequencer, UI and ColdFire OS are not emulated.
+The Elektron Machinedrum SPS-1 UW sound engine as a native VST2 instrument for Akai MPC OS standalone devices
+(built and tested on the Force), with its own touchscreen skin and Q-Link support. All 16 Machinedrum tracks play
+from one plugin instance, using the Machinedrum's own DSP code and its own machine, LFO and mixer maths.
 
-Planned products:
+**v0.1.0, pre-release.** It plays, saves and reloads with the project, and it is tested on a real Force (MPC OS 3.9.1). There is
+no downloadable build: it needs your own Machinedrum firmware, so you build the installer yourself with one script (see
+[Building](#building)). Master effects (reverb, delay and the rest of the master section) are not in yet.
 
-- **Machinedrum One**: the voice machines (sound modules only), from the voice DSP program.
-- **Machinedrum FX**: the master effects as a separate effect plugin, from the mixer/FX DSP program.
+Not affiliated with Elektron. Nothing of Elektron's is in this repository or distributed from it; the plugin
+needs your own Machinedrum OS 1.63 file and a flash image (see [What you need](#what-you-need)).
 
-**Status: prototype.** Protocol decoded; the voice engine runs bit-exact against a full-system emulation. See `HANDOFF.md` for where this stands and `docs/FIRMWARE.md` for the OS file format.
+## Features
 
-## Layout
+- **16 tracks, one instance.** MIDI notes 36-51 play tracks 1-16 (the Machinedrum's own note-to-track map).
+  Each track keeps the Machinedrum's own voice, effects and routing.
+- **The machines:** GND, TRX (808-style), EFM, E12, P-I and the ROM sample machines. RAM, INP and MID/CTR machines
+  are not offered (no sampling, no audio input and no MIDI output here); a kit that uses one shows a blank bar.
+- **Every parameter page of the hardware**, per track:
+  - SYN: the eight synth knobs, with the machine's own labels, which change live with the machine.
+  - AMP/EFX: AMD, AMF, EQF, EQG, FLTF, FLTW, FLTQ, SRR.
+  - ROUTE: DIST, VOL, PAN, DEL, REV and the LFO amounts.
+  - LFO: the Machinedrum's per-track LFO, with its destination shown by name.
+- **Kits.** The 16 factory kits (extracted from your own flash image at build time), plus any Machinedrum kit
+  `.syx` you drop in (see [Kits](#kits)). A new instance starts on the first kit.
+- **GLOBAL tab:** a 16-track level mixer, the voice budget, randomise (machines on all, tracks 1-8 or tracks 9-16,
+  or a random kit) and the bank and kit selectors.
+- **ROM on/off switch** (GLOBAL tab). Off, tracks on a ROM (sample) machine stay silent and the randomiser leaves ROM
+  machines out; each track keeps its ROM setting for when you switch back. ROM machines are the most expensive on the
+  Force's CPU, so this is the quickest way to make a busy kit safe.
+- **Voice budget, default 5.** The VOICES knob on GLOBAL is a CPU budget, not a plain voice count. Most machines cost
+  1 unit and the ROM (sample) machines cost 2, matching what they cost the Force's CPU (measured on the device: a ROM
+  voice adds about 400 us per 2.9 ms audio block, the other machines about 210 us). When a trigger would go past the
+  budget, the oldest sounding tracks are cut. The default keeps a busy kit inside what one Force core can do; raise it
+  if your patterns are sparse, lower it if you hear crackle.
+- **Tempo follows MPC's**, so the LFOs stay in time with the project.
+- **The skin** is drawn from the Machinedrum's own LCD (fonts, dials, page layout), generated at build time from
+  your own firmware, inside a thin hardware-style bezel. Nothing captured from the firmware is stored in the repo.
 
-- `engine/`: `VoiceEngine` (the voice DSP alone, from the user's OS file; 16 voice outputs),
-  `MachineRunner` (the OS's own machine coefficient functions in a 68k emulator), `HostModel` (the OS
-  tick: parameters, LFOs, triggers, voice slots and mixer inputs), `TrackFx` and `Mixer` (the mixer
-  DSP's per-track effects page and mix as native C++, with `Dsp56.h`'s DSP56300 arithmetic) and
-  `Engine` (all of it, per 32-sample block). Prototype stage, verified bit-exact; built for x86 by
-  `tools/build_proto.sh`.
-- `tools/mdvoice`, `tools/mdmachine`, `tools/mdhost`: command-line drivers; `tools/mdrender`: a demo
-  pattern through the whole engine into a WAV.
-- `tools/mdmix`: the mixer DSP's own code in the emulator (reference); `mdfxtest` and `mdmixtest` check
-  `TrackFx` and `Mixer` against it.
+### Not there yet (known limits)
 
-- `tools/mdfw`: decodes a Machinedrum OS `.syx` (sysex, flash container, aPLib sections, DSP records). Adapted
-  from Monomodule's decoder.
-- `libs/dsp56300`: `sd88me/dsp56300`, branch `arm32` (the static recompiler work from `mpc-vst-monomodule`).
-- `libs/gearmulator-md-mm`: [joelanders/gearmulator-md-mm](https://github.com/joelanders/gearmulator-md-mm),
-  unmodified. A full-system MD emulation (ColdFire + both DSPs), used as the reference for tracing the
-  protocol and checking our output. Not part of the plugin.
+- **Master effects:** the reverb and delay sends are computed but no effect consumes them, so REV and DEL do nothing.
+  The master section (rhythm echo, gate box/reverb, EQ, dynamix) is the next big piece.
+- **CPU.** About 4-5 voices can sound at once on one Force core: a machine costs roughly 0.3-0.8 ms of a 2.9 ms audio
+  block depending on how busy MPC is (the ROM, P-I and EFM machines cost the most), and track effects add about 0.1 ms per
+  playing track. A dense 16-track pattern is beyond what one core does in real time on the Force; the voice budget is the
+  guard. The engine thread runs below MPC's own audio threads and is capped to a share of its core, so overload drops the
+  plugin's own blocks (crackle) rather than MPC's audio or its screen.
+- **First load is slower** than later ones (the skin is large: MPC reads and decodes it from the card).
+- **ROM machines** are silent unless the sample data was extracted at build time (it is, if you build with your
+  flash image). ROM33-48 are empty on the factory image.
+- **Latency:** the engine renders 2 blocks (5.8 ms) ahead, the lowest it goes; if crackle returns on a heavy kit a deeper ring rides out CPU spikes at the cost of a few ms.
+- Bank and kit are chosen with the arrows for now; a picker list like the machine one is planned for the next
+  version.
 
-## Firmware
+## What you need
 
-Nothing from Elektron is in this repository. You need your own Machinedrum OS 1.63 file
-(`Elektron_SPS1-1UW_OS1.63.syx`); the tracing step also uses a full flash image. Never commit either, or
-anything generated from them (decoded sections, recompiled `.inl`).
+- An MPC OS standalone device (developed on a Force; other MPC OS devices use the same plugin host).
+- **Your own Machinedrum OS 1.63 `.syx`** (`Elektron_SPS1-1UW_OS1.63.syx`). This is the sound engine.
+- **Your own full flash image** of a Machinedrum UW (8 MB `.bin`), used once at build time for the factory kits and
+  the ROM sample memory. Without it you still get every non-ROM machine and any kit `.syx` you add.
+- Docker (for the ARM cross-build and the skin renderer), and the sibling checkout of
+  [mpc-vst-plugins](https://github.com/sd88me/mpc-vst-plugins) for the shared VST wrapper and installer.
+
+## Kits
+
+Put Machinedrum kit sysex files (`.syx`, the MD's own kit dump) in
+`/sdcard/vst/machinedrum/kits/` or in `Force Documents/Machinedrum Kits/`. They are picked up within a few seconds.
+Each file is a bank; a file with several kits shows them all. The factory kits are the bank called FACTORY.
+Master-effect settings inside a kit are ignored for now.
+
+## Building
+
+The build reads your firmware and writes an installer zip containing the plugin, the skin, your extracted kits and ROM
+samples, and your OS file (the plugin reads it at run time); the result contains firmware-derived code and data, so it is
+for your own devices only.
 
 ```bash
-g++ -std=c++17 -O2 tools/mdfw/mdfw.cpp tools/mdfw/Firmware.cpp -o mdfw
-./mdfw Elektron_SPS1-1UW_OS1.63.syx --records
+git clone --recursive <this repo> && cd mpc-vst-machinedrum
+release/build_release.sh <Elektron_SPS1-1UW_OS1.63.syx> <flash image.bin>            # -> dist/Machinedrum-Module-<version>-mpc-armv7.zip
+release/build_release.sh <OS.syx> <flash.bin> -d <device-ip>                          # ...and install it on the Force
 ```
 
-Not affiliated with Elektron. Licensed AGPL-3.0, like Monomodule (whose decoder is adapted here); dsp56300 is
-GPL-3.0.
+Options: `-v <version>` (default from `git describe`), `-d <device-ip>` (copy the zip over and run its installer; this stops
+and restarts MPC, so save your project first), `-m <mpc-vst-plugins checkout>`. It builds, in order: the x86 helper tools,
+the factory kits and ROM samples (by booting the emulated MD from your flash image), the recompiled voice DSP (traced
+from your OS file), a **bit-exactness gate** (the recompiled DSP must give the same audio hash as the plain interpreter,
+ROM machines included, or nothing is built for the device), the skin, the ARM plugin, and the installer zip in `dist/`.
+Prerequisites (each is described at the top of the script): Docker, a checkout of
+[mpc-vst-plugins](https://github.com/sd88me/mpc-vst-plugins) (fetched automatically if `../mpc-vst` is absent; its `main` has
+the dynamic parameter names the plugin needs), the `mdProbe` tool built from `tools/mdtrace` (`MDPROBE`), and Monomodule's
+`art.json` for the LCD fonts (`MNM_ART`). To install by hand instead, unzip the result on the device and run `install.sh`
+as root; the installer stops MPC, installs, and restarts it, so run it with the device idle.
+
+`HANDOFF.md` has the full state and every step's details (what `mdProbe` is, the recompiler pass, the device
+workflow). The skin borrows the Elektron LCD fonts from a
+build of Monomodule's skin (its `art.json`, made from a Monomachine OS file), so that is needed for the skin step.
+
+### Plugin catalog
+
+This is a **build-it-yourself** plugin: the installer zip contains firmware-derived code and data, so it is built per user and
+must never be published as a release (a catalog entry for it links to this repo and its build instructions, not to a
+download). The zip is still catalog-conformant in format: `mpc-plugin.json` (id `machinedrum-module`, license
+`AGPL-3.0-only`, source repo) is generated, and the build runs mpc-vst-plugins' `catalog_check.py --catalog` as its last step.
+The plugin locates its data next to the `.so` (`MODULE_SUBDIR`), not at a fixed path. Device testing is recorded in
+`tested.json` (v0.1.0: Akai Force, MPC OS 3.9.1).
+
+## How it works
+
+The Machinedrum has a ColdFire processor for the sequencer and UI, and two DSP56303 chips: DSP2 renders the 16
+voices and DSP1 runs the per-track effects, the mix and the master effects. We keep only the sound path:
+
+- **Voices:** DSP2's program runs unmodified from your OS file in the [dsp56300](https://github.com/sd88me/dsp56300)
+  emulator, with a small harness in place of the hardware's DMA and serial loop. All 16 voices render in one block.
+- **The ColdFire side** is a C++ host model: the OS tick (smoothing, LFOs, triggers, mixer inputs) with the OS's own
+  machine coefficient routines run in a 68k emulator, so the maths is the hardware's.
+- **Per-track effects and the mix** (AMD, EQ, filters, SRR, distortion, pan, sends) are a native C++ translation of
+  DSP1's code, checked sample by sample against the DSP running the original.
+- **Speed on ARM:** the DSP program is statically recompiled ahead of time (from your OS file, so it is never
+  shipped) into C++ that the ARM compiler can optimise.
+
+## Development
+
+The work behind this, in order (`HANDOFF.md` has the full log and `docs/` the protocol notes):
+
+1. **Firmware decoded.** The OS `.syx` unpacks into five sections, two of them complete DSP programs.
+2. **Protocol traced.** A patched full-system emulation logged every word between the ColdFire and the DSPs. That
+   settled the roles (section 1 on DSP2, section 2 on DSP1), the 16 voice slots and the parameter structures.
+3. **Voice engine, bit-exact** against the full-system emulation, then the host model (tick, LFOs, triggers).
+4. **Mixer chain translated to native C++**, bit-exact against the DSP for 3.2 M samples of the per-track chain and
+   384,000 words of the mix.
+5. **ARM port of the DSP emulator.** Found and fixed a missing MERGE instruction, a static-initialisation-order bug in
+   the opcode tables and a cache-invalidation gap in the boot loader, and proved the ARM output identical to x86 on the
+   real Force.
+6. **Static recompiler** for the voice DSP: 294% to 141% of real time for a 6-track demo on the Force.
+7. **The plugin:** engine thread with real-time scheduling, 524 parameters, SYN labels that follow the machine,
+   project save and restore.
+8. **The skin, generated from the real LCD** driven in the emulator: font and dial atlases, page layouts, a machine
+   picker, the LFO page, chassis and bezel.
+9. **Kits and ROM machines:** kit sysex import (factory kits dumped from the emulated MD), and the sample memory the MD
+   copies from its flash at boot.
+10. **Performance work on the device:** skipping settled silent tracks, ring depth and priority tuning, trimming the skin
+    and P memory (about 225 MB less RAM in MPC), the voice budget, skipping idle voices in the DSP loop and silent tracks in the mixer.
+
+## Credits
+
+- **Elektron**, for the Machinedrum. All firmware and sound belong to them; this project ships none of it.
+- **shnolk's [Monomodule](https://github.com/shnolk/monomodule)**: the approach this follows (the machine's own
+  DSP in an emulator, a host model for the main processor, plugin and skin design), the OS-file decoder adapted in
+  `tools/mdfw`, and the Elektron LCD fonts and dial art the skin borrows.
+- **[gearmulator-md-mm](https://github.com/joelanders/gearmulator-md-mm)** by Joe Landers: a full-system Machinedrum
+  emulation, used as the tracing and correctness reference, and the Musashi 68k core inside it, used by the machine
+  routines. Not part of the plugin.
+- **[dsp56300](https://github.com/dsp56300/dsp56300)**, the DSP56300 emulator this builds on (our fork,
+  [sd88me/dsp56300](https://github.com/sd88me/dsp56300), adds the ARM interpreter and static recompiler work and the
+  fixes above), and its bundled asmjit.
+- **[mpc-vst-plugins](https://github.com/sd88me/mpc-vst-plugins)**: the shared VST2 wrapper, skin toolchain and
+  installer for MPC OS.
+- Built with [Claude Code](https://claude.com/claude-code).
+
+Licensed AGPL-3.0-only, like Monomodule (whose decoder is adapted here); dsp56300 is GPL-3.0.

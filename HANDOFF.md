@@ -1223,32 +1223,138 @@ from it.
   fills ROM01-32; ROM33-48 are empty (silent there too). Not yet checked: bit-exactness of ROM output
   against the emulated MD.
 
-## RESUME HERE (2026-09-28, session cut off)
+- **2026-09-29: CPU work on the Force, ROM machines fixed, GLOBAL fixes. Machinedrum Module 0.4.x, deployed to the device.**
+  - **Bank/kit steppers did nothing**: on the GLOBAL tab the kit/bank components were listed *before* the full-page
+    Background image, so the opaque background covered them and took their clicks (later components draw and take
+    clicks on top). Fixed in `mk_skin.py` (Background first). Track pages already had it the right way round.
+  - **ROM machines were silent-ish/identical/glitchy - two real bugs.** (1) The ROM machines' coefficient function
+    divides by a word at internal SRAM `$0100150c` that the OS boot fills (`$bb8`; `$0100150x` = `06060606 x3 00000bb8`).
+    `MachineRunner` only had the OS image, so it took a divide-by-zero, returned -1 and `HostModel` sent an all-zero
+    slot: every ROM track played the same glitchy sound. Now seeded in `MachineRunner`'s constructor (16 bytes). (2) The
+    recompiler's discovery pass never ran the ROM playback code (zero words, no samples), so on the Force ROM ran on the
+    slow interpreter. `mdrecomp_discover` now takes `ROM_SAMPLES.bin` as a 3rd argument: 840 -> 1081 blocks.
+  - **Whole-MPC freeze diagnosed**: an overloaded engine thread (SCHED_FIFO 5) never sleeps, so it kept its core 100% busy
+    and starved MPC's normal-priority threads on it; the MPC main thread sat in `rt_mutex_schedule` (a lock held by a
+    starved thread). Proof: demoting the thread to SCHED_OTHER (python `os.sched_setscheduler`) woke MPC at once.
+    Fix: a duty cap (`kMaxDuty` 0.7 of its core's CPU time over ~30 ms windows, `MD_DUTY` overrides for tests): overload
+    now costs the plugin dropped blocks (crackle, counted as underruns, `naps` in the stats), never MPC.
+  - **Where the time goes on the Force** (per 128-frame host block, budget 2902 us; `md-cost` on the device): idle was
+    774-1088 us; OS tick ~190 us (the OS's own smoothing/LFO routines over all 16 tracks - not cuttable without changing
+    behaviour), voice DSP 444 us, mixer 130 us, track FX 19 us. One playing voice adds **ROM ~430 us, other machines
+    ~240 us** (x86 DSP-instruction ratio: ROM 3,500 instr vs TRX-BD ~1,830). Two exact savings, both verified with
+    `md-hash` (identical audio hash `34a5ad68b72a7282` on x86, ARM recompiled and ARM plain interpreter):
+    (a) the mixer skips tracks whose input block is all zeros (`engine/Mixer.cpp`; `MD_MIX_NOSKIP` runs everything);
+    (b) the voice DSP loop sends a 1-word flag per voice and the 32 samples only for voices that rendered
+    (`VoiceEngine::installHarness` kSkipStub/kSkipNormal/kSkipSilent, `readBlock`); idle DSP 1987 -> 659 instr/block.
+    Idle on the Force is now ~290 us, voice DSP 87, mixer 8.
+  - **Voice budget** (`max_voices`, the VOICES knob, same key/param): now a cost budget in units, most machines 1, ROM
+    machines 2 (`HostModel::voiceCost`), oldest sounding tracks cut when a trigger would exceed it. **Default 8** (the
+    user's choice for testing). Measured on the Force with the standalone engine (ring depth 2, tracks retriggering every
+    125 ms): 4 non-ROM tracks 1.6 ms/block, 0 underruns; 6 or 8 non-ROM tracks 3.8 ms, 700-1500 underruns; 2 ROM fine; 4 ROM
+    (8 units) 92 underruns. **Recommend 5 as the shipped default** (4 for dense patterns). A saved project keeps its own
+    saved VOICES value (the user's old one was probably 16 = uncapped, which left the engine in permanent overload).
+  - **ROM on/off switch** (GLOBAL tab, param `rom_enabled`, appended last): off = tracks on a ROM machine play the empty
+    machine (engine.cpp swaps it in per track, `appliedEff`; the track keeps its ROM setting and its SYN values), the
+    randomiser leaves ROM out. Kits do NOT carry ROM samples: a kit `.syx` holds machine numbers only, samples come from the
+    flash image at build time (`ROM_SAMPLES.bin`, ROM01-32 filled, 33-48 empty), so someone else's ROM kit plays *your*
+    samples in those slots.
+  - **A fresh instance loads the first kit** (`Inst::maybeDefaultKit`, ~1.5 s after create, only if every track is still on
+    GND--, so a restored project is never touched). x86 smoke: `MD_SMOKE_FRESH=1` (and `MD_SMOKE_RESTORED=1`).
+  - **Memory**: MPC grew ~590 MB with the plugin. The DSP interpreter's per-program-word opcode cache made P memory of 8M
+    words cost ~400 MB; P is now 2M words (`kSizeP`, the MD map stays below `$200000`, samples end `$18fc12`), output
+    identical, ~225 MB less in MPC. The skin no longer draws bars/grids for machines that cannot sound here (MID, CTR, INP,
+    RAM, ROM33-48): 437 -> 317 components per track page. Tab switching is still slower on first load, then fine.
+  - **Ring depth**: 4 blocks (kRing 4, kAhead 2 = 5.8 ms) as originally (latency matters for feel). A deeper ring
+    (kAhead 4, kRing 8, +5.8 ms) rode out CPU spikes in the x86 churn test (158 underruns at 2, 0 at 3+): the fallback if
+    crackle returns on a heavy kit. The plugin does not report its latency to MPC (not verified).
+  - **Tried and dropped: release a voice after 1.5 s of exact silence.** It works and frees CPU, but a retrigger from the
+    released state is NOT the same as the original: 72 of 107 sounding machines (all ROM, E12, P-I, most EFM, some TRX)
+    respond differently (SNR 11-20 dB in a random pattern). Reverted. Do not retry without a way to keep the machine's
+    state exact.
+  - **Tools added**: `md-cost` (`tools/mdcost`: idle stage breakdown + DSP instr and wall time per playing voice for every
+    machine, run on the Force), `md-hash` (`tools/mdhash`: audio hash of a fixed 16-track pattern; equal hashes = identical
+    audio; compare recompiled vs interpreter, ARM vs x86, skip paths on/off - it does NOT load ROM samples, so ROM audio
+    is not covered), `md-vst-smoke` env: `MD_SMOKE_CHURN`, `MD_SMOKE_VOICES`, `MD_SMOKE_ROMOFF`, `MD_SMOKE_FX`, `MD_SMOKE_KIT`,
+    `MD_SMOKE_FRESH`. Engine stats: `touch /tmp/md-stats-on` on the device (or `MD_STATS=1`), then read
+    `/tmp/md-stats.<MPC pid>` (underruns, naps, worst/mean render us per second). `/tmp` is cleared by every reboot.
+  - README rewritten as the user-facing pre-release page (features, limits, build, credits).
+
+- **2026-09-29 (later): what actually limits polyphony on the Force, and two things tried and dropped.**
+  - **Live stage breakdown** (engine stats now print `active= rom= budget= tick= dsp= fx= mix=`, us per 128-frame host block,
+    with `touch /tmp/md-stats-on`): a regular drum pattern with 5-6 voices sounding sat at ~1.85 ms/block (dsp ~900, fx ~600-715,
+    tick ~195, mix ~30) with worst blocks 2.4-2.8 ms - i.e. **already at the edge of the 2.9 ms block**. The 7th sounding voice
+    (track 7, EFM RS) added ~780 us of DSP (dsp 900 -> 1680, later up to 2500) and tipped it into ~80 underruns/s. **Track FX
+    costs ~120 us per playing track** (fx ~730 us with 6 tracks) - the second-largest cost after the voice DSP.
+  - Per-voice DSP cost is roughly constant while a machine is sounding (~1,900-3,600 DSP instr per 32-sample block; no trigger
+    spike: measured with a retrigger every 125 ms) and drops when it has decayed. On the Force that is ~340 us/voice on a quiet
+    device and 2-3x that when MPC is busy (`md-cost` run while the plugin was playing: EFM RS 830 us, P-ISD 1,380 us, ROM
+    ~1,500 us). So capacity is ~4-5 sounding voices, whatever the machine mix; no fixed voice count is right.
+  - **Tried and dropped: overload governor** (cut one voice, decayed first, when the smoothed render time passed 2.1 ms). It
+    fired ~4 times a second, the pattern retriggered the cut tracks at once so load stayed high, and the cuts themselves were
+    the glitching - worse than before. Removed. **Also dropped: releasing a voice after 1.5 s of silence** (not exact: 72 of
+    107 machines sound different when retriggered from the released state, SNR 11-20 dB).
+  - The engine/HostModel keep the exact savings (mixer skip, DSP idle-voice flag), the voice budget, the duty cap, the ROM
+    switch and the stats.
+  - **What would actually raise polyphony (not done):** (1) split the 16 voice slots over two `VoiceEngine` instances on two
+    persistent threads (Force has 4 cores; per 32-sample block sync; never per-block thread creation - that rebooted the
+    device once), (2) move track FX + mixer to a pipelined thread (exact, +0.7 ms latency at 32-sample granularity),
+    (3) speed up `TrackFx` (native C++ on 32-bit ARM with 64-bit accumulators, ~120 us/track; NEON or skipping neutral stages),
+    (4) a cheaper OS tick (~190 us, OS routines, not cuttable exactly). Until then: VOICES ~5 and prefer light machines.
+
+- **2026-09-29 (end of day): v0.1.0 release flow.** `release/build_release.sh <OS.syx> <flash.bin> [-v ver] [-d ip] [-m plugins]`
+  is the one-command build (mirrors Monomodule's `release/release.sh`): x86 tools -> factory kits + ROM samples -> recompiled DSP
+  (discovery is now a CMake option, `-DMD_DISCOVERY=ON`, in `build-release/`) -> **bit-exactness gate** (x86 interpreter vs
+  recompiled `md-hash`, with the ROM samples; aborts on mismatch) -> skin -> ARM plugin -> installer zip in `dist/`; `-d` copies
+  it to the Force and runs `install.sh -y`. First full run built `dist/Machinedrum-Module-0.1.0-mpc-armv7.zip` (2.2 MB, 339
+  files). Default VOICES is now **5** (measured safe; 8 crackles). LCD background now sits `lcd_margin` (28 px) outside the page
+  panels (`mk_skin.py`: `ALU_H` derived from `OX + PAGES_X0`). Dependency to resolve before anyone else can build: the plugin
+  needs the wrapper's `dynamic_name`/`dynamic_display`, on the unmerged mpc-vst-plugins branch `claude/dynamic-param-names`; the
+  script refuses a wrapper without it. `md-hash` takes the ROM samples as a 2nd argument.
+
+- **2026-09-29 (evening): catalog conformance, pushes.** mpc-vst-plugins now has catalog rules (`docs/CATALOG*.md`, `PORTING.md`
+  section 5, CLAUDE.md): releases must carry `mpc-plugin.json` (`release.py --id --repo --license --requires`) and pass
+  `tools/catalog_check.py <zip> --catalog --expect-id --expect-repo`; engines must locate data next to the `.so`
+  (`MODULE_SUBDIR`, `wrapper/plugin_dir.h`), never a fixed `/sdcard`. Done here: `vst.json` defines `MODULE_SUBDIR "machinedrum"`
+  (MODULE_DIR kept as the fallback), `build_release.sh` passes `--id machinedrum-module --repo sd88me/mpc-vst-machinedrum --license
+  AGPL-3.0-only --requires ...` and runs `catalog_check` as its last step. **Policy conflict, needs the user/maintainer:** the catalog
+  only lists zips with no closed binaries or copyrighted ROMs; ours contains firmware-derived code and data (recompiled DSP, ROM
+  samples, the OS file) so it must never be a public GitHub release and cannot be listed as a download (same for Monomodule).
+  No registry PR was made; a "build it yourself" catalog entry type would need to be proposed. The wrapper dependency is resolved:
+  `claude/dynamic-param-names` is already merged into mpc-vst-plugins `main` (the build script just needs a checkout at `main`).
+  Optional `tested.json` (`[{version, device, firmware, date}]`) not added: the Force's MPC OS version is not recorded here.
+
+## RESUME HERE (2026-09-29)
 
 State:
-- Committed (local, NOT pushed): everything through `410c380` (ROM machines). mpc-vst-plugins: wrapper
-  dynamic_name/dynamic_display are on branch `claude/dynamic-param-names` (now = main checkout
-  `/home/sam/mpc-vst` at 87d722b; the old `/home/sam/mpc-vst-dynname` worktree is gone - build with
-  `vst/build_so.sh /tmp/recomp_inc /home/sam/mpc-vst`). Monomodule chassis skin: branch
-  `claude/faceplate-chassis` (91e431b) in mpc-vst-monomodule, not pushed.
-- On the Force: Machinedrum Module **0.4.0** (kits, randomise, GLOBAL first, picker trimmed) and the
-  new Monomodule build (chassis skin) are installed. **0.4.1 (ROM machines + ROM_SAMPLES.bin) is built
-  and packaged at /tmp/md_release but NOT installed** - install with the zip's `install.sh -y`
-  (restarts MPC; ask the user first).
-- Build steps: `python3 tools/mdkits/make_factory.py <mdProbe> build-vst-x86/mdsamples <os .bin> <os .syx>
-  vst/build/factory`, `tools/mdskin/build_skin.sh <os.syx> <monomodule art.json> /home/sam/mpc-vst`,
-  `vst/build_so.sh ...`, then release.py with `--extra vst/build/factory:vst/machinedrum/factory`.
+- Branch `claude/trusting-maxwell-hx3i7b` (pushed to origin; the `v0.1.0` tag is on it). Device (Force at 192.168.1.44, DHCP - ask if it
+  changes) runs this build: `machinedrum_one.so` + skin + factory kits + ROM samples in `/sdcard/vst/machinedrum/`.
+- The link to the Force is flaky: big `scp` and plain tar copies stall for minutes. What works: `gzip -c file | ssh
+  root@.. 'gunzip -c > /sdcard/vst/x.new'`, then check `md5sum`, then `mv`; skin via `tar -czf - | ssh 'tar -xzf -'`
+  (5 s). Device busybox has no `chrt`/`timeout`/`join`; use python3 there. Never `pkill -f <pattern in your own command>`.
+- Build steps (all outputs are per-user, never committed):
+  1. discovery: build `tools/mdrecomp/mdrecomp_discover.cpp` against `libs/dsp56300` with
+     `-DDSP56K_RECOMP_DISCOVERY -DDSP56K_NO_JIT_RUNTIME` (a scratch CMake project: dsp56300 asmjit/dsp56kBase/dsp56kEmu/
+     vtuneSdk + `libs/gearmulator-md-mm/source/mc68k` + the engine sources), run
+     `mdrecomp-discover <OS.syx> disc.txt <ROM_SAMPLES.bin>`, `nm -C` it, then
+     `python3 libs/dsp56300/tools/arm32jit_prototype/recomp/recomp_gen2.py disc.txt nm.txt > <dir>/dsp56k_recomp.inl`.
+     **Redo this whenever `VoiceEngine::installHarness` or the ROM handling changes** (blocks are keyed on P words; a
+     stale `.inl` falls back to the slow interpreter for changed code). Current: 1081 blocks, 97.9% coverage.
+  2. `python3 tools/mdkits/make_factory.py <mdProbe> build-vst-x86/mdsamples <flash.bin> <OS.syx> vst/build/factory`
+  3. `tools/mdskin/build_skin.sh <OS.syx> <monomodule art.json> ../mpc-vst`
+  4. `vst/build_so.sh <dir with the .inl> ../mpc-vst`; `tools/mdskin` needs Docker `mpc-vst-html-art`.
+  5. `python3 ../mpc-vst/tools/release.py --so vst/build/machinedrum_one.so --skin "vst/build/skin/sd88me - VST - Machinedrum
+     Module" --entry vst/build/pluginlist-entry.xml --version 0.4.x --extra vst/build/factory:vst/machinedrum/factory`
+- Verify before a release: x86 `md-hash` = `34a5ad68b72a7282`; on the Force the recompiled `md-hash` and an interpreter-only
+  build (`cmake` without `-DDSP56K_RECOMP`) give the same value; `md-cost` idle ~290 us.
 
-In progress - **global (master) FX**, user's next priority:
-- Master FX = mixer DSP (DSP1, section 2) code `P:$342-$970` (rhythm echo, gate box/reverb, EQ,
-  dynamix), params at `Y:$150-$18c`, inputs from the mix: dry `X:$180`, reverb send `X:$1c0`, delay send
-  `X:$600`; output stage from `$971`. Kits carry master FX settings at $48c.. (not yet parsed).
-- Uncommitted: `MixerRef::runMaster()` (tools/mdmix) runs $342->$971. A throwaway
-  `mastercost.cpp` (scratchpad) to measure its instructions/block was killed (exit 137, likely OOM/loop)
-  before giving a number - rerun carefully (smaller run, check it terminates).
-- Decision pending on that number: emulate the section (cheap to build, CPU cost on the Force) vs
-  bit-exact native C++ translation like TrackFx/Mixer (tools/mdmix already has stage-by-stage compare).
-- Then: map the 68k's master-FX param writes to Y:$150+, expose master FX params (+ kit parsing), skin
-  page for them (REV/DEL currently do nothing).
-
-Other open items: ROM output not verified bit-exact vs emulator; ROM33-48 empty on factory image.
+Open, in the order I would take them:
+1. **Decide the shipped VOICES default** (currently 8; measured: 5 is safe, 8 is not; ROM counts double) and whether to build
+   the two-thread split above - the user's patterns hit the ~5-voice ceiling with ordinary EFM/E12/TRX kits.
+2. **OS tick ~190 us per block** is now the largest fixed cost: the OS's smoothing/LFO routines run over all 16 tracks.
+   Not cuttable exactly; a persistent-thread pool for a second core (Force has 4; the earlier per-block thread spawn
+   rebooted the device) is the real lever for polyphony.
+3. Bank/kit **picker list** (like the machine picker; rows via `dynamic_display`), parked for the next version.
+4. **Master FX** (reverb/delay/etc.): `MixerRef::runMaster` (tools/mdmix) runs `$342->$971`; decision pending between
+   emulating that section and a native translation; REV/DEL currently do nothing.
+5. ROM output is not verified bit-exact against the emulated MD; the ARM recompiled ROM path is covered by no hash.
+6. `libs/gearmulator-md-mm` has local mdtrace patches (uncommitted in the submodule); `mdProbe` needs them (tools/mdtrace/README.md).

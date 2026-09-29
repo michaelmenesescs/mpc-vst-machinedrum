@@ -1,4 +1,7 @@
 #include "HostModel.h"
+
+#include <chrono>
+#include <cstdlib>
 #include "ParallelVoiceEngine.h"
 
 #include <algorithm>
@@ -96,12 +99,15 @@ namespace md::engine
 	template<class TVoices>
 	void HostModel<TVoices>::trigger(const int _track, const int _velocity, const bool _accent)
 	{
-		if(m_maxActive < kTracks)
+		// Voice budget: the tracks that have sounded (and so keep costing DSP time until silenced) are kept in trigger
+		// order, and a trigger that would take their total cost past the budget cuts the least-recently-triggered ones.
 		{
 			auto it = std::find(m_activeOrder.begin(), m_activeOrder.end(), _track);
 			if(it != m_activeOrder.end())
 				m_activeOrder.erase(it);
-			else if(static_cast<int>(m_activeOrder.size()) >= m_maxActive)
+			const int self = voiceCost(m_pendingMachine[_track] >= 0 ? static_cast<uint8_t>(m_pendingMachine[_track]) : m_machine[_track]);
+			auto total = [&] { int c = self; for(const int t : m_activeOrder) c += voiceCost(m_machine[t]); return c; };
+			while(!m_activeOrder.empty() && total() > m_maxActive)
 			{
 				const int victim = m_activeOrder.front();
 				m_activeOrder.erase(m_activeOrder.begin());
@@ -200,14 +206,22 @@ namespace md::engine
 			for(int p = 0; p < kParams; ++p)
 				m_os.poke8(kRaw + 24 * static_cast<uint32_t>(t) + static_cast<uint32_t>(p), m_raw[t][p]);
 
+		const auto tv0 = timingOn ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
 		for(int t = 0; t < kTracks; ++t)
 			updateVoice(t);
+		const auto tv1 = timingOn ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
 
 		// After the voice loop the OS smooths the parameters, runs the LFOs and builds the next tick's arrays.
 		m_os.call(kSmooth, {});
 		m_os.call(kLfoOsc, {});
 		m_os.call(kLfoApply, {});
 		m_os.call(kLevelSmooth, {});
+		if(timingOn)
+		{
+			const auto tv2 = std::chrono::steady_clock::now();
+			voiceLoopUs += std::chrono::duration<double, std::micro>(tv1 - tv0).count();
+			osCallsUs += std::chrono::duration<double, std::micro>(tv2 - tv1).count();
+		}
 		++m_tickCount;
 	}
 
@@ -216,13 +230,20 @@ namespace md::engine
 	{
 		// Ticks on a fixed block schedule; a trigger between ticks updates just its voice, so it starts on this
 		// block rather than waiting for the next tick.
+		const auto t0 = timingOn ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
 		if(m_blockCount++ % m_blocksPerTick == 0)
 			tick();
 		else
 			for(int t = 0; t < kTracks; ++t)
 				if(m_trigger[t])
 					updateVoice(t);
-		return m_voices.renderBlock(_out);
+		if(!timingOn) return m_voices.renderBlock(_out);
+		const auto t1 = std::chrono::steady_clock::now();
+		const bool ok = m_voices.renderBlock(_out);
+		const auto t2 = std::chrono::steady_clock::now();
+		tickUs += std::chrono::duration<double, std::micro>(t1 - t0).count();
+		dspUs += std::chrono::duration<double, std::micro>(t2 - t1).count();
+		return ok;
 	}
 
 	template class HostModel<VoiceEngine>;

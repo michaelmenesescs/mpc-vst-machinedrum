@@ -1,5 +1,8 @@
 #include "Mixer.h"
 
+#include <algorithm>
+#include <cstdlib>
+
 #include "Dsp56.h"
 
 namespace md::engine
@@ -21,8 +24,13 @@ namespace md::engine
 		std::array<std::array<int32_t, 6>, kTracks> g{};
 		std::array<const int32_t*, kTracks> mainIn{};
 		int n = 0;
+		static const bool noSkip = std::getenv("MD_MIX_NOSKIP") != nullptr;	// verification: run every track
 		for(int t = 0; t < kTracks; ++t)
 		{
+			// A track with no signal adds exactly nothing to any sum (0 x gain = 0, x + 0 = x, and lim() of an
+			// already-limited output word is that word), so it is skipped: most of a kit is silent most of the time.
+			if(!noSkip && std::all_of(_tracks[t], _tracks[t] + kBlock, [](const int32_t s) { return s == 0; }))
+				continue;
 			const auto& w = _mix[t];
 			const int route = sx24(w[0]);
 			const int32_t vol = sx24(w[1]);
