@@ -267,11 +267,13 @@ namespace md::engine
 	bool VoiceEngine::readBlock(Block& _out, const uint64_t _maxInstructions)
 	{
 		auto& hi = m_periphX->getHI08();
+		m_lastActive = 0;
 		for(auto& voice : _out)
 		{
 			if(!runUntilTx(1, _maxInstructions))
 				return false;
 			const TWord flag = hi.readTX() & 0xffffff;
+			if(flag == 1) ++m_lastActive;
 			if(flag != 1)
 			{
 				voice.fill(0);

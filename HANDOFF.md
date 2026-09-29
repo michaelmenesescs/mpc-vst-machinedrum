@@ -1279,6 +1279,28 @@ from it.
     `/tmp/md-stats.<MPC pid>` (underruns, naps, worst/mean render us per second). `/tmp` is cleared by every reboot.
   - README rewritten as the user-facing pre-release page (features, limits, build, credits).
 
+- **2026-09-29 (later): what actually limits polyphony on the Force, and two things tried and dropped.**
+  - **Live stage breakdown** (engine stats now print `active= rom= budget= tick= dsp= fx= mix=`, us per 128-frame host block,
+    with `touch /tmp/md-stats-on`): a regular drum pattern with 5-6 voices sounding sat at ~1.85 ms/block (dsp ~900, fx ~600-715,
+    tick ~195, mix ~30) with worst blocks 2.4-2.8 ms - i.e. **already at the edge of the 2.9 ms block**. The 7th sounding voice
+    (track 7, EFM RS) added ~780 us of DSP (dsp 900 -> 1680, later up to 2500) and tipped it into ~80 underruns/s. **Track FX
+    costs ~120 us per playing track** (fx ~730 us with 6 tracks) - the second-largest cost after the voice DSP.
+  - Per-voice DSP cost is roughly constant while a machine is sounding (~1,900-3,600 DSP instr per 32-sample block; no trigger
+    spike: measured with a retrigger every 125 ms) and drops when it has decayed. On the Force that is ~340 us/voice on a quiet
+    device and 2-3x that when MPC is busy (`md-cost` run while the plugin was playing: EFM RS 830 us, P-ISD 1,380 us, ROM
+    ~1,500 us). So capacity is ~4-5 sounding voices, whatever the machine mix; no fixed voice count is right.
+  - **Tried and dropped: overload governor** (cut one voice, decayed first, when the smoothed render time passed 2.1 ms). It
+    fired ~4 times a second, the pattern retriggered the cut tracks at once so load stayed high, and the cuts themselves were
+    the glitching - worse than before. Removed. **Also dropped: releasing a voice after 1.5 s of silence** (not exact: 72 of
+    107 machines sound different when retriggered from the released state, SNR 11-20 dB).
+  - The engine/HostModel keep the exact savings (mixer skip, DSP idle-voice flag), the voice budget, the duty cap, the ROM
+    switch and the stats.
+  - **What would actually raise polyphony (not done):** (1) split the 16 voice slots over two `VoiceEngine` instances on two
+    persistent threads (Force has 4 cores; per 32-sample block sync; never per-block thread creation - that rebooted the
+    device once), (2) move track FX + mixer to a pipelined thread (exact, +0.7 ms latency at 32-sample granularity),
+    (3) speed up `TrackFx` (native C++ on 32-bit ARM with 64-bit accumulators, ~120 us/track; NEON or skipping neutral stages),
+    (4) a cheaper OS tick (~190 us, OS routines, not cuttable exactly). Until then: VOICES ~5 and prefer light machines.
+
 ## RESUME HERE (2026-09-29)
 
 State:
@@ -1304,8 +1326,8 @@ State:
   build (`cmake` without `-DDSP56K_RECOMP`) give the same value; `md-cost` idle ~290 us.
 
 Open, in the order I would take them:
-1. **User's test of the current build** (VOICES default 8, ROM switch, ring 2): pick the shipped VOICES default from
-   where crackle starts (measured: 5 is safe, 8 is not; ROM counts double). Consider making 5 the default.
+1. **Decide the shipped VOICES default** (currently 8; measured: 5 is safe, 8 is not; ROM counts double) and whether to build
+   the two-thread split above - the user's patterns hit the ~5-voice ceiling with ordinary EFM/E12/TRX kits.
 2. **OS tick ~190 us per block** is now the largest fixed cost: the OS's smoothing/LFO routines run over all 16 tracks.
    Not cuttable exactly; a persistent-thread pool for a second core (Force has 4; the earlier per-block thread spawn
    rebooted the device) is the real lever for polyphony.

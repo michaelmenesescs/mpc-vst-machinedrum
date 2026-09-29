@@ -46,6 +46,7 @@ namespace md::engine
 		uint32_t readP(uint32_t _addr) const;
 
 		uint64_t instructionsLastBlock() const { return m_lastInstructions; }
+		int activeVoicesLastBlock() const { return m_lastActive; }	// voices that rendered (flag 1) in the last block
 		const std::string& faultReason() const { return m_fault; }
 		dsp56k::DSP& dsp() { return *m_dsp; }
 
@@ -62,6 +63,7 @@ namespace md::engine
 		std::unique_ptr<dsp56k::PeripheralsNop> m_periphY;
 		std::unique_ptr<dsp56k::DSP> m_dsp;
 		uint64_t m_lastInstructions = 0;
+		int m_lastActive = 0;
 		std::string m_fault;
 	};
 }

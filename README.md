@@ -42,7 +42,7 @@ needs your own Machinedrum OS 1.63 file and a flash image (see [What you need](#
 
 - **Master effects:** the reverb and delay sends are computed but no effect consumes them, so REV and DEL do nothing.
   The master section (rhythm echo, gate box/reverb, EQ, dynamix) is the next big piece.
-- **CPU.** A four-track kit uses about 40% of one Force core. A dense 16-track pattern is beyond what one core does
+- **CPU.** About 4-5 voices can sound at once on one Force core (a machine costs roughly 0.3-0.8 ms of a 2.9 ms audio block, depending on how busy MPC is; the ROM machines, P-I and EFM machines cost the most, and track effects add about 0.1 ms per playing track). A dense 16-track pattern is beyond what one core does
   in real time on the Force; the voice budget is the guard. The engine thread runs below MPC's own audio threads, so
   overload drops the plugin's own blocks (crackle) rather than MPC's audio.
 - **First load is slower** than later ones (the skin is large: MPC reads and decodes it from the card).

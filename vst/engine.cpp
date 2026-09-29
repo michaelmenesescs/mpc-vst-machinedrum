@@ -551,7 +551,9 @@ void Inst::run()
 		const bool statsOn = std::getenv("MD_STATS") != nullptr || access("/tmp/md-stats-on", F_OK) == 0;
 		auto statT = std::chrono::steady_clock::now(), lastEnd = statT;
 		double worstUs = 0, sumUs = 0, worstGap = 0;
-		int nUs = 0;
+		int nUs = 0, maxActive = 0;
+		double pTick = 0, pDsp = 0, pFx = 0, pMix = 0;	// stage timers at the last stats line (Engine::timingOn, only with stats on)
+		eng.timingOn = statsOn;
 		ready.store(true);
 
 		while(!stop.load(std::memory_order_acquire))
@@ -687,15 +689,17 @@ void Inst::run()
 				const double gap = std::chrono::duration<double, std::micro>(t1 - lastEnd).count();
 				lastEnd = t1;
 				worstUs = std::max(worstUs, us); sumUs += us; ++nUs; worstGap = std::max(worstGap, gap);
+				maxActive = std::max(maxActive, eng.voices().activeVoicesLastBlock());
 				if(t1 - statT >= std::chrono::seconds(1))
 				{
 					statT = t1;
 					if(FILE* f = std::fopen(("/tmp/md-stats." + std::to_string(getpid())).c_str(), "a"))
 					{
-						std::fprintf(f, "underruns=%u naps=%u worst_us=%.0f mean_us=%.0f worst_gap_us=%.0f\n", underruns.load(), dutyNaps.load(), worstUs, sumUs / std::max(1, nUs), worstGap);
+						std::fprintf(f, "underruns=%u naps=%u worst_us=%.0f mean_us=%.0f worst_gap_us=%.0f active=%d rom=%d budget=%d tick=%.0f dsp=%.0f fx=%.0f mix=%.0f\n", underruns.load(), dutyNaps.load(), worstUs, sumUs / std::max(1, nUs), worstGap, maxActive, param[kSlotRomEnabled].load(), param[kSlotMaxVoices].load(), (h.tickUs - pTick) / std::max(1, nUs), (h.dspUs - pDsp) / std::max(1, nUs), (eng.fxUs - pFx) / std::max(1, nUs), (eng.mixUs - pMix) / std::max(1, nUs));
 						std::fclose(f);
 					}
-					worstUs = sumUs = worstGap = 0; nUs = 0;
+					pTick = h.tickUs; pDsp = h.dspUs; pFx = eng.fxUs; pMix = eng.mixUs;
+					worstUs = sumUs = worstGap = 0; nUs = 0; maxActive = 0;
 				}
 			}
 		}

@@ -1,6 +1,7 @@
 // mdcost: DSP instructions and wall-clock time per playing voice for every machine (idle baseline first). Run on the
 // Force to see what one voice really costs there.  usage: md-cost <OS.syx> <ROM_SAMPLES.bin>
 #include <cstdio>
+#include <cstdlib>
 #include <vector>
 #include <algorithm>
 #include <string>
@@ -52,7 +53,7 @@ int main(int argc, char** argv)
 	}
 	std::sort(rs.begin(), rs.end(), [](const R&a,const R&b){return a.c>b.c;});
 	printf("extra DSP instr per block for ONE playing voice (retriggered every 80 blocks), costliest first:\n");
-	for(size_t i=0;i<rs.size();++i) if(i<14 || i>rs.size()-4) printf("%3d %-7s %7.0f instr  %6.0f us/host block extra  (%.1fx TRX-BD)\n", rs[i].id, rs[i].n.c_str(), rs[i].c, rs[i].us, rs[i].c/std::max(1.0, [&]{for(auto&r:rs) if(r.id==16) return r.c; return 1.0;}()));
+	for(size_t i=0;i<rs.size();++i) if(i<14 || i>rs.size()-4 || std::getenv("MD_COST_ALL")) printf("%3d %-7s %7.0f instr  %6.0f us/host block extra  (%.1fx TRX-BD)\n", rs[i].id, rs[i].n.c_str(), rs[i].c, rs[i].us, rs[i].c/std::max(1.0, [&]{for(auto&r:rs) if(r.id==16) return r.c; return 1.0;}()));
 	double rom=0, romUs=0, othUs=0; int nr=0, oth=0; double othc=0;
 	for(auto&r:rs){ if(r.id>=128){rom+=r.c;romUs+=r.us;++nr;} else {othc+=r.c;othUs+=r.us;++oth;} }
 	printf("mean extra per voice: ROM %.0f instr = %.0f us (%d machines), others %.0f instr = %.0f us (%d)\n", rom/nr, romUs/nr, nr, othc/oth, othUs/oth, oth);
