@@ -97,6 +97,8 @@ echo "== 6/7 plugin (armhf)"
 vst/build_so.sh "$WORK/recomp" "$MV"
 
 echo "== 7/7 installer"
+# pluginlist-entry.xml is normally written by gen_vst.py; generate just the entry if it's missing (don't rerun gen_vst: it would overwrite the skin)
+[ -f vst/build/pluginlist-entry.xml ] || python3 -c "import sys; sys.path.insert(0, sys.argv[1]); import gen_vst; open('vst/build/pluginlist-entry.xml', 'w').write(gen_vst.entry(gen_vst.load('vst/vst.json')) + '\\n')" "$MV/tools"
 # the plugin reads your OS file from its data dir under this exact name, so the installer carries it (your own file, per-user zip)
 rm -rf vst/build/payload && mkdir -p vst/build/payload && cp -r vst/build/factory vst/build/payload/factory && cp "$OS" vst/build/payload/Elektron_SPS1-1UW_OS1.63.syx
 python3 "$MV/tools/release.py" --so vst/build/machinedrum_one.so \
