@@ -1468,3 +1468,11 @@ Open, in the order I would take them:
   the 1451 us threshold, so tap and main are sample-aligned. Spike entries removed from MPC.settings.
   **Gotcha (caused a crash loop, fixed):** MPC.settings PLUGIN elements span several lines; delete with `sed '/name="X"/,/\/>/d'`, never one line.
   Backups: `MPC.settings.bak-tap`, `.bak-tapfx`. **Next:** LCD-style skin for the taps (tools/mdskin), release packaging (installer, catalog).
+- **2026-09-30 (later still): taps are multi-select; LCD skin for the taps; README section.** Each source is its own on/off param (`src1`..`src16`,
+  `src_rev`, `src_del`, `through` on the FX build); a tap sums whatever is on (mask in `Tap`, per-source counts in `Shared`). Skin generator
+  `tools/mdskin/mk_tap_skin.py` (same LCD look, own copy of the drawing code): `docker run ... mpc-vst-html-art python3 tools/mdskin/mk_tap_skin.py
+  vst/build/art.json vst/tap/params.json vst/tap/build/skin tap` (and `tapfx ... fx`). No master FX in this version, by decision: the sends leave
+  through the taps and MPC's own effects do the job.
+  **Future, Gen 2 / higher-power devices:** a faithful build with the MD's master section included. Measured 9,740 DSP instr/block (~13.4 M/s)
+  for `$342-$970`; plan = emulate DSP1's master section (MixerRef-style, Y:$150-$18c params from the kit's master-FX bytes, external delay memory)
+  as an optional `MasterFx` stage after the mixer, off by default, gated on device speed. See the 2026-09-30 master-FX entry above.

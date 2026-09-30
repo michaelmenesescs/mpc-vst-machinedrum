@@ -44,10 +44,28 @@ needs your own Machinedrum OS 1.63 file and a flash image (see [What you need](#
 - **The skin** is drawn from the Machinedrum's own LCD (fonts, dials, page layout), generated at build time from
   your own firmware, inside a thin hardware-style bezel. Nothing captured from the firmware is stored in the repo.
 
+### Taps: each track or send on its own MPC track
+
+MPC gives a VST2 instrument only one stereo pair of outputs, so the Module cannot offer 16 outputs. Instead, two small extra
+plugins read channels from the Module running in the same project:
+
+- **Machinedrum Tap** (an instrument) and **Machinedrum Tap FX** (an effect, for a return or FX track). Each has an on/off
+  cell for every track (mono, after the track's effects and VOL, before its pan), for the reverb send and for the delay send.
+  Turn on as many as you like: the tap outputs their sum, so one MPC track or submix can carry any set of Machinedrum channels.
+  Tap FX also has THRU, which adds whatever the track receives.
+- A track that a tap reads leaves the Module's own dry main mix, so it is not heard twice. It still feeds the Machinedrum's
+  reverb and delay sends (the track's REV and DEL knobs), which the send taps carry.
+- Use them to give each drum its own MPC track, submix and insert effects, or to put the sends on a return track and run
+  them through MPC's own reverb and delay. Taps are sample-aligned with the Module (measured on a Force) and cost almost no CPU.
+- Needs one Machinedrum Module in the project; a tap is silent without it. Install `machinedrum_one.so`, `machinedrum_tap.so`
+  and `machinedrum_tapfx.so` in the same folder.
+
 ### Not there yet (known limits)
 
-- **Master effects:** the reverb and delay sends are computed but no effect consumes them, so REV and DEL do nothing.
-  The master section (rhythm echo, gate box/reverb, EQ, dynamix) is the next big piece.
+- **Master effects:** this version bakes in none. The Machinedrum's own master section (rhythm echo, gate box/reverb, EQ,
+  dynamix) is not emulated; the reverb and delay sends come out through the taps instead, so MPC's own effects do that job.
+  A faithful version with the Machinedrum's master effects built in is planned for more powerful devices (Gen 2 and
+  later): it costs about 13 M DSP instructions a second on top of the voices, too much for the current Force.
 - **CPU.** The voices render on two threads (two cores) and the track effects run on the same threads. About 4-5 voices can sound
   at once on a Force with MPC busy: a voice costs roughly 0.3-0.9 ms of a 2.9 ms audio block depending on the machine (ROM, P-I
   and EFM cost the most) and on how busy MPC is. Beyond that the plugin crackles, so the voice budget (default 4) is the guard:

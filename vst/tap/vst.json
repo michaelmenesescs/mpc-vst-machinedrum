@@ -14,5 +14,6 @@
   "sources": [],
   "cflags": [],
   "libs": []
- }
+ },
+ "custom_skin": true
 }

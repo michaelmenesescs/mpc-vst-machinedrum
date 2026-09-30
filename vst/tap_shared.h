@@ -10,8 +10,8 @@ namespace mdtap
 	constexpr int kTracks = 16, kFrames = 128, kSlots = 8;
 	// planes: 0-15 the tracks (mono, post effects and VOL), 16/17 reverb send L/R, 18/19 delay send L/R
 	constexpr int kPlanes = kTracks + 4, kPlaneRev = 16, kPlaneDel = 18;
-	// tap sources (the tap's "source" param): 0 off, 1-16 track, 17 reverb send, 18 delay send
-	constexpr int kSrcOff = 0, kSrcTrack1 = 1, kSrcRev = 17, kSrcDel = 18, kSources = 19;
+	// tap sources, one bit each in a tap's mask (any number at once, summed): bits 0-15 the tracks, 16 reverb send, 17 delay send
+	constexpr int kBitRev = 16, kBitDel = 17, kSources = 18;
 
 	struct Shared
 	{
