@@ -16,10 +16,14 @@ if [ ! -f "$ROOT/libs/dsp56300/source/dsp56kEmu/dsp.h" ] || [ ! -f "$ROOT/libs/g
 fi
 docker image inspect md-armhf-builder >/dev/null 2>&1 || docker build -q -t md-armhf-builder -f "$ROOT/tools/Dockerfile.armhf-builder" "$ROOT" >/dev/null
 python3 "$MV/tools/gen_vst.py" "$ROOT/vst/vst.json" --params-h
+python3 "$MV/tools/gen_vst.py" "$ROOT/vst/tap/vst.json" --params-h
+python3 "$MV/tools/gen_vst.py" "$ROOT/vst/tapfx/vst.json" --params-h
 mkdir -p "$ROOT/vst/build/obj"
 docker run --rm -u "$(id -u):$(id -g)" -v "$ROOT":/r -v "$REC":/rec:ro -v "$MV":/mv:ro md-armhf-builder sh -c "
   cmake -S /r -B /r/vst/build/obj -G Ninja -DCMAKE_TOOLCHAIN_FILE=/r/tools/armhf.cmake -DCMAKE_BUILD_TYPE=Release \
     -DMPC_VST_DIR=/mv '-DCMAKE_CXX_FLAGS=-DDSP56K_RECOMP -I/rec' >/dev/null &&
-  ninja -C /r/vst/build/obj machinedrum_one md-vst-smoke 2>&1 | tail -5 &&
-  arm-linux-gnueabihf-strip -o /r/vst/build/machinedrum_one.so /r/vst/build/obj/machinedrum_one.so"
-md5sum "$ROOT/vst/build/machinedrum_one.so"
+  ninja -C /r/vst/build/obj machinedrum_one machinedrum_tap machinedrum_tapfx md-vst-smoke 2>&1 | tail -5 &&
+  arm-linux-gnueabihf-strip -o /r/vst/build/machinedrum_one.so /r/vst/build/obj/machinedrum_one.so &&
+  arm-linux-gnueabihf-strip -o /r/vst/build/machinedrum_tap.so /r/vst/build/obj/machinedrum_tap.so &&
+  arm-linux-gnueabihf-strip -o /r/vst/build/machinedrum_tapfx.so /r/vst/build/obj/machinedrum_tapfx.so"
+md5sum "$ROOT/vst/build/machinedrum_one.so" "$ROOT/vst/build/machinedrum_tap.so" "$ROOT/vst/build/machinedrum_tapfx.so"

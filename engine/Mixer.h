@@ -31,9 +31,15 @@ namespace md::engine
 
 		// _tracks: each track's 32 processed samples (TrackFx output); _mix: each track's 5 mix words
 		// (route, VOL gain, PAN, REV, DEL; HostModel::MixerInput::mix).
-		void process(const int32_t* const* _tracks, const std::array<uint32_t, 5>* _mix, Output& _out) const;
+		// _dryMute: bit t set = track t stays out of the dry main mix but still feeds the reverb and delay sends (a track read
+		// by a Machinedrum Tap); 0 = the DSP's own behaviour, bit-exact.
+		void process(const int32_t* const* _tracks, const std::array<uint32_t, 5>* _mix, Output& _out, uint32_t _dryMute = 0) const;
 
 		static int frameChannel(int _route);
+
+		// One track on its own (no pan, no sends): the individual-output formula, sample x VOL << 4 limited (24-bit).
+		// _volWord: the track's mix word 1 (HostModel::MixerInput::mix[1]).
+		static int32_t solo(int32_t _sample, uint32_t _volWord);
 
 	private:
 		const TrackFx::Tables& m_t;

@@ -6,9 +6,11 @@ from one plugin instance, using the Machinedrum's own DSP code and its own machi
 
 <img width="640" height="400" alt="image" src="https://github.com/user-attachments/assets/30d1c99b-333c-4b98-b9e5-2c3339ef0c29" />
 
-**v0.2.1.** It plays, saves and reloads with the project, and it is tested on a real Force (MPC OS 3.9.1; the plugin itself is unchanged since 0.2.0). There is
+**v0.3.0.** It plays, saves and reloads with the project, and it is tested on a real Force (MPC OS 3.9.1). There is
 no downloadable build: it needs your own Machinedrum firmware, so you build the installer yourself with one script (see
-[Building](#building)). Master effects (reverb, delay and the rest of the master section) are not in yet.
+[Building](#building)). The Machinedrum's master effects are not built in: the reverb and delay sends come out through the new taps instead (see [Taps](#taps-each-track-or-send-on-its-own-mpc-track)).
+
+**New in 0.3.0:** **Machinedrum Tap** and **Machinedrum Tap FX**: extra plugins that put any tracks, and the reverb and delay sends, on their own MPC tracks, submixes or return tracks, so MPC's mixer and effects can process them. Tracks and sends can be mixed freely on one tap. Timing against the main output was measured on a Force (sample-aligned). The Module itself is unchanged, and its output is bit-identical when no tap is in use.
 
 **New in 0.2.1:** build fixes only. The build no longer needs Monomodule's art file (the LCD fonts come from your Machinedrum OS, and the
 randomise toggle icon is now drawn by this project), `mdProbe` is built for you, and the README has plain steps including a macOS setup.
@@ -48,10 +50,28 @@ needs your own Machinedrum OS 1.63 file and a flash image (see [What you need](#
 - **The skin** is drawn from the Machinedrum's own LCD (fonts, dials, page layout), generated at build time from
   your own firmware, inside a thin hardware-style bezel. Nothing captured from the firmware is stored in the repo.
 
+### Taps: each track or send on its own MPC track
+
+MPC gives a VST2 instrument only one stereo pair of outputs, so the Module cannot offer 16 outputs. Instead, two small extra
+plugins read channels from the Module running in the same project:
+
+- **Machinedrum Tap** (an instrument) and **Machinedrum Tap FX** (an effect, for a return or FX track). Each has an on/off
+  cell for every track (mono, after the track's effects and VOL, before its pan), for the reverb send and for the delay send.
+  Turn on as many as you like: the tap outputs their sum, so one MPC track or submix can carry any set of Machinedrum channels.
+  Tap FX also has THRU, which adds whatever the track receives.
+- A track that a tap reads leaves the Module's own dry main mix, so it is not heard twice. It still feeds the Machinedrum's
+  reverb and delay sends (the track's REV and DEL knobs), which the send taps carry.
+- Use them to give each drum its own MPC track, submix and insert effects, or to put the sends on a return track and run
+  them through MPC's own reverb and delay. Taps are sample-aligned with the Module (measured on a Force) and cost almost no CPU.
+- Needs one Machinedrum Module in the project; a tap is silent without it. Install `machinedrum_one.so`, `machinedrum_tap.so`
+  and `machinedrum_tapfx.so` in the same folder.
+
 ### Not there yet (known limits)
 
-- **Master effects:** the reverb and delay sends are computed but no effect consumes them, so REV and DEL do nothing.
-  The master section (rhythm echo, gate box/reverb, EQ, dynamix) is the next big piece.
+- **Master effects:** this version bakes in none. The Machinedrum's own master section (rhythm echo, gate box/reverb, EQ,
+  dynamix) is not emulated; the reverb and delay sends come out through the taps instead, so MPC's own effects do that job.
+  A faithful version with the Machinedrum's master effects built in is planned for more powerful devices (Gen 2 and
+  later): it costs about 13 M DSP instructions a second on top of the voices, too much for the current Force.
 - **CPU.** The voices render on two threads (two cores) and the track effects run on the same threads. About 4-5 voices can sound
   at once on a Force with MPC busy: a voice costs roughly 0.3-0.9 ms of a 2.9 ms audio block depending on the machine (ROM, P-I
   and EFM cost the most) and on how busy MPC is. Beyond that the plugin crackles, so the voice budget (default 4) is the guard:
@@ -134,7 +154,7 @@ must never be published as a release (a catalog entry for it links to this repo 
 download). The zip is still catalog-conformant in format: `mpc-plugin.json` (id `machinedrum-module`, license
 `AGPL-3.0-only`, source repo) is generated, and the build runs mpc-vst-plugins' `catalog_check.py --catalog` as its last step.
 The plugin locates its data next to the `.so` (`MODULE_SUBDIR`), not at a fixed path. Device testing is recorded in
-`tested.json` (v0.2.0: Akai Force, MPC OS 3.9.1; 0.2.1 changes only the build and the skin art, not yet re-tested on the device).
+`tested.json` (v0.3.0: Akai Force, MPC OS 3.9.1; the taps are not yet part of the installer zip: build them with `vst/build_so.sh`, which now builds all three plugins, and copy `machinedrum_tap.so`, `machinedrum_tapfx.so` and their skins by hand).
 
 ## How it works
 

@@ -35,12 +35,15 @@
 
 #include "Engine.h"
 #include "Firmware.h"
+#include "tap_shared.h"
 
 extern "C" {
 #include "engine.h"
 }
 
 namespace {
+
+mdtap::Shared g_tap;	// see tap_shared.h; the first Inst to claim g_tap.owner publishes into it
 
 using Engine = md::engine::ParallelEngine;	// voices split over kGroups DSP2 instances on persistent threads (1 = the plain single-thread path)
 
@@ -587,6 +590,7 @@ void Inst::run()
 			std::fclose(af);
 		}
 		int appliedTempo = -1, appliedMaxVoices = -1;
+		const bool tapOwner = [this] { const void* none = nullptr; return g_tap.owner.compare_exchange_strong(none, this); }();
 		int appliedMachine[kTracks], appliedEff[kTracks], appliedVol[kTracks], appliedPan[kTracks];
 		int appliedFx[kTracks][kNumFx];
 		int appliedRoute[kTracks][kNumRoute];
@@ -718,6 +722,12 @@ void Inst::run()
 			}
 			nRead.store(r, std::memory_order_release);
 
+			if(tapOwner)
+			{
+				uint32_t mask = 0;
+				for(int t = 0; t < kTracks; ++t) if(g_tap.tapped[t].load(std::memory_order_relaxed) > 0) mask |= 1u << t;
+				eng.dryMute = mask;
+			}
 			int16_t* dst = ring[w % kRing];
 			const auto t0 = std::chrono::steady_clock::now();
 			for(int i = 0; i < kInner; ++i)
@@ -734,7 +744,26 @@ void Inst::run()
 					dst[2 * idx + 0] = static_cast<int16_t>(std::clamp(out.mix.main[f][0] >> 8, -32768, 32767));
 					dst[2 * idx + 1] = static_cast<int16_t>(std::clamp(out.mix.main[f][1] >> 8, -32768, 32767));
 				}
+				if(tapOwner)
+				{
+					auto& planes = g_tap.data[w % mdtap::kSlots];
+					auto q = [](int32_t v) { return static_cast<int16_t>(std::clamp(v >> 8, -32768, 32767)); };
+					for(int t = 0; t < kTracks; ++t)
+					{
+						const uint32_t vol = h.mixerInput(t).mix[1];
+						for(int f = 0; f < Engine::kBlock; ++f)
+							planes[t][i * Engine::kBlock + f] = q(md::engine::Mixer::solo(out.tracks[t][f], vol));
+					}
+					for(int f = 0; f < Engine::kBlock; ++f)
+					{
+						planes[mdtap::kPlaneRev][i * Engine::kBlock + f] = q(out.mix.rev[f][0]);
+						planes[mdtap::kPlaneRev + 1][i * Engine::kBlock + f] = q(out.mix.rev[f][1]);
+						planes[mdtap::kPlaneDel][i * Engine::kBlock + f] = q(out.mix.del[f][0]);
+						planes[mdtap::kPlaneDel + 1][i * Engine::kBlock + f] = q(out.mix.del[f][1]);
+					}
+				}
 			}
+			if(tapOwner) g_tap.written.store(w + 1, std::memory_order_release);
 			rWrite.store(w + 1, std::memory_order_release);
 			blocks.fetch_add(1, std::memory_order_relaxed);
 			{
@@ -827,6 +856,7 @@ void eDestroy(void* p)
 	in->stop.store(true, std::memory_order_release);
 	if(in->th.joinable()) in->th.join();
 	if(in->catTh.joinable()) in->catTh.join();
+	{ const void* me = in; g_tap.owner.compare_exchange_strong(me, nullptr); }
 	for(auto* c : in->retiredCats) delete c;
 	delete in->cat.load();
 	delete in;
@@ -950,12 +980,15 @@ void eRender(void* p, int16_t* out, int frames)
 	{
 		std::memcpy(out, in->ring[r % kRing], sizeof(int16_t) * kFrames * 2);
 		in->rRead.store(r + 1, std::memory_order_release);
+		if(g_tap.owner.load(std::memory_order_relaxed) == in) g_tap.hostRead.store(r + 1, std::memory_order_release);
 	}
 	else
 	{
 		std::memset(out, 0, sizeof(int16_t) * kFrames * 2);
 		in->underruns.fetch_add(1, std::memory_order_relaxed);
 	}
+	if(g_tap.owner.load(std::memory_order_relaxed) == in)
+		g_tap.hostCallUs.store(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch()).count(), std::memory_order_release);
 }
 
 const mpc_engine_t kEngine = {eCreate, eDestroy, eMidi, eSet, eGet, eRender, nullptr};
@@ -963,3 +996,5 @@ const mpc_engine_t kEngine = {eCreate, eDestroy, eMidi, eSet, eGet, eRender, nul
 }
 
 extern "C" const mpc_engine_t* mpc_engine(void) { return &kEngine; }
+
+extern "C" __attribute__((visibility("default"))) mdtap::Shared* md_tap_shared(void) { return &g_tap; }

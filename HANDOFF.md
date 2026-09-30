@@ -1449,3 +1449,30 @@ Open, in the order I would take them:
   fixed order: a shared engine must be producer/consumer (the existing engine thread + ring already is), taps read their own read
   pointer, never drive the engine from a callback. Design sketch: primary instance (lowest live id, hands over on close) owns engine +
   MIDI; tap instances pick a source (track 1-16 mono-as-stereo, reverb send, delay send, main) and read it from the shared ring.
+- **2026-09-30: "Machinedrum Tap" works on the Force (user-tested: routing a track to its own MPC track).** Built, not yet committed:
+  `vst/tap_shared.h` (state shared in-process), `vst/tap/` (tap_engine.cpp, vst.json uid `MdTp`, params.json: one `source` choice:
+  Off, Track 1-16, Reverb send, Delay send), primary changes in `vst/engine.cpp` (first Inst to claim `g_tap.owner` publishes each track's
+  mono signal = `Mixer::solo` (sample x VOL << 4, no pan) plus rev/del stereo into an 8-slot ring per 128-frame block; a track with a
+  tap is routed to individual out 0 so it leaves the main mix; `md_tap_shared()` exported), `Mixer::solo`, CMake target
+  `machinedrum_tap`, `build_so.sh` builds and strips both. The tap finds the primary with `dlopen(<own dir>/machinedrum_one.so, RTLD_NOLOAD)`
+  + `dlsym`, so both .so must be in the same folder (/sdcard/vst) and the primary loaded first. Registered on the device by hand
+  (`MPC.settings` backup `.bak-tap`); the old `MultiOut Spike` entry (poc/multiout.c, now holding poc/shared.c) is still registered.
+  **Open:** (1) tap skin/layout (plain MPC param screen now); (2) tap-to-primary offset is +-1 block (2.9 ms) by call order, check for
+  phasing between a tap and the main mix; (3) sends: tapped tracks have no REV/DEL send (individual routes carry none), the send taps
+  carry only untapped main-routed tracks; (4) installer/release: ship the tap .so and its plugin-list entry (release/build_release.sh,
+  catalog manifest); (5) remove the two spike entries from MPC.settings; (6) README section; (7) two primaries: the second does not publish.
+- **2026-09-30 (later): tap FX + alignment verified on the Force.** `machinedrum_tapfx.so` (uid `MdTf`, effect, params: Source default Reverb send,
+  Input through) registered and user-confirmed working (REV send out of a return track). Sends now include tapped tracks (Mixer `dryMute`:
+  tapped tracks leave only the dry main). Alignment: the tap takes hostRead-1 if the primary was called within half a period, else hostRead.
+  Measured (`/tmp/md-stats-on` -> `/tmp/md-tap-stats.<pid>`): 345 calls/s, the primary always ran first, 166-256 us before the tap, far from
+  the 1451 us threshold, so tap and main are sample-aligned. Spike entries removed from MPC.settings.
+  **Gotcha (caused a crash loop, fixed):** MPC.settings PLUGIN elements span several lines; delete with `sed '/name="X"/,/\/>/d'`, never one line.
+  Backups: `MPC.settings.bak-tap`, `.bak-tapfx`. **Next:** LCD-style skin for the taps (tools/mdskin), release packaging (installer, catalog).
+- **2026-09-30 (later still): taps are multi-select; LCD skin for the taps; README section.** Each source is its own on/off param (`src1`..`src16`,
+  `src_rev`, `src_del`, `through` on the FX build); a tap sums whatever is on (mask in `Tap`, per-source counts in `Shared`). Skin generator
+  `tools/mdskin/mk_tap_skin.py` (same LCD look, own copy of the drawing code): `docker run ... mpc-vst-html-art python3 tools/mdskin/mk_tap_skin.py
+  vst/build/art.json vst/tap/params.json vst/tap/build/skin tap` (and `tapfx ... fx`). No master FX in this version, by decision: the sends leave
+  through the taps and MPC's own effects do the job.
+  **Future, Gen 2 / higher-power devices:** a faithful build with the MD's master section included. Measured 9,740 DSP instr/block (~13.4 M/s)
+  for `$342-$970`; plan = emulate DSP1's master section (MixerRef-style, Y:$150-$18c params from the kit's master-FX bytes, external delay memory)
+  as an optional `MasterFx` stage after the mixer, off by default, gated on device speed. See the 2026-09-30 master-FX entry above.

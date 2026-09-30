@@ -1,0 +1,20 @@
+{
+ "name": "Machinedrum Tap FX",
+ "vendor": "sd88me",
+ "uid": "MdTf",
+ "version": 1000,
+ "so": "machinedrum_tapfx.so",
+ "params": "params.json",
+ "effect": true,
+ "defines": {
+  "MODULE_SUBDIR": "\"machinedrum\"",
+  "MODULE_DIR": "\"/sdcard/vst/machinedrum\""
+ },
+ "build": {
+  "root": "../..",
+  "sources": [],
+  "cflags": [],
+  "libs": []
+ },
+ "custom_skin": true
+}

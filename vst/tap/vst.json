@@ -1,0 +1,19 @@
+{
+ "name": "Machinedrum Tap",
+ "vendor": "sd88me",
+ "uid": "MdTp",
+ "version": 1000,
+ "so": "machinedrum_tap.so",
+ "params": "params.json",
+ "defines": {
+  "MODULE_SUBDIR": "\"machinedrum\"",
+  "MODULE_DIR": "\"/sdcard/vst/machinedrum\""
+ },
+ "build": {
+  "root": "../..",
+  "sources": [],
+  "cflags": [],
+  "libs": []
+ },
+ "custom_skin": true
+}
