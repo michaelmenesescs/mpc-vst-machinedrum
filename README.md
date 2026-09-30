@@ -6,9 +6,13 @@ from one plugin instance, using the Machinedrum's own DSP code and its own machi
 
 <img width="640" height="400" alt="image" src="https://github.com/user-attachments/assets/30d1c99b-333c-4b98-b9e5-2c3339ef0c29" />
 
-**v0.2.0.** It plays, saves and reloads with the project, and it is tested on a real Force (MPC OS 3.9.1). There is
+**v0.2.1.** It plays, saves and reloads with the project, and it is tested on a real Force (MPC OS 3.9.1; the plugin itself is unchanged since 0.2.0). There is
 no downloadable build: it needs your own Machinedrum firmware, so you build the installer yourself with one script (see
 [Building](#building)). Master effects (reverb, delay and the rest of the master section) are not in yet.
+
+**New in 0.2.1:** build fixes only. The build no longer needs Monomodule's art file (the LCD fonts come from your Machinedrum OS, and the
+randomise toggle icon is now drawn by this project), `mdProbe` is built for you, and the README has plain steps including a macOS setup.
+The skin's look is the same apart from two small digits and that icon.
 
 **New in 0.2.0:** the voices now render on two threads, which is the main reason a busy kit holds up better; the VOICES
 budget really cuts voices now (it did nothing before); TRX XT, CP, MA, CL and XC and EFM CY now play (they were silent);
@@ -130,7 +134,7 @@ must never be published as a release (a catalog entry for it links to this repo 
 download). The zip is still catalog-conformant in format: `mpc-plugin.json` (id `machinedrum-module`, license
 `AGPL-3.0-only`, source repo) is generated, and the build runs mpc-vst-plugins' `catalog_check.py --catalog` as its last step.
 The plugin locates its data next to the `.so` (`MODULE_SUBDIR`), not at a fixed path. Device testing is recorded in
-`tested.json` (v0.2.0: Akai Force, MPC OS 3.9.1).
+`tested.json` (v0.2.0: Akai Force, MPC OS 3.9.1; 0.2.1 changes only the build and the skin art, not yet re-tested on the device).
 
 ## How it works
 
