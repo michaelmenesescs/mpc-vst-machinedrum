@@ -1461,3 +1461,10 @@ Open, in the order I would take them:
   phasing between a tap and the main mix; (3) sends: tapped tracks have no REV/DEL send (individual routes carry none), the send taps
   carry only untapped main-routed tracks; (4) installer/release: ship the tap .so and its plugin-list entry (release/build_release.sh,
   catalog manifest); (5) remove the two spike entries from MPC.settings; (6) README section; (7) two primaries: the second does not publish.
+- **2026-09-30 (later): tap FX + alignment verified on the Force.** `machinedrum_tapfx.so` (uid `MdTf`, effect, params: Source default Reverb send,
+  Input through) registered and user-confirmed working (REV send out of a return track). Sends now include tapped tracks (Mixer `dryMute`:
+  tapped tracks leave only the dry main). Alignment: the tap takes hostRead-1 if the primary was called within half a period, else hostRead.
+  Measured (`/tmp/md-stats-on` -> `/tmp/md-tap-stats.<pid>`): 345 calls/s, the primary always ran first, 166-256 us before the tap, far from
+  the 1451 us threshold, so tap and main are sample-aligned. Spike entries removed from MPC.settings.
+  **Gotcha (caused a crash loop, fixed):** MPC.settings PLUGIN elements span several lines; delete with `sed '/name="X"/,/\/>/d'`, never one line.
+  Backups: `MPC.settings.bak-tap`, `.bak-tapfx`. **Next:** LCD-style skin for the taps (tools/mdskin), release packaging (installer, catalog).
