@@ -52,7 +52,10 @@ echo "== 3/7 recompiled voice DSP (traced from your OS file and the ROM samples;
 cmake -S . -B "$WORK/discovery" -G Ninja -DCMAKE_BUILD_TYPE=Release -DMD_DISCOVERY=ON >/dev/null
 ninja -C "$WORK/discovery" mdrecomp-discover >/dev/null
 mkdir -p "$WORK/recomp"
-"$WORK/discovery/mdrecomp-discover" "$OS" "$WORK/recomp/disc.txt" vst/build/factory/ROM_SAMPLES.bin >/dev/null 2>&1
+if ! "$WORK/discovery/mdrecomp-discover" "$OS" "$WORK/recomp/disc.txt" vst/build/factory/ROM_SAMPLES.bin > "$WORK/recomp/discover.log" 2>&1; then
+  echo "step 3 failed: the tracing tool stopped. Its last output:" >&2; tail -n 20 "$WORK/recomp/discover.log" >&2
+  echo "(send this, and the result of 'uname -m', with your report)" >&2; exit 1
+fi
 # demangled symbol list: GNU nm has -C; on macOS use LLVM's (brew install llvm) - Apple's nm has no -C
 NM=nm; for c in llvm-nm gnm /opt/homebrew/opt/llvm/bin/llvm-nm /usr/local/opt/llvm/bin/llvm-nm; do command -v "$c" >/dev/null 2>&1 && { NM=$c; break; }; done
 "$NM" -C "$WORK/discovery/mdrecomp-discover" > "$WORK/recomp/nm.txt" 2>/dev/null || { echo "this step needs an nm that supports -C (macOS: brew install llvm)" >&2; exit 1; }
