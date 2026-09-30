@@ -136,7 +136,9 @@ int main(int argc, char** argv)
 		DSP::s_recompTraceHook = &hook;
 
 		std::mt19937 rng(7);
-		std::uniform_int_distribution<int> synDist(0, 127);
+		// The top 7 bits of the Mersenne twister: what libstdc++ gives for uniform_int_distribution(0, 127), written out so the sweep (and so the
+		// trace) is the same on every platform (libc++, macOS, draws different values, and one of them sent the DSP off the rails in P-IBD).
+		auto synDist = [&](std::mt19937& g) { return int(g() >> 25); };
 
 		for(const auto& m : os.machines())
 		{
