@@ -2,7 +2,7 @@
 """Builds the MPC skin for Machinedrum Tap / Machinedrum Tap FX: one LCD page of on/off cells, one per source (the 16 tracks,
 the reverb send, the delay send, and on the FX build "THRU": pass the plugin's own input through). Several can be on at once:
 the tap outputs their sum, so one MPC track (or submix) can receive any set of Machinedrum channels. Same LCD look as
-mk_skin.py (the Module's skin generator: fonts and toggle icon from mpc-vst-monomodule's art.json, drawing code copied, not
+mk_skin.py (the Module's skin generator: fonts and toggle icon from art.json (tools/mdskin/mdartdump), drawing code copied, not
 imported: mk_skin.py is a script). Per-user build output, never committed or distributed.
 
     mk_tap_skin.py <art.json> <params.json> <out-dir> <tap|fx> [skin=... ink=RRGGBB paper=RRGGBB]

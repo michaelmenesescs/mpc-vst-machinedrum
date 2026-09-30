@@ -42,6 +42,10 @@ if(MD_DISCOVERY)
   target_link_libraries(mdrecomp-discover PRIVATE mdcore pthread dl)
 endif()
 
+# mdartdump: the LCD fonts and dial art of the user's own OS as JSON, for the skin generator (tools/mdskin)
+add_executable(mdartdump tools/mdskin/mdartdump.cpp)
+target_link_libraries(mdartdump PRIVATE mdcore)
+
 # mdcost: per-machine cost of one playing voice (instructions and wall time), for the Force
 add_executable(md-cost tools/mdcost/mdcost.cpp)
 target_link_libraries(md-cost PRIVATE mdcore pthread dl)
