@@ -66,8 +66,55 @@ needs your own Machinedrum OS 1.63 file and a flash image (see [What you need](#
 - **Your own Machinedrum OS 1.63 `.syx`** (`Elektron_SPS1-1UW_OS1.63.syx`). This is the sound engine.
 - **Your own full flash image** of a Machinedrum UW (8 MB `.bin`), used once at build time for the factory kits and
   the ROM sample memory. Without it you still get every non-ROM machine and any kit `.syx` you add.
-- Docker (for the ARM cross-build and the skin renderer), and the sibling checkout of
-  [mpc-vst-plugins](https://github.com/sd88me/mpc-vst-plugins) for the shared VST wrapper and installer.
+- A computer to build on (macOS or Linux; Windows through WSL) with **Docker** running, plus `git`, `cmake`, `ninja` and
+  `python3`. That's all: the build fetches everything else itself (the shared VST wrapper, the emulator sources, the
+  `mdProbe` tool) and reads the LCD fonts from your Machinedrum OS file, so no other Elektron file is needed.
+
+### On a Mac (one-time setup)
+
+1. Install Apple's command line tools (compiler, git, python3): open Terminal and run `xcode-select --install`.
+2. Install [Homebrew](https://brew.sh), then run `brew install cmake ninja llvm`.
+3. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and **start it** (the whale icon in the menu bar
+   must be running before you build). Apple Silicon and Intel Macs both work.
+4. Put the two files in a folder whose path has no spaces, for example `~/md/`. In Terminal, drag a file into the window to
+   type its path; **keep the quotes and the slashes** as Terminal writes them.
+5. The build takes about 25 minutes and the first run also builds `mdProbe` (a few extra minutes). It needs about 10 GB of
+   free disk space (Docker images). Keep the Mac awake.
+6. macOS-specific notes: the script uses the tools Homebrew installed (`llvm` supplies the `nm` the recompiler step needs).
+   If a step fails, copy the last 20 lines of Terminal output into an issue: that is enough to find the cause.
+   The Mac path has had less testing than Linux.
+
+## Building
+
+The build reads your firmware and writes an installer zip containing the plugin, the skin, your extracted kits and ROM
+samples, and your OS file (the plugin reads it at run time); the result contains firmware-derived code and data, so it is
+for your own devices only.
+
+**Where to run this: on your own computer, not on the Force.** The build runs inside Docker on your computer, and so does
+the `git clone` below. The Force is only where the finished plugin is installed.
+
+```bash
+git clone --recursive https://github.com/sd88me/mpc-vst-machinedrum.git
+cd mpc-vst-machinedrum
+release/build_release.sh "/path/to/Elektron_SPS1-1UW_OS1.63.syx" "/path/to/flash image.bin"
+```
+
+That's the whole build. The result is `dist/Machinedrum-Module-<version>-mpc-armv7.zip`. Put the two file paths in quotes.
+To install it on the Force from the same command, add `-d <device-ip>` (see below), or copy the zip over yourself,
+unzip it on the device and run `install.sh` as root. Installing stops and restarts MPC, so save your project first and run it
+with the device idle.
+
+Options: `-v <version>` (default from `git describe`), `-d <device-ip>` (copy the zip over and run its installer),
+`-m <mpc-vst-plugins checkout>` (default: fetched automatically, or `../mpc-vst` if it exists). `MDPROBE=<path>` uses a
+ready-built `mdProbe`; otherwise `tools/mdtrace/build_mdprobe.sh` builds it the first time (you can also run that by hand).
+
+The script builds, in order: the x86 helper tools, the factory kits and ROM samples (by booting the emulated MD from your flash
+image), the recompiled voice DSP (traced from your OS file), a **bit-exactness gate** (the recompiled DSP must give the same
+audio hash as the plain interpreter, ROM machines included, and every machine the plugin offers must make sound, or nothing is
+built for the device), the skin, the ARM plugin, and the installer zip.
+
+**If something goes wrong:** the script stops at the first error and says which step (`== 3/7 ...`). Run it again after fixing
+what it names; finished work is reused. `HANDOFF.md` has every step's details.
 
 ## Kits
 
@@ -76,39 +123,7 @@ Put Machinedrum kit sysex files (`.syx`, the MD's own kit dump) in
 Each file is a bank; a file with several kits shows them all. The factory kits are the bank called FACTORY.
 Master-effect settings inside a kit are ignored for now.
 
-## Building
-
-The build reads your firmware and writes an installer zip containing the plugin, the skin, your extracted kits and ROM
-samples, and your OS file (the plugin reads it at run time); the result contains firmware-derived code and data, so it is
-for your own devices only.
-
-**Where to run this: on your own computer (macOS or Linux, with Docker and git), not on the Force.** The build runs
-inside Docker on your computer, and so does the `git clone` below. The Force is only where the finished plugin is
-installed: the `-d <device-ip>` option copies it there over your network and runs the installer, or you copy the zip
-over yourself afterwards. Nothing is built or compiled on the device.
-
-```bash
-git clone --recursive <this repo> && cd mpc-vst-machinedrum
-release/build_release.sh <Elektron_SPS1-1UW_OS1.63.syx> <flash image.bin>            # -> dist/Machinedrum-Module-<version>-mpc-armv7.zip
-release/build_release.sh <OS.syx> <flash.bin> -d <device-ip>                          # ...and install it on the Force
-```
-
-Options: `-v <version>` (default from `git describe`), `-d <device-ip>` (copy the zip over and run its installer; this stops
-and restarts MPC, so save your project first), `-m <mpc-vst-plugins checkout>`. It builds, in order: the x86 helper tools,
-the factory kits and ROM samples (by booting the emulated MD from your flash image), the recompiled voice DSP (traced
-from your OS file), a **bit-exactness gate** (the recompiled DSP must give the same audio hash as the plain interpreter,
-ROM machines included, and every machine the plugin offers must make sound, or nothing is built for the device), the skin, the ARM plugin, and the installer zip in `dist/`.
-Prerequisites (each is described at the top of the script): Docker, a checkout of
-[mpc-vst-plugins](https://github.com/sd88me/mpc-vst-plugins) (fetched automatically if `../mpc-vst` is absent; its `main` has
-the dynamic parameter names the plugin needs), the `mdProbe` tool built from `tools/mdtrace` (`MDPROBE`), and Monomodule's
-`art.json` for the LCD fonts (`MNM_ART`). To install by hand instead, unzip the result on the device and run `install.sh`
-as root; the installer stops MPC, installs, and restarts it, so run it with the device idle.
-
-`HANDOFF.md` has the full state and every step's details (what `mdProbe` is, the recompiler pass, the device
-workflow). The skin borrows the Elektron LCD fonts from a
-build of Monomodule's skin (its `art.json`, made from a Monomachine OS file), so that is needed for the skin step.
-
-### Plugin catalog
+## Plugin catalog
 
 This is a **build-it-yourself** plugin: the installer zip contains firmware-derived code and data, so it is built per user and
 must never be published as a release (a catalog entry for it links to this repo and its build instructions, not to a

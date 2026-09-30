@@ -8,14 +8,15 @@
 #   -d  after building, copy the zip to the Force and run its installer (stops and restarts MPC: save your project first)
 #   -m  mpc-vst-plugins checkout (default: $MPC_VST_DIR, ../mpc-vst, else cloned to ~/.cache); its main has the wrapper's
 #       "dynamic_name"/"dynamic_display" support this plugin needs, and the catalog checker
-# Other inputs: MDPROBE (the mdProbe tool, see tools/mdtrace/README.md; default libs/gearmulator-md-mm/build/...) and MNM_ART
-# (mpc-vst-monomodule's vst/build/art.json, the Elektron LCD fonts made from YOUR Monomachine OS; default ../mpc-vst-monomodule/...).
+# Other input: MDPROBE (a ready-built mdProbe; if not set and not built, tools/mdtrace/build_mdprobe.sh builds it first).
 # Needs Docker (images md-armhf-builder and mpc-vst-html-art are built on first use). Output: dist/Machinedrum-Module-<version>-mpc-armv7.zip.
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
+# absolute path without GNU realpath (macOS has no `realpath -m`, older macOS no realpath at all); a missing file stays as given
+rp() { if [ -d "$1" ]; then (cd "$1" && pwd); elif [ -e "$1" ]; then echo "$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"; else echo "$1"; fi; }
 usage() { sed -n '2,15p' "$0"; exit 2; }
 [ $# -ge 2 ] || usage
-OS=$(realpath "$1"); FLASH=$(realpath "$2"); shift 2
+OS=$(rp "$1"); FLASH=$(rp "$2"); shift 2
 VERSION=""; DEVICE=""; MV="${MPC_VST_DIR:-}"
 while getopts "v:d:m:h" o; do case $o in v) VERSION=$OPTARG;; d) DEVICE=$OPTARG;; m) MV=$OPTARG;; *) usage;; esac; done
 if [ -z "$VERSION" ]; then VERSION=$(git -C "$ROOT" describe --tags --always 2>/dev/null | sed -E 's/^v//; s/^([0-9]+\.[0-9]+\.[0-9]+)-.*/\1/'); fi   # commits after a tag: still X.Y.Z (the catalog check needs it); pass -v to name a release
@@ -27,10 +28,11 @@ if [ -z "$MV" ]; then
     [ -d "$MV" ] || { mkdir -p "$(dirname "$MV")"; git clone -q https://github.com/sd88me/mpc-vst-plugins.git "$MV"; }
   fi
 fi
-MV=$(realpath "$MV")
-PROBE=$(realpath "${MDPROBE:-$ROOT/libs/gearmulator-md-mm/build/source/elektron/md/mdLibTest/mdProbe}")
-ART=$(realpath "${MNM_ART:-$ROOT/../mpc-vst-monomodule/vst/build/art.json}")
-for f in "$OS" "$FLASH" "$PROBE" "$ART" "$MV/tools/release.py" "$MV/tools/gen_vst.py"; do [ -e "$f" ] || { echo "missing: $f" >&2; exit 1; }; done
+MV=$(rp "$MV")
+PROBE=$(rp "${MDPROBE:-$ROOT/libs/gearmulator-md-mm/build/source/elektron/md/mdLibTest/mdProbe}")
+if [ ! -e "$PROBE" ] && [ -z "${MDPROBE:-}" ]; then echo "== mdProbe not built yet: building it (first run only, a few minutes)"; "$ROOT/tools/mdtrace/build_mdprobe.sh"; fi
+[ -e "$PROBE" ] || { echo "missing: $PROBE (mdProbe: build it with tools/mdtrace/build_mdprobe.sh, or point MDPROBE at it)" >&2; exit 1; }
+for f in "$OS" "$FLASH" "$PROBE" "$MV/tools/release.py" "$MV/tools/gen_vst.py"; do [ -e "$f" ] || { echo "missing: $f" >&2; exit 1; }; done
 grep -q "dynamic_name" "$MV/wrapper/vst2_wrap.c" || { echo "$MV's wrapper has no dynamic_name support: use mpc-vst-plugins main (or later)" >&2; exit 1; }
 cd "$ROOT"
 [ -f libs/dsp56300/source/dsp56kEmu/dsp.h ] || git submodule update --init --recursive
@@ -38,8 +40,10 @@ WORK=$ROOT/build-release; mkdir -p "$WORK" vst/build dist
 echo "Machinedrum Module $VERSION  (plugins checkout: $MV)"
 
 echo "== 1/7 x86 tools (mdsamples, mdmachine)"
-cmake -S . -B build-vst-x86 -G Ninja -DCMAKE_BUILD_TYPE=Release >/dev/null
-ninja -C build-vst-x86 mdsamples mdmachine >/dev/null
+# On the plain interpreter (no JIT): these tools only read memory, and the JIT (x86-64/arm64 hosts, e.g. an Apple Silicon Mac) can
+# crash while VoiceEngine initialises where the interpreter does not. Same dir as the tools' output: build-vst-x86/.
+cmake -S . -B build-vst-x86 -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS=-DDSP56K_NO_JIT_RUNTIME >/dev/null
+ninja -C build-vst-x86 mdsamples mdmachine mdartdump >/dev/null
 
 echo "== 2/7 factory kits and ROM samples (from the flash image, by booting the emulated MD)"
 python3 tools/mdkits/make_factory.py "$PROBE" build-vst-x86/mdsamples "$FLASH" "$OS" vst/build/factory
@@ -49,7 +53,9 @@ cmake -S . -B "$WORK/discovery" -G Ninja -DCMAKE_BUILD_TYPE=Release -DMD_DISCOVE
 ninja -C "$WORK/discovery" mdrecomp-discover >/dev/null
 mkdir -p "$WORK/recomp"
 "$WORK/discovery/mdrecomp-discover" "$OS" "$WORK/recomp/disc.txt" vst/build/factory/ROM_SAMPLES.bin >/dev/null 2>&1
-nm -C "$WORK/discovery/mdrecomp-discover" > "$WORK/recomp/nm.txt"
+# demangled symbol list: GNU nm has -C; on macOS use LLVM's (brew install llvm) - Apple's nm has no -C
+NM=nm; for c in llvm-nm gnm /opt/homebrew/opt/llvm/bin/llvm-nm /usr/local/opt/llvm/bin/llvm-nm; do command -v "$c" >/dev/null 2>&1 && { NM=$c; break; }; done
+"$NM" -C "$WORK/discovery/mdrecomp-discover" > "$WORK/recomp/nm.txt" 2>/dev/null || { echo "this step needs an nm that supports -C (macOS: brew install llvm)" >&2; exit 1; }
 python3 libs/dsp56300/tools/arm32jit_prototype/recomp/recomp_gen2.py "$WORK/recomp/disc.txt" "$WORK/recomp/nm.txt" > "$WORK/recomp/dsp56k_recomp.inl"
 
 echo "== 4/7 bit-exactness gate: the recompiled voice DSP must give the same audio as the plain interpreter"
@@ -67,7 +73,7 @@ SILENT=$(MD_SWEEP=1 "$WORK/gate-recomp/md-hash" "$OS" vst/build/factory/ROM_SAMP
 [ -n "$H_INTERP" ] && [ "$H_INTERP" = "$H_RECOMP" ] || { echo "GATE FAILED: the recompiled build does not match the interpreter - not building for the device" >&2; exit 1; }
 
 echo "== 5/7 skin"
-tools/mdskin/build_skin.sh "$OS" "$ART" "$MV" | tail -1
+tools/mdskin/build_skin.sh "$OS" "$MV" | tail -1
 
 echo "== 6/7 plugin (armhf)"
 vst/build_so.sh "$WORK/recomp" "$MV"

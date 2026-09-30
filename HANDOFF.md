@@ -1425,3 +1425,27 @@ Open, in the order I would take them:
   **Pending:** the rebuilt skin (VOICES knob shows 4) is in `vst/build/skin` but could not be copied: the Force went unreachable
   (No route to host). Deploy with: `cd vst/build/skin && tar -czf - "sd88me - VST - Machinedrum Module" | ssh root@192.168.1.44
   'cd /sdcard/Synths && tar -xzf -'` (then restart MPC to re-read the skin). Only the knob's first-paint image differs.
+
+- **2026-09-30: master FX cost measured; recommendation is to emulate, not translate.** `MixerRef::runMaster` ($342->$971, rhythm
+  echo/gate/EQ/dynamix/reverb, delay lines in external memory at `$1439xx`) costs a steady **~9,740 DSP instructions per 32-sample
+  block = ~13.4 M instr/s** (x86 interpreter/JIT build of md-mm's dsp56300, scratch test, input-independent so far). That is about
+  a third of DSP2's busy load, so emulating DSP1's master section (recompiled on ARM) is affordable, and far cheaper to build than a
+  ~1,200-word bit-exact translation. Disassembly: build `tools/mddis` (see build_proto.sh flags) and run `mddis OS.syx 2 342 972`.
+  Skin device: rebuilt skin (VOICES 4) deployed to the Force 2026-09-30; user listen-test passed.
+  **Next:** (1) `md::MasterFx` = MixerRef-style DSP1 with only the master section run; inputs dry L/R (`X:$180`) and sends
+  (`X:$1c0`, `X:$600`), params `Y:$150-$18c` (decode how the tick fills them from the 32 kit master-FX bytes at `$1000d7c+16`);
+  (2) compare against md-mm's final audio; (3) wire REV/DEL into `Engine`, then the FX plugin/skin.
+  Build note: MixerRef.cpp needs `setInterpreterEnabled`, so it only builds against `libs/dsp56300`, not md-mm's fork.
+
+- **2026-09-30: multi-output spike result: MPC (Force) uses only the first stereo pair of a VST2 instrument.** `~/mpc-vst/poc/multiout.c`
+  (8 outputs, pluginList `numOutputs="8"`): MPC probes `effGetOutputProperties` up to pin 7 and passes 8 valid `processReplacing`
+  buffers, but the track only offers one audio-out setting (1,2) and only the main pair is heard; the mixer I/O section has no
+  input selector for return/sub buses. So outputs 3+ are dropped: native per-track submix from ONE plugin instance is not possible.
+  Untried alternative: several instances in one process sharing a single engine (each MPC track = one instance tapping one MD track).
+- **2026-09-30: shared-engine spike (`~/mpc-vst/poc/shared.c`, log `/tmp/shared.log`) PASSED.** Three instances on three tracks:
+  one process (same pid), one copy of the library's statics (process-wide id counter 0,1,2 and live count shared; `close` decrements it),
+  `effOpen` is called twice per instance (harmless), `processReplacing` n=128 every ~2.9 ms per instance. **Audio callbacks run on MPC's
+  worker threads (4 of them), and the thread for a given instance changes between calls**, so instances are processed concurrently and in no
+  fixed order: a shared engine must be producer/consumer (the existing engine thread + ring already is), taps read their own read
+  pointer, never drive the engine from a callback. Design sketch: primary instance (lowest live id, hands over on close) owns engine +
+  MIDI; tap instances pick a source (track 1-16 mono-as-stereo, reverb send, delay send, main) and read it from the shared ring.

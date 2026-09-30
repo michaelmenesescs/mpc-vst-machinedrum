@@ -13,8 +13,8 @@ column, not a new design. Upstream-of-this differences are only what the Machine
     label grid is an overlay drawn over them, opaque except over its own live cells, so an unused cell is blank.
   * No preset/bank strip (the MD port has no presets) and no Shnolk logo (the vendor's own; "MD" in its place).
 
-The LCD artwork (fonts, dial ring and dot) comes from mpc-vst-monomodule's art.json (its mnm-artdump of the
-user's own Monomachine OS: same Elektron LCD family). Per-user build output, never committed or distributed.
+The LCD artwork (fonts, dial ring and dot) comes from art.json, which tools/mdskin/mdartdump makes from the
+user's own Machinedrum OS (the same Elektron LCD font family as Monomodule's). Per-user build output, never committed or distributed.
 
     mk_skin.py <art.json> <mdmachine listing> <params.json> <out-dir> [skin=... ink=RRGGBB paper=RRGGBB]
 """
