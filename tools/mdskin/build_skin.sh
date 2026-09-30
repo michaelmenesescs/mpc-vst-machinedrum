@@ -13,5 +13,6 @@ ninja -C "$ROOT/build-vst-x86" mdmachine mdartdump >/dev/null
 "$ROOT/build-vst-x86/mdmachine" "$OS" > "$ROOT/vst/build/machines.txt" 2>/dev/null
 "$ROOT/build-vst-x86/mdartdump" "$OS" "$ROOT/vst/build/art.json"
 rm -rf "$ROOT/vst/build/skin"
+docker image inspect mpc-vst-html-art >/dev/null 2>&1 || docker build -q -t mpc-vst-html-art "$MV/tools/html_art" >/dev/null
 docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -e MPC_VST_TOOLS=/mv/tools -v "$ROOT":/r -v "$MV":/mv:ro -w /r mpc-vst-html-art \
   python3 tools/mdskin/mk_skin.py vst/build/art.json vst/build/machines.txt vst/params.json vst/build/skin "${@:3}"
