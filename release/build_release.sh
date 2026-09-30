@@ -59,6 +59,21 @@ fi
 # demangled symbol list: GNU nm has -C; on macOS use LLVM's (brew install llvm) - Apple's nm has no -C
 NM=nm; for c in llvm-nm gnm /opt/homebrew/opt/llvm/bin/llvm-nm /usr/local/opt/llvm/bin/llvm-nm; do command -v "$c" >/dev/null 2>&1 && { NM=$c; break; }; done
 "$NM" -C "$WORK/discovery/mdrecomp-discover" > "$WORK/recomp/nm.txt" 2>/dev/null || { echo "this step needs an nm that supports -C (macOS: brew install llvm)" >&2; exit 1; }
+# macOS (Mach-O): nm lists addresses from the image base (0x100000000, the address of __mh_execute_header), while the trace has offsets from
+# the load address, so the recompiler finds no symbol for any handler ("KeyError: no symbol for handler offset ..."). Shift the list to start at 0.
+python3 - "$WORK/recomp/nm.txt" <<'PY'
+import re, sys
+p = sys.argv[1]
+lines = open(p).read().splitlines()
+base = next((int(m.group(1), 16) for m in (re.match(r'([0-9a-f]+) [A-Za-z] _?_mh_execute_header$', l.strip()) for l in lines) if m), 0)
+if base:
+    out = []
+    for l in lines:
+        m = re.match(r'([0-9a-f]{8,16}) (.*)$', l.strip())
+        out.append("%016x %s" % (int(m.group(1), 16) - base, m.group(2)) if m and int(m.group(1), 16) >= base else l)
+    open(p, "w").write("\n".join(out) + "\n")
+    print("   macOS binary: symbol addresses shifted by 0x%x" % base)
+PY
 python3 libs/dsp56300/tools/arm32jit_prototype/recomp/recomp_gen2.py "$WORK/recomp/disc.txt" "$WORK/recomp/nm.txt" > "$WORK/recomp/dsp56k_recomp.inl"
 
 echo "== 4/7 bit-exactness gate: the recompiled voice DSP must give the same audio as the plain interpreter"
