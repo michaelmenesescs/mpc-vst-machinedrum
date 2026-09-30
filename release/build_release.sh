@@ -13,9 +13,11 @@
 # Needs Docker (images md-armhf-builder and mpc-vst-html-art are built on first use). Output: dist/Machinedrum-Module-<version>-mpc-armv7.zip.
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
+# absolute path without GNU realpath (macOS has no `realpath -m`, older macOS no realpath at all); a missing file stays as given
+rp() { if [ -d "$1" ]; then (cd "$1" && pwd); elif [ -e "$1" ]; then echo "$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"; else echo "$1"; fi; }
 usage() { sed -n '2,15p' "$0"; exit 2; }
 [ $# -ge 2 ] || usage
-OS=$(realpath "$1"); FLASH=$(realpath "$2"); shift 2
+OS=$(rp "$1"); FLASH=$(rp "$2"); shift 2
 VERSION=""; DEVICE=""; MV="${MPC_VST_DIR:-}"
 while getopts "v:d:m:h" o; do case $o in v) VERSION=$OPTARG;; d) DEVICE=$OPTARG;; m) MV=$OPTARG;; *) usage;; esac; done
 if [ -z "$VERSION" ]; then VERSION=$(git -C "$ROOT" describe --tags --always 2>/dev/null | sed -E 's/^v//; s/^([0-9]+\.[0-9]+\.[0-9]+)-.*/\1/'); fi   # commits after a tag: still X.Y.Z (the catalog check needs it); pass -v to name a release
@@ -27,9 +29,9 @@ if [ -z "$MV" ]; then
     [ -d "$MV" ] || { mkdir -p "$(dirname "$MV")"; git clone -q https://github.com/sd88me/mpc-vst-plugins.git "$MV"; }
   fi
 fi
-MV=$(realpath "$MV")
-PROBE=$(realpath -m "${MDPROBE:-$ROOT/libs/gearmulator-md-mm/build/source/elektron/md/mdLibTest/mdProbe}")
-ART=$(realpath -m "${MNM_ART:-$ROOT/../mpc-vst-monomodule/vst/build/art.json}")
+MV=$(rp "$MV")
+PROBE=$(rp "${MDPROBE:-$ROOT/libs/gearmulator-md-mm/build/source/elektron/md/mdLibTest/mdProbe}")
+ART=$(rp "${MNM_ART:-$ROOT/../mpc-vst-monomodule/vst/build/art.json}")
 [ -e "$PROBE" ] || { echo "missing: $PROBE (mdProbe: build it first, see tools/mdtrace/README.md 'Build', or set MDPROBE)" >&2; exit 1; }
 for f in "$OS" "$FLASH" "$PROBE" "$ART" "$MV/tools/release.py" "$MV/tools/gen_vst.py"; do [ -e "$f" ] || { echo "missing: $f" >&2; exit 1; }; done
 grep -q "dynamic_name" "$MV/wrapper/vst2_wrap.c" || { echo "$MV's wrapper has no dynamic_name support: use mpc-vst-plugins main (or later)" >&2; exit 1; }
