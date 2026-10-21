@@ -210,6 +210,14 @@ Put both file paths in quotes. Watch for the `== 3/7 ...` step headings; at the 
 `Machinemodule-<version>-mpc-armv7.zip` and one each for the two taps, `Machinemodule-Tap-...` and `Machinemodule-Tap-FX-...`
 (install the ones you want; the taps need the Module).
 
+**Gen2 MPCs (MPC Live III and other 64-bit models, MPC OS 3.x):** add `-a aarch64`. That build runs the voice DSP on the JIT
+compiler instead of the recompiled code, so it skips the long steps 3-4 (a couple of minutes in all) and is about 2.4x faster on the
+device; the zips end in `-mpc-aarch64.zip`. Not yet tried on a Gen2 MPC: please report how it runs.
+
+```bash
+release/build_release.sh "/path/to/Elektron_SPS1-1UW_OS1.63.syx" "/path/to/flash image.bin" -a aarch64
+```
+
 ### Step 4: Install on the device
 
 1. **Save your project on the device.** Installing stops and restarts MPC, once per zip, and the device should be idle.
