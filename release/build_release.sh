@@ -9,6 +9,10 @@
 #   -a  armhf (default): Gen1 MPCs and the Force (32-bit ARM: the voice DSP as recompiled blocks traced from your OS file, steps 3-4).
 #       aarch64: Gen2 MPCs (MPC Live III ...): the voice DSP on the dsp56300 JIT, so no recompiler steps (and no code from your OS in
 #       the .so; the zip still carries your OS file and factory data). Zips end in -mpc-armv7.zip / -mpc-aarch64.zip.
+#   -P  the PUBLIC Gen2 download (implies -a aarch64): nothing of Elektron's in the zips. No OS file, no factory kits or ROM samples, and
+#       the skin as a recipe (tools/mdskin/skin_recipe.py: every LCD-art pixel a reference to a bit of the art, checked to give the
+#       generators' own skin exactly) that the plugin fills in from the user's OS file on the device (vst/skin_recipe.h). The user puts
+#       Elektron_SPS1-1UW_OS1.63.syx in the plugin's machinedrum/ folder. The flash image is not used.
 #   -v  version string (default: from `git describe`, e.g. 0.1.0)
 #   -d  after building, copy the zip to the Force and run its installer (stops and restarts MPC: save your project first)
 #   -m  mpc-vst-plugins checkout (default: $MPC_VST_DIR, ../mpc-vst, else cloned to ~/.cache); its main has the wrapper's
@@ -24,12 +28,13 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 rp() { if [ -d "$1" ]; then (cd "$1" && pwd); elif [ -e "$1" ]; then echo "$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"; else echo "$1"; fi; }
 # q: run a build command quietly into build-release/build.log; if it fails, say which one and show the end of the log
 q() { "$@" >>"$ROOT/build-release/build.log" 2>&1 || { echo "FAILED: $*" >&2; echo "--- last 30 lines of build-release/build.log ---" >&2; tail -n 30 "$ROOT/build-release/build.log" >&2; echo "--- (send this, the step number and 'uname -m' with your report) ---" >&2; exit 1; }; }
-usage() { sed -n '2,21p' "$0"; exit 2; }
+usage() { sed -n '2,25p' "$0"; exit 2; }
 [ $# -ge 1 ] || usage
 OS=$(rp "$1"); shift
 FLASH=""; if [ $# -ge 1 ] && [ "${1#-}" = "$1" ]; then FLASH=$(rp "$1"); shift; fi
-VERSION=""; DEVICE=""; MV="${MPC_VST_DIR:-}"; PATCHOS=0; ARCH=armhf
-while getopts "a:v:d:m:ph" o; do case $o in a) ARCH=$OPTARG;; p) PATCHOS=1;; v) VERSION=$OPTARG;; d) DEVICE=$OPTARG;; m) MV=$OPTARG;; *) usage;; esac; done
+VERSION=""; DEVICE=""; MV="${MPC_VST_DIR:-}"; PATCHOS=0; ARCH=armhf; PUBLIC=0
+while getopts "a:v:d:m:pPh" o; do case $o in a) ARCH=$OPTARG;; p) PATCHOS=1;; P) PUBLIC=1;; v) VERSION=$OPTARG;; d) DEVICE=$OPTARG;; m) MV=$OPTARG;; *) usage;; esac; done
+if [ $PUBLIC = 1 ]; then ARCH=aarch64; FLASH=""; fi   # the public download: Gen2, built without the flash image (nothing of it may ship)
 case $ARCH in armhf) SUF=armv7; SODIR=vst/build;; aarch64) SUF=aarch64; SODIR=vst/build/aarch64;; *) usage;; esac
 [ "$PATCHOS" = 0 ] || [ $ARCH = armhf ] || { echo "-p (the MPC OS 3.9.1.2 drum-pad patch) is for the 32-bit MPC OS only" >&2; exit 1; }
 if [ -z "$VERSION" ]; then VERSION=$(git -C "$ROOT" describe --tags --always 2>/dev/null | sed -E 's/^v//; s/^([0-9]+\.[0-9]+\.[0-9]+)-.*/\1/'); fi   # commits after a tag: still X.Y.Z (the catalog check needs it); pass -v to name a release
@@ -126,21 +131,54 @@ SILENT=$(MD_SWEEP=1 "$WORK/gate-$SWEEP/md-hash" "$OS" ${ROMS[@]+"${ROMS[@]}"} 2>
 [ -n "$H_INTERP" ] && [ "$H_INTERP" = "$H_RECOMP" ] || { echo "GATE FAILED: the recompiled build does not match the interpreter - not building for the device" >&2; exit 1; }
 
 echo "== 5/7 skin"
-tools/mdskin/build_skin.sh "$OS" "$MV" | tail -1
+if [ $PUBLIC = 1 ]; then
+  # the recipe, from the MD OS's own art only (mdartdump; never another port's art.json), checked against the generators' output
+  echo "   as a recipe (about 10 minutes: ~70 renders of the skins, then the check)"
+  q ninja -C build-vst-x86 mdmachine mdartdump
+  rm -rf "$WORK/skin" && mkdir -p "$WORK/skin"
+  build-vst-x86/mdmachine "$OS" > "$WORK/skin/machines.txt" 2>/dev/null
+  build-vst-x86/mdartdump "$OS" "$WORK/skin/art.json"
+  q docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -e MPC_VST_TOOLS=/mv/tools -v "$ROOT":/r -v "$MV":/mv:ro -w /r python:3.11-slim sh -c \
+    "pip install -q --no-warn-script-location --target /tmp/p pillow numpy >/dev/null 2>&1; PYTHONPATH=/tmp/p python3 tools/mdskin/skin_recipe.py make build-release/skin/art.json build-release/skin/machines.txt build-release/skin"
+  grep "^check:" "$WORK/build.log" | tail -2 | sed 's/^/   /'
+  rm -f "$WORK/skin/art.json"   # Elektron's art: not kept next to the release files
+  SKIN_MAIN="$WORK/skin/recipe/files/main/sd88me - VST - Machinemodule"
+  SKIN_TAP="$WORK/skin/recipe/files/tap/sd88me - VST - Machinemodule Tap"
+  SKIN_TAPFX="$WORK/skin/recipe/files/tapfx/sd88me - VST - Machinemodule Tap FX"
+else
+  tools/mdskin/build_skin.sh "$OS" "$MV" | tail -1
+  SKIN_MAIN="vst/build/skin/sd88me - VST - Machinemodule"
+  SKIN_TAP="vst/tap/build/skin/sd88me - VST - Machinemodule Tap"
+  SKIN_TAPFX="vst/tapfx/build/skin/sd88me - VST - Machinemodule Tap FX"
+fi
 
 echo "== 6/7 plugin ($ARCH)"
 if [ $ARCH = armhf ]; then vst/build_so.sh "$WORK/recomp" "$MV"; else vst/build_so.sh - "$MV" aarch64; fi
 
 echo "== 7/7 installer"
-# the plugin reads your OS file from its data dir under this exact name, so the installer carries it (your own file, per-user zip)
-rm -rf vst/build/payload && mkdir -p vst/build/payload && cp -r vst/build/factory vst/build/payload/factory && cp "$OS" vst/build/payload/Elektron_SPS1-1UW_OS1.63.syx
+rm -rf vst/build/payload && mkdir -p vst/build/payload
+if [ $PUBLIC = 1 ]; then
+  # the public download: the data folder holds only a note (the user adds the OS file there; kept on upgrade), the skin recipe beside it
+  mkdir -p vst/build/payload/machinedrum vst/build/payload/skin-recipe
+  cp "$WORK/skin/recipe/art.bin" vst/build/payload/skin-recipe/art.bin
+  printf 'Put your Machinedrum UW OS 1.63 file here, named Elektron_SPS1-1UW_OS1.63.syx (a free download from Elektron).\nThen load Machinemodule once (it makes its skin from that file) and restart MPC to see the skin.\nYour own kit dumps (.syx) go in kits/.\n' > vst/build/payload/machinedrum/PUT-OS-FILE-HERE.txt
+  mkdir -p vst/build/payload/machinedrum/kits
+  EXTRAS=(--extra vst/build/payload/machinedrum:machinedrum --extra vst/build/payload/skin-recipe:skin-recipe --user-data machinedrum)
+  REQUIRES="Your own Machinedrum UW OS 1.63 file (a free download from Elektron), put in the plugin's machinedrum/ folder; MPC restarted once after the first load (the plugin makes its skin from that file). No ROM machines or factory kits in this build"
+  ABOUT="Machinemodule: the Elektron Machinedrum UW sound engine as an MPC OS instrument (Gen2; runs your own OS file)"
+else
+  # the plugin reads your OS file from its data dir under this exact name, so the installer carries it (your own file, per-user zip)
+  cp -r vst/build/factory vst/build/payload/factory && cp "$OS" vst/build/payload/Elektron_SPS1-1UW_OS1.63.syx
+  EXTRAS=(--extra vst/build/payload:vst/machinedrum)
+  REQUIRES="Your own Machinedrum OS 1.63 file (and, for the ROM machines and factory kits, flash image): this zip is built from them, contains Elektron-derived data and is for your own devices only"
+  ABOUT="Machinemodule: the Elektron Machinedrum UW sound engine as an MPC OS instrument (built from your own firmware)"
+fi
 python3 "$MV/tools/gen_vst.py" vst/vst.json >/dev/null   # its pluginlist-entry.xml (custom skin: no skin from gen_vst)
 python3 "$MV/tools/release.py" --so $SODIR/machinedrum_one.so \
-  --skin "vst/build/skin/sd88me - VST - Machinemodule" --entry vst/build/pluginlist-entry.xml \
-  --version "$VERSION" --extra vst/build/payload:vst/machinedrum \
+  --skin "$SKIN_MAIN" --entry vst/build/pluginlist-entry.xml \
+  --version "$VERSION" "${EXTRAS[@]}" \
   --id machinemodule --repo sd88me/mpc-vst-machinedrum --license AGPL-3.0-only \
-  --requires "Your own Machinedrum OS 1.63 file (and, for the ROM machines and factory kits, flash image): this zip is built from them, contains Elektron-derived data and is for your own devices only" \
-  --about "Machinemodule: the Elektron Machinedrum UW sound engine as an MPC OS instrument (built from your own firmware)" -o dist
+  --requires "$REQUIRES" --about "$ABOUT" -o dist
 ZIP=dist/Machinemodule-"$VERSION"-mpc-$SUF.zip; ls -l "$ZIP"
 # catalog conformance (mpc-vst-plugins docs/CATALOG_SPEC.md): the manifest, layout, checksums, ELF/glibc limits
 python3 "$MV/tools/catalog_check.py" "$ZIP" --catalog --expect-id machinemodule --expect-repo sd88me/mpc-vst-machinedrum
@@ -149,8 +187,9 @@ python3 "$MV/tools/catalog_check.py" "$ZIP" --catalog --expect-id machinemodule 
 ZIPS="$ZIP"
 for t in "tap:machinedrum_tap:Machinemodule Tap:machinemodule-tap:instrument" "tapfx:machinedrum_tapfx:Machinemodule Tap FX:machinemodule-tap-fx:effect"; do
   IFS=: read -r dir so name id kind <<<"$t"
+  skin="vst/$dir/build/skin/sd88me - VST - $name"; [ $PUBLIC = 1 ] && { [ $dir = tap ] && skin=$SKIN_TAP || skin=$SKIN_TAPFX; }
   python3 "$MV/tools/gen_vst.py" "vst/$dir/vst.json" >/dev/null   # its pluginlist-entry.xml (custom skin: no skin from gen_vst)
-  python3 "$MV/tools/release.py" --so "$SODIR/$so.so" --skin "vst/$dir/build/skin/sd88me - VST - $name" --entry "vst/$dir/build/pluginlist-entry.xml" \
+  python3 "$MV/tools/release.py" --so "$SODIR/$so.so" --skin "$skin" --entry "vst/$dir/build/pluginlist-entry.xml" \
     --version "$VERSION" --id "$id" --repo sd88me/mpc-vst-machinedrum --license AGPL-3.0-only \
     --requires "Machinemodule (same version) in the same project" \
     --about "$name: puts Machinemodule tracks and its reverb/delay sends on their own MPC track ($kind)" -o dist

@@ -36,6 +36,8 @@
 #include "MdEngine.h"
 #include "Firmware.h"
 #include "tap_shared.h"
+#include "md_art.h"
+#include "skin_recipe.h"
 
 extern "C" {
 #include "engine.h"
@@ -554,12 +556,50 @@ struct Inst
 	}
 };
 
+// The skin's LCD art, filled in from the user's OS file (the Gen2 download ships <plugin folder>/skin-recipe/art.bin instead of art:
+// vst/skin_recipe.h).
+// Writes the images of every Machinemodule plugin folder found next to this one (the Module and its taps) that has not got them yet,
+// once (a marker file in each). MPC reads skins when it starts, so the new skin shows from the next start. No recipe: nothing to do.
+static void makeSkins(const std::string& dataDir, const std::vector<uint8_t>& section0)
+{
+	const auto cut = [](const std::string& p) { const size_t s = p.find_last_of('/'); return s == std::string::npos ? std::string(".") : p.substr(0, s); };
+	const std::string recipe = cut(dataDir) + "/skin-recipe/art.bin";	// <Synths>/<plugin folder>/skin-recipe (dataDir: .../machinedrum)
+	struct stat st{};
+	if(stat(recipe.c_str(), &st) != 0) return;
+	const std::string synths = cut(cut(dataDir));
+	const std::string stamp = std::to_string(section0.size()) + " " + std::to_string(st.st_size) + " " + std::to_string(st.st_mtime);
+	std::vector<std::string> made;
+	try
+	{
+		const auto bits = md::art::bits(md::art::read(section0));
+		std::string err;
+		const int n = md::skin::fill(recipe, bits, [&](const std::string&, const std::string& folder) -> std::string
+		{
+			const std::string dir = synths + "/" + folder;
+			if(!md::skin::isDir(dir)) return {};	// that plugin is not installed
+			std::vector<uint8_t> have;
+			if(md::skin::readFile(dir + "/" + md::skin::kMarker, have) && std::string(have.begin(), have.end()) == stamp) return {};
+			if(std::find(made.begin(), made.end(), dir) == made.end()) made.push_back(dir);
+			return dir;
+		}, err);
+		if(n < 0) { std::fprintf(stderr, "[machinedrum] skin: %s\n", err.c_str()); return; }
+		for(const auto& dir : made)
+			if(std::FILE* f = std::fopen((dir + "/" + md::skin::kMarker).c_str(), "w")) { std::fputs(stamp.c_str(), f); std::fclose(f); }
+		if(n) std::fprintf(stderr, "[machinedrum] skin: %d images made from your OS file (shown from MPC's next start)\n", n);
+	}
+	catch(const std::exception& e)
+	{
+		std::fprintf(stderr, "[machinedrum] skin: %s\n", e.what());
+	}
+}
+
 void Inst::run()
 {
 	try
 	{
 		const auto fwv = md::fw::loadFirmware(osPath);
 		auto c = md::fw::parseContainer(md::fw::parseSysex(md::fw::readFile(osPath)));
+		makeSkins(dataDir, c.sections.at(0).data);
 		int groups = kDefaultGroups;
 		if(const char* e = std::getenv("MD_GROUPS")) groups = std::atoi(e);
 		if(std::FILE* gf = std::fopen("/tmp/md-groups", "r"))	// A/B on the device without env: echo 1 > /tmp/md-groups, re-insert the plugin
