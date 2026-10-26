@@ -28,9 +28,14 @@
 #include <vector>
 
 #include <dirent.h>
+#include <fcntl.h>
+#include <spawn.h>
+#include <sys/wait.h>
 #include <pthread.h>
 #include <strings.h>
 #include <sys/stat.h>
+#include <sys/resource.h>
+#include <cerrno>
 #include <sched.h>
 #include <unistd.h>
 
@@ -39,6 +44,7 @@
 #include "tap_shared.h"
 #include "md_art.h"
 #include "skin_recipe.h"
+#include "romsamples.h"
 
 extern "C" {
 #include "engine.h"
@@ -647,6 +653,91 @@ static void makeSkins(const std::string& dataDir, const std::vector<uint8_t>& se
 	}
 }
 
+
+// The factory kits and the ROM machines' samples from the user's own flash image, made on the device the first time: if an 8 MB
+// .bin sits in the data folder (next to the OS file) and <plugin folder>/extract/mdextract is there, that helper boots the emulated MD
+// from it (about a minute) and dumps its kits and the voice DSP's memory; the kits become factory/FACTORY.syx and the memory that
+// differs from the engine's own becomes factory/ROM_SAMPLES.bin (tools/mdkits/romsamples.h), exactly what the full build ships.
+// Done once per image (a stamp file); a failure is remembered the same way. Returns true if ROM_SAMPLES.bin was made.
+template<class V>
+static bool extractFlash(const std::string& dataDir, V& voices)
+{
+	const auto cut = [](const std::string& p) { const size_t s = p.find_last_of('/'); return s == std::string::npos ? std::string(".") : p.substr(0, s); };
+	const std::string helper = cut(dataDir) + "/extract/mdextract", outDir = dataDir + "/factory";
+	struct stat st{};
+	if(stat(helper.c_str(), &st) != 0) return false;
+	chmod(helper.c_str(), 0755);	// a zip may not keep the mode
+	std::string image;
+	if(DIR* d = opendir(dataDir.c_str()))
+	{
+		while(const dirent* e = readdir(d))
+		{
+			const std::string n = e->d_name;
+			if(n.size() > 4 && !strcasecmp(n.c_str() + n.size() - 4, ".bin") && stat((dataDir + "/" + n).c_str(), &st) == 0 && st.st_size == 8 * 1024 * 1024)
+				image = dataDir + "/" + n;
+		}
+		closedir(d);
+	}
+	if(image.empty() || stat(image.c_str(), &st) != 0) return false;
+	const std::string stamp = std::to_string(st.st_size) + " " + std::to_string(st.st_mtime);
+	const std::string marker = outDir + "/.flash-stamp";
+	const auto readStamp = [&](const std::string& f) { char b[128] = {}; if(std::FILE* m = std::fopen(f.c_str(), "r")) { if(!std::fgets(b, sizeof b, m)) b[0] = 0; std::fclose(m); } return std::string(b); };
+	const auto writeStamp = [&](const std::string& f) { if(std::FILE* m = std::fopen(f.c_str(), "w")) { std::fputs(stamp.c_str(), m); std::fclose(m); } };
+	if(readStamp(outDir + "/.flash-failed") == stamp) return false;	// this image already failed once
+	struct stat so{};
+	const bool have = stat((outDir + "/ROM_SAMPLES.bin").c_str(), &so) == 0 && so.st_size > 0;
+	if(have && readStamp(marker) == stamp) return false;	// made already; the normal load picks it up
+	mkdir(outDir.c_str(), 0755);
+	const std::string dump = outDir + "/dsp2_hi.bin";
+	std::fprintf(stderr, "[machinedrum] making the factory kits and ROM samples from %s (about a minute, once)\n", image.c_str());
+	pid_t pid = 0;
+	// through sh: MPC's soft stack limit is 1 MB, which the emulator overruns; the helper gets the usual 8 MB
+	char* const argv[] = {const_cast<char*>("sh"), const_cast<char*>("-c"), const_cast<char*>("ulimit -s 8192; exec \"$0\" \"$1\" \"$2\""),
+		const_cast<char*>(helper.c_str()), const_cast<char*>(image.c_str()), const_cast<char*>(outDir.c_str()), nullptr};
+	const auto fail = [&](const char* why) { std::fprintf(stderr, "[machinedrum] flash image: %s\n", why); writeStamp(outDir + "/.flash-failed"); unlink(dump.c_str()); return false; };
+	posix_spawn_file_actions_t fa;	// the emulator is chatty: its output goes nowhere
+	posix_spawn_file_actions_init(&fa);
+	posix_spawn_file_actions_addopen(&fa, 1, "/dev/null", O_WRONLY, 0);
+	posix_spawn_file_actions_addopen(&fa, 2, "/dev/null", O_WRONLY, 0);
+	char* const envp[] = {const_cast<char*>("PATH=/usr/bin:/bin"), nullptr};	// not MPC's: its LD_PRELOAD add-ins crash the helper
+	const int spawned = posix_spawn(&pid, "/bin/sh", &fa, nullptr, argv, envp);
+	posix_spawn_file_actions_destroy(&fa);
+	if(spawned != 0) return fail("cannot start mdextract");
+	// the helper runs at the lowest priority: MPC keeps its audio threads
+	setpriority(PRIO_PROCESS, static_cast<id_t>(pid), 19);
+	int status = 0;
+	while(waitpid(pid, &status, 0) < 0 && errno == EINTR) {}
+	if(!WIFEXITED(status) || WEXITSTATUS(status) != 0) return fail("mdextract failed");
+	std::vector<uint32_t> words;
+	if(std::FILE* f = std::fopen(dump.c_str(), "rb"))
+	{
+		std::fseek(f, 0, SEEK_END);
+		words.resize(static_cast<size_t>(std::ftell(f)) / 4);
+		std::fseek(f, 0, SEEK_SET);
+		if(std::fread(words.data(), 4, words.size(), f) != words.size()) words.clear();
+		std::fclose(f);
+	}
+	unlink(dump.c_str());
+	const auto runs = md::romsamples::diff(words, md::romsamples::kProgEnd, 0x800000, [&](uint32_t a) { return voices.readP(a); });
+	if(runs.empty()) return fail("no sample data in the dump");
+	std::FILE* o = std::fopen((outDir + "/ROM_SAMPLES.bin").c_str(), "wb");
+	if(!o) return fail("cannot write ROM_SAMPLES.bin");
+	std::fwrite("MDS1", 1, 4, o);
+	for(const auto& r : runs)
+	{
+		const uint32_t count = static_cast<uint32_t>(r.words.size());
+		std::fwrite(&r.address, 4, 1, o);
+		std::fwrite(&count, 4, 1, o);
+		std::fwrite(r.words.data(), 4, count, o);
+	}
+	const uint32_t zero[2] = {0, 0};
+	std::fwrite(zero, 4, 2, o);
+	std::fclose(o);
+	writeStamp(marker);
+	std::fprintf(stderr, "[machinedrum] factory kits and ROM samples made\n");
+	return true;
+}
+
 void Inst::run()
 {
 	try
@@ -664,7 +755,8 @@ void Inst::run()
 		}
 		Engine eng(fwv, std::move(c.sections.at(0).data), std::clamp(groups, 1, 4));
 		auto& h = eng.host();
-		// ROM machines: their samples, if the installer put the extracted sample memory in place
+		// ROM machines: their samples, if the installer put the extracted sample memory in place (or the user's flash image makes them)
+		extractFlash(dataDir, eng.voices());
 		if(loadSamples(eng.voices(), dataDir + "/factory/ROM_SAMPLES.bin") > 0)
 		{
 			romAvail = true;

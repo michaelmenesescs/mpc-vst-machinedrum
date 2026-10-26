@@ -16,6 +16,7 @@ apply() { if git -C "$1" apply --reverse --check "$2" >/dev/null 2>&1; then echo
 apply "$GM" "$HERE/gearmulator-md-mm.patch"
 apply "$GM/source/dsp56300" "$HERE/dsp56300-md-mm.patch"
 cp "$HERE/mdProbe.cpp" "$HERE/mdTraceTool.cpp" source/elektron/md/mdLibTest/
+cp "$ROOT/tools/mdkits/mdextract.cpp" source/elektron/md/mdLibTest/mdExtract.cpp
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -Dgearmulator_BUILD_JUCEPLUGIN=OFF -Dgearmulator_BUILD_JUCEPLUGIN_CLAP=OFF -DBUILD_TESTING=ON >/dev/null
-cmake --build build --target mdProbe
+cmake --build build --target mdProbe mdExtract
 echo "mdProbe: $GM/build/source/elektron/md/mdLibTest/mdProbe"

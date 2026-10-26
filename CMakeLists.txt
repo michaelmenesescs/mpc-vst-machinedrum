@@ -60,13 +60,14 @@ target_link_libraries(md-hash PRIVATE mdcore pthread dl)
 # mdsamples: extracts the ROM machines' sample memory from a dump of the emulated MD's voice DSP (tools/mdkits)
 add_executable(mdsamples tools/mdkits/mdsamples.cpp)
 target_link_libraries(mdsamples PRIVATE mdcore pthread)
+target_include_directories(mdsamples PRIVATE tools/mdkits)
 
 # machinedrum_one: the same engine source (vst/engine.cpp) built against the shared wrapper
 # (mpc-vst-plugins' vst2_wrap.c). Needs its generated params.h (mpc-vst's gen_vst.py --params-h, run by
 # vst/build_so.sh) on its include path first (vst/build/).
 if(MPC_VST_DIR)
   add_library(machinedrum_one SHARED vst/engine.cpp "${MPC_VST_DIR}/wrapper/vst2_wrap.c")
-  target_include_directories(machinedrum_one PRIVATE "${MPC_VST_DIR}/wrapper" "${CMAKE_CURRENT_SOURCE_DIR}/vst/build" "${CMAKE_CURRENT_SOURCE_DIR}/vst" "${CMAKE_CURRENT_SOURCE_DIR}/tools/mdskin")
+  target_include_directories(machinedrum_one PRIVATE "${MPC_VST_DIR}/wrapper" "${CMAKE_CURRENT_SOURCE_DIR}/vst/build" "${CMAKE_CURRENT_SOURCE_DIR}/vst" "${CMAKE_CURRENT_SOURCE_DIR}/tools/mdskin" "${CMAKE_CURRENT_SOURCE_DIR}/tools/mdkits")
   target_link_libraries(machinedrum_one PRIVATE mdcore pthread)
   set_target_properties(machinedrum_one PROPERTIES PREFIX "" C_VISIBILITY_PRESET hidden CXX_VISIBILITY_PRESET hidden)
   target_link_options(machinedrum_one PRIVATE -Wl,--no-undefined,--exclude-libs,ALL,-Bsymbolic -static-libstdc++ -static-libgcc)
@@ -80,6 +81,6 @@ if(MPC_VST_DIR)
   target_link_options(machinedrum_tapfx PRIVATE -Wl,--no-undefined,--exclude-libs,ALL,-Bsymbolic -static-libstdc++ -static-libgcc)
 
   add_executable(md-vst-smoke vst/smoke.cpp vst/engine.cpp)
-  target_include_directories(md-vst-smoke PRIVATE "${MPC_VST_DIR}/wrapper" "${CMAKE_CURRENT_SOURCE_DIR}/vst/build" "${CMAKE_CURRENT_SOURCE_DIR}/vst" "${CMAKE_CURRENT_SOURCE_DIR}/tools/mdskin")
+  target_include_directories(md-vst-smoke PRIVATE "${MPC_VST_DIR}/wrapper" "${CMAKE_CURRENT_SOURCE_DIR}/vst/build" "${CMAKE_CURRENT_SOURCE_DIR}/vst" "${CMAKE_CURRENT_SOURCE_DIR}/tools/mdskin" "${CMAKE_CURRENT_SOURCE_DIR}/tools/mdkits")
   target_link_libraries(md-vst-smoke PRIVATE mdcore pthread)
 endif()

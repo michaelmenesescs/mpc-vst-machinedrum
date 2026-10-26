@@ -1521,3 +1521,34 @@ Open, in the order I would take them:
 - **2026-10-01: 16-pad patch done and tested** (plugin 0.3.4, MPC OS 3.9.1.2, patched md5 `ba64e2d4...`). The lights needed a
   third region (pad colours: only pads 0-7 get a colour). Details and the next step (per-plugin IDs/palettes):
   `docs/HANDOFF-mpc-drum-pads.md`, "Result".
+- **2026-10-23: the plugin makes the factory kits and ROM samples itself from the user's flash image (Gen2, v0.4.2 in progress, NOT yet committed or released).**
+  Goal: ship the public `-P` zip (no Elektron data) and still give ROM machines + 16 factory kits when the user drops the 8 MB flash `.bin`
+  next to the OS `.syx` in `<plugin folder>/machinedrum/`.
+  - **Flow** (`extractFlash` in vst/engine.cpp, called from `Inst::run` right after `Engine` is built, before `loadSamples`): finds a `*.bin` of exactly
+    8 MiB in the data dir; if `<plugin folder>/extract/mdextract` exists and `factory/.flash-stamp` (size+mtime of the image) doesn't match, spawns it
+    (`/bin/sh -c "ulimit -s 8192; exec ..."`, clean env `PATH` only, stdout/err to /dev/null, nice 19, waited on), then keeps
+    `factory/FACTORY.syx` (the helper's kits) and writes `factory/ROM_SAMPLES.bin` from the helper's DSP dump with `md::romsamples::diff`
+    (tools/mdkits/romsamples.h, shared with tools/mdkits/mdsamples.cpp, so the build-script path is unchanged in output). A failure is remembered in
+    `factory/.flash-failed` (same stamp) and not retried until the image changes. The engine isn't `ready` until this finishes, so the first load is silent ~1.5 min on a Live 3
+    (80 s for the helper alone). The plugin reads ROM_SAMPLES.bin only at start: re-add the plugin (or restart MPC) after the first run.
+  - **Helper** `mdextract` (tools/mdkits/mdextract.cpp -> copied by tools/mdtrace/build_mdprobe.sh into gearmulator-md-mm/.../mdLibTest/mdExtract.cpp; target added
+    to tools/mdtrace/gearmulator-md-mm.patch): boots the emulated MD from the flash image (like mdProbe), kit-dumps the 64 slots (keeps the named ones),
+    dumps DSP2 P memory from $140000. Built for aarch64 by tools/mdkits/build_mdextract.sh (md-aarch64-builder, static libstdc++, stripped, 3.5 MB), shipped by
+    `release/build_release.sh -P` as `extract/mdextract` in the zip. Gen2 only (the armhf recompiled build has no ROM-machine code without a traced flash).
+  - **Verified:** x86 and Live 3 outputs byte-identical to `make_factory.py` (FACTORY.syx md5 72487acb..., ROM_SAMPLES.bin md5 630e7baf..., 260991 words / 220 runs); on the Live 3
+    the plugin produced both files itself (log line `[machinedrum] factory kits and ROM samples made`). NOT yet heard: ROM machines / factory kits playing after the reload.
+  - **Pitfalls found (all fixed, keep in mind):** (1) MPC's environment has `LD_PRELOAD` of three mpc-addins (.so) and a **1 MB soft stack limit**: the helper segfaulted
+    (sig 11, shows in `dmesg`) until given a clean env and `ulimit -s 8192`; (2) `extern char** environ` inside the anonymous namespace broke the link and **vst/build_so.sh hid it**
+    (shipped the stale .so; fixed: it now prints the ninja tail and exits 1); (3) MPC does not reload a plugin .so it already has loaded: replace the file, then
+    `systemctl restart acvs` (ask the user first, save the project) before testing; (4) on the Live 3 the Synths dir is `/nvme/Synths` (not /sdcard/Synths): `install.sh -y -t /nvme/Synths`;
+    ssh root@192.168.2.217 (aarch64, busybox: no `unzip -l`, `head -N`, `time`; use /usr/bin/time). The MPC MCP tools in this session were on the Force (192.168.1.187), not the Live 3.
+  - **State on the Live 3 (192.168.2.217):** 0.4.2 main zip installed (with `extract/`), then `machinedrum_one.so` replaced by hand with the latest build (md5 04852538...); taps are still 0.4.1;
+    `.syx` and `elektron_sps1-1uw_os1.63.bin` in `/nvme/Synths/sd88me - VST - Machinemodule/machinedrum/`, `factory/` made.
+  - **Uncommitted changes:** vst/engine.cpp, vst/build_so.sh, CMakeLists.txt, release/build_release.sh, tools/mdkits/{mdextract.cpp,romsamples.h,build_mdextract.sh,mdsamples.cpp},
+    tools/mdtrace/{build_mdprobe.sh,gearmulator-md-mm.patch}. The `dist/*0.4.2*` zips are STALE (built before the env/stack fixes): rebuild before releasing.
+  - **Next (user's plan):** (1) profile performance on the Live 3 and decide the default for the **VOICES** param (`max_voices`, engine.cpp `param[kSlotMaxVoices]` default 6, clamp 1-16; a cost budget where ROM
+    voices count double; groups = `kDefaultGroups` 3, tunable by `/tmp/md-groups`, `/tmp/md-release`, `/tmp/md-ahead`, `MD_FIFO`/`MD_CPU`) — tools: `md-cost` (per-machine voice cost), `md-hash`, `md-vst-smoke`,
+    the plugin's `underruns`/`blocks`/`core` counters and `device_status`/`top` while playing a full 16-track kit incl. ROM machines (the Live 3 has 4 cores; Gen2 JIT build was 2.4x faster than recompiled on the Force);
+    the first-load extraction (80 s of CPU at nice 19) should also be timed under MPC load. (2) CPU test for the release (full factory kit, all 16 tracks, taps loaded, with and without the `.bin`).
+    (3) Rebuild `release/build_release.sh <OS .syx> -P -v <ver>` (check `grep -c /extract/mdextract` on the .so and that the zip has `extract/mdextract`), reinstall the three zips on the Live 3 with `-t /nvme/Synths`,
+    update the README Gen2 paragraph (optional `.bin`, first-load wait) and the PUT-OS-FILE-HERE note (already in build_release.sh), commit, tag and release.

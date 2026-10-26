@@ -153,16 +153,21 @@ fi
 echo "== 6/7 plugin ($ARCH)"
 if [ $ARCH = armhf ]; then vst/build_so.sh "$WORK/recomp" "$MV"; else vst/build_so.sh - "$MV" aarch64; fi
 
+if [ $PUBLIC = 1 ]; then
+  echo "   mdextract (the helper that makes the factory kits and ROM samples on the device from the user's flash image)"
+  mkdir -p "$WORK/extract" && q tools/mdkits/build_mdextract.sh "$WORK/extract/mdextract"
+fi
+
 echo "== 7/7 installer"
 rm -rf vst/build/payload && mkdir -p vst/build/payload
 if [ $PUBLIC = 1 ]; then
   # the public download: the data folder holds only a note (the user adds the OS file there; kept on upgrade), the skin recipe beside it
   mkdir -p vst/build/payload/machinedrum vst/build/payload/skin-recipe
   cp "$WORK/skin/recipe/art.bin" vst/build/payload/skin-recipe/art.bin
-  printf 'Put your Machinedrum UW OS 1.63 file here, named Elektron_SPS1-1UW_OS1.63.syx (a free download from Elektron).\nThen load Machinemodule once (it makes its skin from that file) and restart MPC to see the skin.\nYour own kit dumps (.syx) go in kits/.\n' > vst/build/payload/machinedrum/PUT-OS-FILE-HERE.txt
+  printf 'Put your Machinedrum UW OS 1.63 file here, named Elektron_SPS1-1UW_OS1.63.syx (a free download from Elektron).\nThen load Machinemodule once (it makes its skin from that file) and restart MPC to see the skin.\nOptional: your Machinedrum UW flash image (the 8 MB .bin) here too gives you the ROM sample machines and the 16 factory kits:\nthe plugin makes them from it the first time you load it (about 2 minutes; it makes sound only after that).\nYour own kit dumps (.syx) go in kits/.\n' > vst/build/payload/machinedrum/PUT-OS-FILE-HERE.txt
   mkdir -p vst/build/payload/machinedrum/kits
-  EXTRAS=(--extra vst/build/payload/machinedrum:machinedrum --extra vst/build/payload/skin-recipe:skin-recipe --user-data machinedrum)
-  REQUIRES="Your own Machinedrum UW OS 1.63 file (a free download from Elektron), put in the plugin's machinedrum/ folder; MPC restarted once after the first load (the plugin makes its skin from that file). No ROM machines or factory kits in this build"
+  EXTRAS=(--extra vst/build/payload/machinedrum:machinedrum --extra vst/build/payload/skin-recipe:skin-recipe --extra "$WORK/extract:extract" --user-data machinedrum)
+  REQUIRES="Your own Machinedrum UW OS 1.63 file (a free download from Elektron), put in the plugin's machinedrum/ folder; MPC restarted once after the first load (the plugin makes its skin from that file). No ROM machines or factory kits unless you also put your flash image (.bin) there"
   ABOUT="Machinemodule: the Elektron Machinedrum UW sound engine as an MPC OS instrument (Gen2; runs your own OS file)"
 else
   # the plugin reads your OS file from its data dir under this exact name, so the installer carries it (your own file, per-user zip)
