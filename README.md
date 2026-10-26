@@ -211,12 +211,16 @@ Put both file paths in quotes. Watch for the `== 3/7 ...` step headings; at the 
 `Machinemodule-<version>-mpc-armv7.zip` and `Machinemodule-Tap-<version>-mpc-armv7.zip`
 (the tap needs the Module).
 
-**Gen2 MPCs, ready-made download:** from v0.4.0 the Gen2 installers are on the [Releases](../../releases) page, with nothing of
-Elektron's in them: install `Machinemodule-<version>-mpc-aarch64.zip` (and the taps if you want them), put your own
-`Elektron_SPS1-1UW_OS1.63.syx` in `/sdcard/Synths/sd88me - VST - Machinemodule/machinedrum/`, load Machinemodule on a track once
-(it makes its LCD skin from your OS file), then restart MPC to see the skin. This build has no ROM machines or factory kits (they
-need your flash image: build your own zips as below for those). Release builds of it: `release/build_release.sh "<OS .syx>" -P`
-(the skin goes in as a recipe, tools/mdskin/skin_recipe.py, checked to give the skin exactly; the plugin fills it in on the device).
+**Gen2 MPCs, ready-made download:** the Gen2 installers are on the [Releases](../../releases) page, with nothing of
+Elektron's in them: install `Machinemodule-<version>-mpc-aarch64.zip` (and `Machinemodule-Tap-<version>-mpc-aarch64.zip` if you want
+the tap), put your own `Elektron_SPS1-1UW_OS1.63.syx` in the plugin's `machinedrum/` folder (on a Live III
+`/nvme/Synths/sd88me - VST - Machinemodule/machinedrum/`), load Machinemodule on a track once (it makes its LCD skin from your OS file),
+then restart MPC to see the skin. **Optional:** put your Machinedrum UW flash image (the 8 MB `.bin`) there too and the plugin makes the
+ROM sample machines and the 16 factory kits from it the first time you load it (about 2 minutes; it makes sound only after that, and
+you reload the plugin once afterwards). Without the `.bin` those stay silent / absent. Release builds of it:
+`release/build_release.sh "<OS .syx>" -P` (the skin goes in as a recipe, tools/mdskin/skin_recipe.py, checked to give the skin exactly;
+the plugin fills it in on the device; the flash image is extracted on the device by the shipped `extract/mdextract` helper).
+The Gen2 zips carry their own catalog ids (`machinemodule-gen2`, `machinemodule-tap-gen2`), beside the build-yourself `machinemodule`.
 
 **Gen2 MPCs, your own build:** add `-a aarch64`. That build runs the voice DSP on the JIT
 compiler instead of the recompiled code, so it skips the long steps 3-4 (a couple of minutes in all) and is about 2.4x faster on the
