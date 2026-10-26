@@ -21,7 +21,7 @@
 #       plugin the 16-pad drum layout. It modifies /usr/bin/MPC, a firmware update removes it, uninstall.sh undoes it. With -d it is
 #       run on the device after the plugin install (asks you to type PATCH). See docs/HANDOFF-mpc-drum-pads.md.
 # Other input: MDPROBE (a ready-built mdProbe; if not set and not built, tools/mdtrace/build_mdprobe.sh builds it first).
-# Needs Docker (the md-armhf-builder image is built on first use; python:3.11-slim is pulled). Output: dist/Machinemodule-, Machinemodule-Tap- and Machinemodule-Tap-FX-<version>-mpc-armv7.zip (-mpc-aarch64.zip with -a aarch64) (install all three with -d).
+# Needs Docker (the md-armhf-builder image is built on first use; python:3.11-slim is pulled). Output: dist/Machinemodule- and Machinemodule-Tap-<version>-mpc-armv7.zip (-mpc-aarch64.zip with -a aarch64) (install both with -d).
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 # absolute path without GNU realpath (macOS has no `realpath -m`, older macOS no realpath at all); a missing file stays as given
@@ -143,13 +143,11 @@ if [ $PUBLIC = 1 ]; then
   grep "^check:" "$WORK/build.log" | tail -2 | sed 's/^/   /'
   rm -f "$WORK/skin/art.json"   # Elektron's art: not kept next to the release files
   SKIN_MAIN="$WORK/skin/recipe/files/main/sd88me - VST - Machinemodule"
-  SKIN_TAP="$WORK/skin/recipe/files/tap/sd88me - VST - Machinemodule Tap"
-  SKIN_TAPFX="$WORK/skin/recipe/files/tapfx/sd88me - VST - Machinemodule Tap FX"
+  SKIN_TAPFX="$WORK/skin/recipe/files/tapfx/sd88me - VST - Machinemodule Tap"
 else
   tools/mdskin/build_skin.sh "$OS" "$MV" | tail -1
   SKIN_MAIN="vst/build/skin/sd88me - VST - Machinemodule"
-  SKIN_TAP="vst/tap/build/skin/sd88me - VST - Machinemodule Tap"
-  SKIN_TAPFX="vst/tapfx/build/skin/sd88me - VST - Machinemodule Tap FX"
+  SKIN_TAPFX="vst/tapfx/build/skin/sd88me - VST - Machinemodule Tap"
 fi
 
 echo "== 6/7 plugin ($ARCH)"
@@ -183,11 +181,11 @@ ZIP=dist/Machinemodule-"$VERSION"-mpc-$SUF.zip; ls -l "$ZIP"
 # catalog conformance (mpc-vst-plugins docs/CATALOG_SPEC.md): the manifest, layout, checksums, ELF/glibc limits
 python3 "$MV/tools/catalog_check.py" "$ZIP" --catalog --expect-id machinemodule --expect-repo sd88me/mpc-vst-machinedrum
 
-# The taps: one zip each (release.py packages one plugin per zip). No firmware in them; they read the Module in the same project.
+# The tap: its own zip (release.py packages one plugin per zip). No firmware in them; they read the Module in the same project.
 ZIPS="$ZIP"
-for t in "tap:machinedrum_tap:Machinemodule Tap:machinemodule-tap:instrument" "tapfx:machinedrum_tapfx:Machinemodule Tap FX:machinemodule-tap-fx:effect"; do
+for t in "tapfx:machinedrum_tapfx:Machinemodule Tap:machinemodule-tap-fx:effect"; do
   IFS=: read -r dir so name id kind <<<"$t"
-  skin="vst/$dir/build/skin/sd88me - VST - $name"; [ $PUBLIC = 1 ] && { [ $dir = tap ] && skin=$SKIN_TAP || skin=$SKIN_TAPFX; }
+  skin="vst/$dir/build/skin/sd88me - VST - $name"; [ $PUBLIC = 1 ] && skin=$SKIN_TAPFX
   python3 "$MV/tools/gen_vst.py" "vst/$dir/vst.json" >/dev/null   # its pluginlist-entry.xml (custom skin: no skin from gen_vst)
   python3 "$MV/tools/release.py" --so "$SODIR/$so.so" --skin "$skin" --entry "vst/$dir/build/pluginlist-entry.xml" \
     --version "$VERSION" --id "$id" --repo sd88me/mpc-vst-machinedrum --license AGPL-3.0-only \

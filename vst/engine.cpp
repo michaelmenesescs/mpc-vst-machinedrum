@@ -23,6 +23,7 @@
 #include <ctime>
 #include <memory>
 #include <string>
+#include <mutex>
 #include <thread>
 #include <vector>
 
@@ -434,12 +435,8 @@ struct Inst
 	}
 	void stepBank(int _dir)
 	{
-		const auto banks = bankList();
-		int idx = 0;
-		for(size_t i = 0; i < banks.size(); ++i) if(banks[i] == bankName) idx = static_cast<int>(i);
-		const int n = static_cast<int>(banks.size());
-		bankName = banks[static_cast<size_t>(((idx + _dir) % n + n) % n)];
-		kitIdx = -1;	// the kit list changed: the next KIT press starts at its first/last kit
+		const int n = static_cast<int>(bankList().size());
+		selectBank(((bankIndex() + _dir) % n + n) % n);	// the kit list changed: the next KIT press starts at its first/last kit
 	}
 	std::string bankLabel() const { return bankName.empty() ? "ALL" : bankName; }
 	void stepKit(int _dir)
@@ -493,6 +490,63 @@ struct Inst
 		for(int i = 0; i < kSlotTempo; ++i)
 			if(param[i].load(std::memory_order_relaxed) != snap[i]) return name + " *";
 		return name;
+	}
+	// The bank and kit pop-up lists: bank_sK / kit_sK are live text (the entry K of the current page), *_pick sends the choice back
+	static constexpr int kBankSlots = 24, kKitSlots = 32;	// entries per page: the bank list is 3 x 8, the kit list 4 x 8
+	int bankPageNum = 0, bankPageSeen = 0, kitPageNum = 0, kitPageSeen = 0;
+	std::mutex pickMu;
+	std::vector<std::string> kitNames;	// the kits of the selected bank, rebuilt when the catalog or the bank changes
+	const Catalog* kitNamesCat = nullptr; std::string kitNamesBank;
+	const std::vector<std::string>& kitNameList()	// pickMu held
+	{
+		const Catalog* c = cat.load();
+		if(c != kitNamesCat || bankName != kitNamesBank)
+		{
+			kitNamesCat = c; kitNamesBank = bankName; kitNames.clear();
+			if(c) for(int i : kitsInBank()) kitNames.push_back(c->kits[static_cast<size_t>(i)].name);
+		}
+		return kitNames;
+	}
+	int bankIndex() const
+	{
+		const auto banks = bankList();
+		for(size_t i = 0; i < banks.size(); ++i) if(banks[i] == bankName) return static_cast<int>(i);
+		return 0;
+	}
+	void selectBank(int _idx)
+	{
+		const auto banks = bankList();
+		if(_idx < 0 || _idx >= static_cast<int>(banks.size())) return;
+		bankName = banks[static_cast<size_t>(_idx)];
+		kitIdx = -1;
+		kitPageSeen = -1;
+	}
+	int bankPages() const { return (static_cast<int>(bankList().size()) + kBankSlots - 1) / kBankSlots; }
+	int bankPage()
+	{
+		const int bi = bankIndex();
+		if(bi != bankPageSeen) { bankPageSeen = bi; bankPageNum = bi / kBankSlots; }
+		return bankPageNum;
+	}
+	void stepBankPage(int _dir) { const int p = bankPage() + _dir; if(p >= 0 && p < bankPages()) bankPageNum = p; }
+	int kitPages() { std::lock_guard<std::mutex> g(pickMu); return (static_cast<int>(kitNameList().size()) + kKitSlots - 1) / kKitSlots; }
+	int kitPage()	// follows the current kit until the pager is used
+	{
+		if(kitIdx != kitPageSeen) { kitPageSeen = kitIdx; kitPageNum = std::max(kitIdx, 0) / kKitSlots; }
+		return kitPageNum;
+	}
+	void stepKitPage(int _dir) { const int p = kitPage() + _dir; if(p >= 0 && p < kitPages()) kitPageNum = p; }
+	std::string kitEntry(int _k)
+	{
+		std::lock_guard<std::mutex> g(pickMu);
+		const auto& l = kitNameList();
+		const size_t i = static_cast<size_t>(kitPage()) * kKitSlots + static_cast<size_t>(_k);
+		return i < l.size() ? l[i] : std::string();
+	}
+	void pickKit(int _k)
+	{
+		if(_k < 0 || _k >= kKitSlots) return;
+		loadKit(kitPage() * kKitSlots + _k);
 	}
 	// The whole instance for the host's project/program/plugin-preset chunk: "v1|<every slot>|<snap>|<kitIdx>|<bank>".
 	// The host-tempo slot is live host state, not part of a sound, so it is written as 0 and never restored.
@@ -995,6 +1049,10 @@ void eSet(void* p, const char* key, const char* val)
 	}
 	// momentary actions (the wrapper springs them back; they read back as 0)
 	const bool on = std::atof(val) > 0.5;
+	if(!std::strcmp(key, "bank_pick")) { const int k = static_cast<int>(std::lround(std::atof(val))); if(k >= 0 && k < Inst::kBankSlots) in->selectBank(in->bankPage() * Inst::kBankSlots + k); return; }
+	if(!std::strcmp(key, "kit_pick")) { in->pickKit(static_cast<int>(std::lround(std::atof(val)))); return; }
+	if(!std::strcmp(key, "bank_pgprev") || !std::strcmp(key, "bank_pgnext")) { if(on) in->stepBankPage(key[7] == 'n' ? 1 : -1); return; }
+	if(!std::strcmp(key, "kit_pgprev") || !std::strcmp(key, "kit_pgnext")) { if(on) in->stepKitPage(key[6] == 'n' ? 1 : -1); return; }
 	if(!std::strcmp(key, "kit_prev") || !std::strcmp(key, "kit_next")) { if(on) in->stepKit(key[4] == 'n' ? 1 : -1); return; }
 	if(!std::strcmp(key, "bank_prev") || !std::strcmp(key, "bank_next")) { if(on) in->stepBank(key[5] == 'n' ? 1 : -1); return; }
 	if(!std::strcmp(key, "randomize_all")) { if(on) in->randomiseMachines(0, 15); return; }
@@ -1029,6 +1087,26 @@ int eGet(void* p, const char* key, char* buf, int bufLen)
 	if(!std::strcmp(key, "state")) return std::snprintf(buf, static_cast<size_t>(bufLen), "%s", in->saveState().c_str()) > 0;
 	if(!std::strcmp(key, "kit_name")) return std::snprintf(buf, static_cast<size_t>(bufLen), "%s", in->kitLabel().c_str()) > 0;
 	if(!std::strcmp(key, "bank_name")) return std::snprintf(buf, static_cast<size_t>(bufLen), "%s", in->bankLabel().c_str()) > 0;
+	if(!std::strcmp(key, "bank_pick"))
+	{
+		const int k = in->bankIndex() - in->bankPage() * Inst::kBankSlots;
+		return std::snprintf(buf, static_cast<size_t>(bufLen), "%d", k >= 0 && k < Inst::kBankSlots ? k : Inst::kBankSlots) > 0;
+	}
+	if(!std::strcmp(key, "kit_pick"))
+	{
+		const int k = in->kitIdx - in->kitPage() * Inst::kKitSlots;
+		return std::snprintf(buf, static_cast<size_t>(bufLen), "%d", in->kitIdx >= 0 && k >= 0 && k < Inst::kKitSlots ? k : Inst::kKitSlots) > 0;
+	}
+	if(!std::strncmp(key, "bank_s", 6) && std::isdigit(static_cast<unsigned char>(key[6])))
+	{
+		const auto banks = in->bankList();
+		const size_t k = static_cast<size_t>(in->bankPage() * Inst::kBankSlots + std::atoi(key + 6));
+		return std::snprintf(buf, static_cast<size_t>(bufLen), "%s", k >= banks.size() ? "" : k == 0 ? "ALL" : banks[k].c_str()) >= 0;
+	}
+	if(!std::strncmp(key, "kit_s", 5) && std::isdigit(static_cast<unsigned char>(key[5])))
+		return std::snprintf(buf, static_cast<size_t>(bufLen), "%s", in->kitEntry(std::atoi(key + 5)).c_str()) >= 0;
+	if(!std::strcmp(key, "bank_page")) return std::snprintf(buf, static_cast<size_t>(bufLen), "PAGE %d/%d", in->bankPage() + 1, std::max(in->bankPages(), 1)) > 0;
+	if(!std::strcmp(key, "kit_page")) return std::snprintf(buf, static_cast<size_t>(bufLen), "PAGE %d/%d", in->kitPage() + 1, std::max(in->kitPages(), 1)) > 0;
 	if(!std::strncmp(key, "kit_", 4) || !std::strncmp(key, "bank_", 5) || !std::strncmp(key, "randomize_", 10))
 		return std::snprintf(buf, static_cast<size_t>(bufLen), "0") > 0;	// momentary: always reads back off
 	if(!std::strcmp(key, "ready"))

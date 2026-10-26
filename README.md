@@ -75,15 +75,16 @@ A first-generation Force has four slow ARM cores shared with MPC itself, so some
 MPC gives a VST2 instrument only one stereo pair of outputs, so the Module cannot offer 16 outputs. Instead, two small extra
 plugins read channels from the Module running in the same project:
 
-- **Machinemodule Tap** (an instrument) and **Machinemodule Tap FX** (an effect, for a return or FX track). Each has an on/off
-  cell for every track (mono, after the track's effects and VOL, before its pan), for the reverb send and for the delay send.
-  Turn on as many as you like: the tap outputs their sum, so one MPC track or submix can carry any set of Machinedrum channels.
-  Tap FX also has THRU, which adds whatever the track receives.
+- **Machinemodule Tap** (an effect, for a return or FX track). It has an on/off cell for every track (mono, after the
+  track's effects and VOL, before its pan), for the reverb send and for the delay send. Turn on as many as you like: the tap
+  outputs their sum, so one MPC track or submix can carry any set of Machinedrum channels. It also has THRU, which adds
+  whatever the track receives. (It is an effect: put it on an FX or return track. The earlier instrument version of the tap was removed, and the
+  effect took its name.)
 - A track that a tap reads leaves the Module's own dry main mix, so it is not heard twice. It still feeds the Machinedrum's
   reverb and delay sends (the track's REV and DEL knobs), which the send taps carry.
 - Use them to give each drum its own MPC track, submix and insert effects, or to put the sends on a return track and run
   them through MPC's own reverb and delay. Taps are sample-aligned with the Module (measured on a Force) and cost almost no CPU.
-- Needs one Machinemodule in the project; a tap is silent without it. The build makes an installer zip for each tap
+- Needs one Machinemodule in the project; a tap is silent without it. The build makes an installer zip for the tap
   next to the Module's (see [Building](#building)).
 
 **New in 0.3.4:** saving and reloading now keeps your kit. A saved MPC project, program or plugin preset used to come back empty, because
@@ -100,7 +101,7 @@ until it is played again; before, every track you had hit kept costing its full 
 instead of two. New instances start at VOICES 6 with ROM machines on (projects you saved keep their own settings). The GLOBAL page
 now has VOICES and ROM on the top row and the four randomise toggles below.
 
-**New in 0.3.0:** **Machinemodule Tap** and **Machinemodule Tap FX**: extra plugins that put any tracks, and the reverb and delay sends, on their own MPC tracks, submixes or return tracks, so MPC's mixer and effects can process them. Tracks and sends can be mixed freely on one tap. Timing against the main output was measured on a Force (sample-aligned). The Module itself is unchanged, and its output is bit-identical when no tap is in use.
+**New in 0.3.0:** **Machinemodule Tap**, in an instrument and an effect form (the instrument form was later removed): an extra plugin that put any tracks, and the reverb and delay sends, on their own MPC tracks, submixes or return tracks, so MPC's mixer and effects can process them. Tracks and sends can be mixed freely on one tap. Timing against the main output was measured on a Force (sample-aligned). The Module itself is unchanged, and its output is bit-identical when no tap is in use.
 
 **New in 0.2.1:** build fixes only. The build no longer needs Monomodule's art file (the LCD fonts come from your Machinedrum OS, and the
 randomise toggle icon is now drawn by this project), `mdProbe` is built for you, and the README has plain steps including a macOS setup.
@@ -206,9 +207,9 @@ cd mpc-vst-machinedrum
 release/build_release.sh "/path/to/Elektron_SPS1-1UW_OS1.63.syx" "/path/to/flash image.bin"   # the flash image is optional
 ```
 
-Put both file paths in quotes. Watch for the `== 3/7 ...` step headings; at the end you have three installer zips in `dist/`:
-`Machinemodule-<version>-mpc-armv7.zip` and one each for the two taps, `Machinemodule-Tap-...` and `Machinemodule-Tap-FX-...`
-(install the ones you want; the taps need the Module).
+Put both file paths in quotes. Watch for the `== 3/7 ...` step headings; at the end you have two installer zips in `dist/`:
+`Machinemodule-<version>-mpc-armv7.zip` and `Machinemodule-Tap-<version>-mpc-armv7.zip`
+(the tap needs the Module).
 
 **Gen2 MPCs, ready-made download:** from v0.4.0 the Gen2 installers are on the [Releases](../../releases) page, with nothing of
 Elektron's in them: install `Machinemodule-<version>-mpc-aarch64.zip` (and the taps if you want them), put your own

@@ -71,15 +71,8 @@ if(MPC_VST_DIR)
   set_target_properties(machinedrum_one PROPERTIES PREFIX "" C_VISIBILITY_PRESET hidden CXX_VISIBILITY_PRESET hidden)
   target_link_options(machinedrum_one PRIVATE -Wl,--no-undefined,--exclude-libs,ALL,-Bsymbolic -static-libstdc++ -static-libgcc)
 
-  # machinedrum_tap: one track or send of the Machinemodule in the same process, mono, for MPC's own mixer (vst/tap)
-  add_library(machinedrum_tap SHARED vst/tap/tap_engine.cpp "${MPC_VST_DIR}/wrapper/vst2_wrap.c")
-  target_include_directories(machinedrum_tap PRIVATE "${MPC_VST_DIR}/wrapper" "${CMAKE_CURRENT_SOURCE_DIR}/vst/tap/build" "${CMAKE_CURRENT_SOURCE_DIR}/vst")
-  target_link_libraries(machinedrum_tap PRIVATE dl)
-  set_target_properties(machinedrum_tap PROPERTIES PREFIX "" C_VISIBILITY_PRESET hidden CXX_VISIBILITY_PRESET hidden)
-  target_link_options(machinedrum_tap PRIVATE -Wl,--no-undefined,--exclude-libs,ALL,-Bsymbolic -static-libstdc++ -static-libgcc)
-
-  # machinedrum_tapfx: the same tap as an audio effect for an MPC return/FX track (vst/tapfx): outputs the tapped source
-  add_library(machinedrum_tapfx SHARED vst/tap/tap_engine.cpp "${MPC_VST_DIR}/wrapper/vst2_wrap.c")
+  # machinedrum_tapfx: Machinemodule Tap: one track or send of the Machinemodule in the same process as an audio effect for an MPC return/FX track (vst/tapfx), mono, for MPC's own mixer: outputs the tapped source
+  add_library(machinedrum_tapfx SHARED vst/tapfx/tap_engine.cpp "${MPC_VST_DIR}/wrapper/vst2_wrap.c")
   target_compile_definitions(machinedrum_tapfx PRIVATE TAP_FX=1)
   target_include_directories(machinedrum_tapfx PRIVATE "${MPC_VST_DIR}/wrapper" "${CMAKE_CURRENT_SOURCE_DIR}/vst/tapfx/build" "${CMAKE_CURRENT_SOURCE_DIR}/vst")
   target_link_libraries(machinedrum_tapfx PRIVATE dl)

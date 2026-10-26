@@ -28,9 +28,8 @@ from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
-# the three skins, as build_skin.sh makes them: (generator, its arguments after art.json, the output dir relative to <run dir>)
+# the two skins, as build_skin.sh makes them: (generator, its arguments after art.json, the output dir relative to <run dir>)
 SKINS = [("mk_skin.py", ["{machines}", "vst/params.json"], "main"),
-         ("mk_tap_skin.py", ["vst/tap/params.json"], "tap", ["tap"]),
          ("mk_tap_skin.py", ["vst/tapfx/params.json"], "tapfx", ["fx"])]
 
 
@@ -239,7 +238,7 @@ def fill(base, deps, bits):
 def write_bin(path, images, nbits):
     """art.bin, little-endian:
          'MDSK' u32 version=1, u32 nbits, u32 images
-         per image: u16 len, path (utf-8, relative to the skins' root: main/, tap/, tapfx/), u8 mode (0 RGB, 1 RGBA), u32 w, u32 h,
+         per image: u16 len, path (utf-8, relative to the skins' root: main/, tapfx/), u8 mode (0 RGB, 1 RGBA), u32 w, u32 h,
                     the base: u32 runs, then runs of (u32 count, 4 bytes RGBA),
                     the art pixels: u32 count, then per pixel u32 index (y*w+x), u32 bit a, i32 bit b (-1: none), 4 bytes RGBA
        A pixel takes its base colour, or the art pixel's colour when the user's art has bit a or bit b set (a dial's ring and its dot

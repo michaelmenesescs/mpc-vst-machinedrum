@@ -27,13 +27,12 @@ if [ ! -f "$ROOT/libs/dsp56300/source/dsp56kEmu/dsp.h" ] || [ ! -f "$ROOT/libs/g
 fi
 docker image inspect $IMG >/dev/null 2>&1 || docker build -q -t $IMG -f "$ROOT/tools/$DOCKERFILE" "$ROOT" >/dev/null
 python3 "$MV/tools/gen_vst.py" "$ROOT/vst/vst.json" --params-h
-python3 "$MV/tools/gen_vst.py" "$ROOT/vst/tap/vst.json" --params-h
 python3 "$MV/tools/gen_vst.py" "$ROOT/vst/tapfx/vst.json" --params-h
 mkdir -p "$ROOT/vst/$OUT"
 OBJ=$([ $ARCH = armhf ] && echo obj || echo obj-$ARCH)
 docker run --rm -u "$(id -u):$(id -g)" -v "$ROOT":/r -v "$REC":/rec:ro -v "$MV":/mv:ro $IMG sh -c "
   cmake -S /r -B /r/vst/build/$OBJ -G Ninja -DCMAKE_TOOLCHAIN_FILE=/r/tools/$TC -DCMAKE_BUILD_TYPE=Release \
     -DMPC_VST_DIR=/mv '-DCMAKE_CXX_FLAGS=$CXXF$JITFLAG' >/dev/null &&
-  ninja -C /r/vst/build/$OBJ machinedrum_one machinedrum_tap machinedrum_tapfx md-vst-smoke md-hash 2>&1 | tail -5 &&
-  for f in machinedrum_one machinedrum_tap machinedrum_tapfx; do $STRIP -o /r/vst/$OUT/\$f.so /r/vst/build/$OBJ/\$f.so; done"
-for f in machinedrum_one machinedrum_tap machinedrum_tapfx; do OUTF="$ROOT/vst/$OUT/$f.so"; if command -v md5sum >/dev/null 2>&1; then md5sum "$OUTF"; else md5 -r "$OUTF"; fi; done
+  ninja -C /r/vst/build/$OBJ machinedrum_one machinedrum_tapfx md-vst-smoke md-hash 2>&1 | tail -5 &&
+  for f in machinedrum_one machinedrum_tapfx; do $STRIP -o /r/vst/$OUT/\$f.so /r/vst/build/$OBJ/\$f.so; done"
+for f in machinedrum_one machinedrum_tapfx; do OUTF="$ROOT/vst/$OUT/$f.so"; if command -v md5sum >/dev/null 2>&1; then md5sum "$OUTF"; else md5 -r "$OUTF"; fi; done
