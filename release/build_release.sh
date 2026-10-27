@@ -34,6 +34,9 @@ OS=$(rp "$1"); shift
 FLASH=""; if [ $# -ge 1 ] && [ "${1#-}" = "$1" ]; then FLASH=$(rp "$1"); shift; fi
 VERSION=""; DEVICE=""; MV="${MPC_VST_DIR:-}"; PATCHOS=0; ARCH=armhf; PUBLIC=0
 while getopts "a:v:d:m:pPh" o; do case $o in a) ARCH=$OPTARG;; p) PATCHOS=1;; P) PUBLIC=1;; v) VERSION=$OPTARG;; d) DEVICE=$OPTARG;; m) MV=$OPTARG;; *) usage;; esac; done
+# catalog ids: the public Gen2 download is its own entry (the build-yourself entry keeps machinemodule / machinemodule-tap-fx)
+ID_MAIN=machinemodule; ID_TAP=machinemodule-tap-fx
+if [ $PUBLIC = 1 ]; then ID_MAIN=machinemodule-gen2; ID_TAP=machinemodule-tap-gen2; fi
 if [ $PUBLIC = 1 ]; then ARCH=aarch64; FLASH=""; fi   # the public download: Gen2, built without the flash image (nothing of it may ship)
 case $ARCH in armhf) SUF=armv7; SODIR=vst/build;; aarch64) SUF=aarch64; SODIR=vst/build/aarch64;; *) usage;; esac
 [ "$PATCHOS" = 0 ] || [ $ARCH = armhf ] || { echo "-p (the MPC OS 3.9.1.2 drum-pad patch) is for the 32-bit MPC OS only" >&2; exit 1; }
@@ -180,15 +183,15 @@ python3 "$MV/tools/gen_vst.py" vst/vst.json >/dev/null   # its pluginlist-entry.
 python3 "$MV/tools/release.py" --so $SODIR/machinedrum_one.so \
   --skin "$SKIN_MAIN" --entry vst/build/pluginlist-entry.xml \
   --version "$VERSION" "${EXTRAS[@]}" \
-  --id machinemodule --repo sd88me/mpc-vst-machinedrum --license AGPL-3.0-only \
+  --id $ID_MAIN --repo sd88me/mpc-vst-machinedrum --license AGPL-3.0-only \
   --requires "$REQUIRES" --about "$ABOUT" -o dist
 ZIP=dist/Machinemodule-"$VERSION"-mpc-$SUF.zip; ls -l "$ZIP"
 # catalog conformance (mpc-vst-plugins docs/CATALOG_SPEC.md): the manifest, layout, checksums, ELF/glibc limits
-python3 "$MV/tools/catalog_check.py" "$ZIP" --catalog --expect-id machinemodule --expect-repo sd88me/mpc-vst-machinedrum
+python3 "$MV/tools/catalog_check.py" "$ZIP" --catalog --expect-id $ID_MAIN --expect-repo sd88me/mpc-vst-machinedrum
 
 # The tap: its own zip (release.py packages one plugin per zip). No firmware in them; they read the Module in the same project.
 ZIPS="$ZIP"
-for t in "tapfx:machinedrum_tapfx:Machinemodule Tap:machinemodule-tap-fx:effect"; do
+for t in "tapfx:machinedrum_tapfx:Machinemodule Tap:$ID_TAP:effect"; do
   IFS=: read -r dir so name id kind <<<"$t"
   skin="vst/$dir/build/skin/sd88me - VST - $name"; [ $PUBLIC = 1 ] && skin=$SKIN_TAPFX
   python3 "$MV/tools/gen_vst.py" "vst/$dir/vst.json" >/dev/null   # its pluginlist-entry.xml (custom skin: no skin from gen_vst)
