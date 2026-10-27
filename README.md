@@ -84,6 +84,8 @@ plugins read channels from the Module running in the same project:
   reverb and delay sends (the track's REV and DEL knobs), which the send taps carry.
 - Use them to give each drum its own MPC track, submix and insert effects, or to put the sends on a return track and run
   them through MPC's own reverb and delay. Taps are sample-aligned with the Module (measured on a Force) and cost almost no CPU.
+- On Gen2 the Tap's skin is made by Machinemodule: load Machinemodule on a track once and restart MPC before you use the Tap, or the Tap
+  shows plain placeholder buttons.
 - Needs one Machinemodule in the project; a tap is silent without it. The build makes an installer zip for the tap
   next to the Module's (see [Building](#building)).
 
