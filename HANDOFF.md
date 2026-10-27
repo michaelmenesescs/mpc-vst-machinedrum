@@ -1552,3 +1552,33 @@ Open, in the order I would take them:
     the first-load extraction (80 s of CPU at nice 19) should also be timed under MPC load. (2) CPU test for the release (full factory kit, all 16 tracks, taps loaded, with and without the `.bin`).
     (3) Rebuild `release/build_release.sh <OS .syx> -P -v <ver>` (check `grep -c /extract/mdextract` on the .so and that the zip has `extract/mdextract`), reinstall the three zips on the Live 3 with `-t /nvme/Synths`,
     update the README Gen2 paragraph (optional `.bin`, first-load wait) and the PUT-OS-FILE-HERE note (already in build_release.sh), commit, tag and release.
+
+## 2026-10-27: v0.5.1 Gen2 download (lists, Q-Link outlines, Tap is the effect, on-device factory extraction)
+**State.** `v0.5.1` is published: `Machinemodule-0.5.1-mpc-aarch64.zip`, `Machinemodule-Tap-0.5.1-mpc-aarch64.zip` (public `-P` build: nothing of Elektron's inside). `v0.5.0` is
+still published with older zips (Tap title "TAP FX", VOICES 6, a ROM cell): delete it if you want only 0.5.1 visible. Catalog: Gen2-only release entries `machinemodule-gen2`,
+`machinemodule-tap-gen2` (mpc-vst-plugins #566, #569) beside the Gen1 build-yourself `machinemodule`. `tested.json` has Live III lines for 0.5.0 and 0.5.1. The v0.4.2 work (below) is folded in and merged.
+- **Build:** `release/build_release.sh <OS .syx> -P -v <ver> [-m <mpc-vst-plugins checkout>]` (about 25 min; the skin recipe is most of it). `-P` zips carry ids `machinemodule-gen2` /
+  `machinemodule-tap-gen2` and the skin as a recipe with `rom=0` (no ROM cell). Release from main: `gh release create vX.Y.Z <zips> --target main --notes-file ...`. `gh pr merge --merge` works.
+- **Tap:** only the effect remains (the instrument Tap was removed); it is named "Machinemodule Tap" (uid `MdTf`, `machinedrum_tapfx.so`, catalog id `machinemodule-tap-fx` for the build-yourself zip).
+  On Gen2 its skin is made by Machinemodule on its first load: use the Tap before that and it shows plain "Button" placeholders. An old "Machinemodule Tap" instrument folder must be uninstalled by hand
+  (the Live III's is gone; the Force may still have it).
+- **Lists:** BANK (3 x 8) and KIT (4 x 8) pop-ups on the GLOBAL tab, live-text slots, page pager, same scheme as the Monomodule handoff. Native Q-Link outlines on every tab (`qlink_boxes` in `tools/mdskin/mk_skin.py`).
+- **VOICES default 16** (params.json, engine, skin) for every build: a Force can sound only about 6 busy voices, so lower it there. **ROM switch:** removed from the Gen2 skin only (`rom=0`); the `rom_enabled` param stays.
+- **On-device extraction:** with the 8 MB flash `.bin` next to the OS `.syx` the plugin runs `extract/mdextract` on first load (about 75 s on the Live III, the plugin is silent until done) and writes `factory/FACTORY.syx` +
+  `ROM_SAMPLES.bin` (byte-identical to the build-script path: md5 72487acb..., 630e7baf...). Reload the plugin once afterwards. `md-vst-smoke` has `MD_SMOKE_READY_S=<s>` for it.
+- **Benchmarks (Live III, MPC running, `md-vst-smoke`; env knobs `MD_SMOKE_KIT`, `MD_SMOKE_CHURN`, `MD_SMOKE_VOICES`, `MD_SMOKE_ROMOFF`):** 16 TRX tracks steady about 0.3 of a core (voices 6), 0.47 (10), 0.65 (16, clean steady state);
+  16 ROM tracks about 0.38; ROM on/off no CPU difference. Every run has a startup underrun burst (33-76; the JIT compiling) and each machine change in the churn test cost 20-30.
+
+**Open items**
+1. **JIT prewarm for Machinemodule** (the startup and machine-change underruns above). Monomodule has `MonoVoice::prewarm()`; here the engine is a parallel multi-voice engine (`engine/ParallelVoiceEngine`),
+   so warming means pushing every machine's code through each voice thread once at load. Measure first: `MD_SMOKE_CHURN=1` prints per-second underruns.
+2. **ROM machines and the 16 factory kits are not yet verified by ear** after the on-device extraction (the files are identical to the reference, but nobody has heard them play through MPC).
+3. **FX inside the main plugin** (parked): 1-2 FX slots taking only the plugin's own stream as NEIBOR. Same question as in the Monomodule handoff (does MPC feed an instrument audio?).
+4. **Other Gen2 models** untried. The Gen2 `INSTALL.md` text ("32-bit ARM, /sdcard/Synths") comes from the shared `release.py` in mpc-vst-plugins and is wrong for Gen2 zips.
+5. **Not folded in:** the main checkout (`/home/sam/mpc-vst-machinedrum`) still has a `libs/dsp56300` pointer bump (origin/recomp-fixes, MSVC fixes) and a dirty `libs/gearmulator-md-mm` (patched sources;
+   `tools/mdtrace/gearmulator-md-mm.patch` is the committed form). Decide whether the dsp56300 bump belongs in main. `git worktree list` has helper worktrees (`mm-pickers`, `mm-main`).
+6. **Real-session CPU:** per-thread numbers while MPC plays real notes. BusyBox `top` has no `-H` threads; read `/proc/<pid>/task/*/stat` (utime+stime, field 14+15) twice and subtract (see the scratch `thr.sh` idea:
+   threads are named `md-voice1/2`, `md-engine`, `Audio Processin`). The remote addin's `play_notes` reached the plugin only if "MPC Remote Out" is enabled for the track.
+7. **Live III driving tips** (192.168.2.217, `/nvme/Synths`, root ssh, BusyBox: no `head -N`, `unzip`, `join`, `timeout`): the remote addin (`:6720`, bound 0.0.0.0) takes `/tap?x=&y=`, MCP `drag`/`turn_knob`/`play_notes`.
+   The plugin-picker dialog opens either as a Type or a Manufacturer tree (it alternates): take a screenshot before each tap. A stray tap can open Track Edit / Delete Track: cancel, never confirm. `systemctl restart acvs`
+   drops the (scratch) project.
