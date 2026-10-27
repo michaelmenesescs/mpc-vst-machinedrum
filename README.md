@@ -222,6 +222,14 @@ you reload the plugin once afterwards). Without the `.bin` those stay silent / a
 the plugin fills it in on the device; the flash image is extracted on the device by the shipped `extract/mdextract` helper).
 The Gen2 zips carry their own catalog ids (`machinemodule-gen2`, `machinemodule-tap-gen2`), beside the build-yourself `machinemodule`.
 
+![Machinemodule on an MPC Live III](docs/img/machinemodule-gen2.png)
+![The kit list: 16 factory kits, 32 to a page](docs/img/machinemodule-gen2-kits.png)
+
+**Tested on an MPC Live III** (v0.5.0), with the plugin's own paced render test and MPC running alongside: 16 tracks of TRX machines
+use about 0.3 of a core (the 16-voice case about 0.65), with no underruns once running; ROM-machine tracks about 0.4 of a core. The
+first seconds after the plugin starts, and each machine change, can underrun briefly while the JIT compiles the machine's code. The
+first-load extraction from the flash image took about 75 s and made byte-identical factory data.
+
 **Gen2 MPCs, your own build:** add `-a aarch64`. That build runs the voice DSP on the JIT
 compiler instead of the recompiled code, so it skips the long steps 3-4 (a couple of minutes in all) and is about 2.4x faster on the
 device; the zips end in `-mpc-aarch64.zip`. Not yet tried on a Gen2 MPC: please report how it runs.
