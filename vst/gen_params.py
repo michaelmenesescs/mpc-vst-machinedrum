@@ -111,6 +111,18 @@ for key, name in (("randomize_all", "Randomise Machines"), ("randomize_1_8", "Ra
 # machine stay silent (engine.cpp swaps in the empty machine; the track keeps its ROM setting for when it is back on).
 params.append({"key": "rom_enabled", "name": "ROM Machines", "options": ["OFF", "ON"], "default": 1})
 
+# the bank and kit pop-up lists (appended last, never reorder): per list an open flag, the pick (entry K of the page, "-" = none),
+# the live-text slots, a pager and its text. Bank list 3 x 8, kit list 4 x 8.
+BANK_SLOTS, KIT_SLOTS = 24, 32
+for lst, n_, label in (("bank", BANK_SLOTS, "Bank"), ("kit", KIT_SLOTS, "Kit")):
+    params.append({"key": "%s_open" % lst, "name": "%s List" % label, "options": ["Closed", "Open"], "default": 0, "popup_of": "%s_pick" % lst})
+    params.append({"key": "%s_pick" % lst, "name": "%s Pick" % label, "options": [str(k + 1) for k in range(n_)] + ["-"], "default": n_})
+    for k in range(n_):
+        params.append({"key": "%s_s%d" % (lst, k), "name": "%s %d" % (label, k + 1), "min": 0, "max": 0, "display": "string"})
+    params.append({"key": "%s_pgprev" % lst, "name": "%s Page Prev" % label, "min": 0, "max": 1, "momentary": True})
+    params.append({"key": "%s_pgnext" % lst, "name": "%s Page Next" % label, "min": 0, "max": 1, "momentary": True})
+    params.append({"key": "%s_page" % lst, "name": "%s Page" % label, "min": 0, "max": 0, "display": "string"})
+
 json.dump({"name": "Machinemodule", "params": params,
            "sections": [{"label": l, "keys": k} for l, k in sections]},
           open("params.json", "w"), indent=1)

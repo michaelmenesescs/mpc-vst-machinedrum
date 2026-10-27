@@ -23,13 +23,19 @@
 #include <ctime>
 #include <memory>
 #include <string>
+#include <mutex>
 #include <thread>
 #include <vector>
 
 #include <dirent.h>
+#include <fcntl.h>
+#include <spawn.h>
+#include <sys/wait.h>
 #include <pthread.h>
 #include <strings.h>
 #include <sys/stat.h>
+#include <sys/resource.h>
+#include <cerrno>
 #include <sched.h>
 #include <unistd.h>
 
@@ -38,6 +44,7 @@
 #include "tap_shared.h"
 #include "md_art.h"
 #include "skin_recipe.h"
+#include "romsamples.h"
 
 extern "C" {
 #include "engine.h"
@@ -434,12 +441,8 @@ struct Inst
 	}
 	void stepBank(int _dir)
 	{
-		const auto banks = bankList();
-		int idx = 0;
-		for(size_t i = 0; i < banks.size(); ++i) if(banks[i] == bankName) idx = static_cast<int>(i);
-		const int n = static_cast<int>(banks.size());
-		bankName = banks[static_cast<size_t>(((idx + _dir) % n + n) % n)];
-		kitIdx = -1;	// the kit list changed: the next KIT press starts at its first/last kit
+		const int n = static_cast<int>(bankList().size());
+		selectBank(((bankIndex() + _dir) % n + n) % n);	// the kit list changed: the next KIT press starts at its first/last kit
 	}
 	std::string bankLabel() const { return bankName.empty() ? "ALL" : bankName; }
 	void stepKit(int _dir)
@@ -493,6 +496,63 @@ struct Inst
 		for(int i = 0; i < kSlotTempo; ++i)
 			if(param[i].load(std::memory_order_relaxed) != snap[i]) return name + " *";
 		return name;
+	}
+	// The bank and kit pop-up lists: bank_sK / kit_sK are live text (the entry K of the current page), *_pick sends the choice back
+	static constexpr int kBankSlots = 24, kKitSlots = 32;	// entries per page: the bank list is 3 x 8, the kit list 4 x 8
+	int bankPageNum = 0, bankPageSeen = 0, kitPageNum = 0, kitPageSeen = 0;
+	std::mutex pickMu;
+	std::vector<std::string> kitNames;	// the kits of the selected bank, rebuilt when the catalog or the bank changes
+	const Catalog* kitNamesCat = nullptr; std::string kitNamesBank;
+	const std::vector<std::string>& kitNameList()	// pickMu held
+	{
+		const Catalog* c = cat.load();
+		if(c != kitNamesCat || bankName != kitNamesBank)
+		{
+			kitNamesCat = c; kitNamesBank = bankName; kitNames.clear();
+			if(c) for(int i : kitsInBank()) kitNames.push_back(c->kits[static_cast<size_t>(i)].name);
+		}
+		return kitNames;
+	}
+	int bankIndex() const
+	{
+		const auto banks = bankList();
+		for(size_t i = 0; i < banks.size(); ++i) if(banks[i] == bankName) return static_cast<int>(i);
+		return 0;
+	}
+	void selectBank(int _idx)
+	{
+		const auto banks = bankList();
+		if(_idx < 0 || _idx >= static_cast<int>(banks.size())) return;
+		bankName = banks[static_cast<size_t>(_idx)];
+		kitIdx = -1;
+		kitPageSeen = -1;
+	}
+	int bankPages() const { return (static_cast<int>(bankList().size()) + kBankSlots - 1) / kBankSlots; }
+	int bankPage()
+	{
+		const int bi = bankIndex();
+		if(bi != bankPageSeen) { bankPageSeen = bi; bankPageNum = bi / kBankSlots; }
+		return bankPageNum;
+	}
+	void stepBankPage(int _dir) { const int p = bankPage() + _dir; if(p >= 0 && p < bankPages()) bankPageNum = p; }
+	int kitPages() { std::lock_guard<std::mutex> g(pickMu); return (static_cast<int>(kitNameList().size()) + kKitSlots - 1) / kKitSlots; }
+	int kitPage()	// follows the current kit until the pager is used
+	{
+		if(kitIdx != kitPageSeen) { kitPageSeen = kitIdx; kitPageNum = std::max(kitIdx, 0) / kKitSlots; }
+		return kitPageNum;
+	}
+	void stepKitPage(int _dir) { const int p = kitPage() + _dir; if(p >= 0 && p < kitPages()) kitPageNum = p; }
+	std::string kitEntry(int _k)
+	{
+		std::lock_guard<std::mutex> g(pickMu);
+		const auto& l = kitNameList();
+		const size_t i = static_cast<size_t>(kitPage()) * kKitSlots + static_cast<size_t>(_k);
+		return i < l.size() ? l[i] : std::string();
+	}
+	void pickKit(int _k)
+	{
+		if(_k < 0 || _k >= kKitSlots) return;
+		loadKit(kitPage() * kKitSlots + _k);
 	}
 	// The whole instance for the host's project/program/plugin-preset chunk: "v1|<every slot>|<snap>|<kitIdx>|<bank>".
 	// The host-tempo slot is live host state, not part of a sound, so it is written as 0 and never restored.
@@ -593,6 +653,91 @@ static void makeSkins(const std::string& dataDir, const std::vector<uint8_t>& se
 	}
 }
 
+
+// The factory kits and the ROM machines' samples from the user's own flash image, made on the device the first time: if an 8 MB
+// .bin sits in the data folder (next to the OS file) and <plugin folder>/extract/mdextract is there, that helper boots the emulated MD
+// from it (about a minute) and dumps its kits and the voice DSP's memory; the kits become factory/FACTORY.syx and the memory that
+// differs from the engine's own becomes factory/ROM_SAMPLES.bin (tools/mdkits/romsamples.h), exactly what the full build ships.
+// Done once per image (a stamp file); a failure is remembered the same way. Returns true if ROM_SAMPLES.bin was made.
+template<class V>
+static bool extractFlash(const std::string& dataDir, V& voices)
+{
+	const auto cut = [](const std::string& p) { const size_t s = p.find_last_of('/'); return s == std::string::npos ? std::string(".") : p.substr(0, s); };
+	const std::string helper = cut(dataDir) + "/extract/mdextract", outDir = dataDir + "/factory";
+	struct stat st{};
+	if(stat(helper.c_str(), &st) != 0) return false;
+	chmod(helper.c_str(), 0755);	// a zip may not keep the mode
+	std::string image;
+	if(DIR* d = opendir(dataDir.c_str()))
+	{
+		while(const dirent* e = readdir(d))
+		{
+			const std::string n = e->d_name;
+			if(n.size() > 4 && !strcasecmp(n.c_str() + n.size() - 4, ".bin") && stat((dataDir + "/" + n).c_str(), &st) == 0 && st.st_size == 8 * 1024 * 1024)
+				image = dataDir + "/" + n;
+		}
+		closedir(d);
+	}
+	if(image.empty() || stat(image.c_str(), &st) != 0) return false;
+	const std::string stamp = std::to_string(st.st_size) + " " + std::to_string(st.st_mtime);
+	const std::string marker = outDir + "/.flash-stamp";
+	const auto readStamp = [&](const std::string& f) { char b[128] = {}; if(std::FILE* m = std::fopen(f.c_str(), "r")) { if(!std::fgets(b, sizeof b, m)) b[0] = 0; std::fclose(m); } return std::string(b); };
+	const auto writeStamp = [&](const std::string& f) { if(std::FILE* m = std::fopen(f.c_str(), "w")) { std::fputs(stamp.c_str(), m); std::fclose(m); } };
+	if(readStamp(outDir + "/.flash-failed") == stamp) return false;	// this image already failed once
+	struct stat so{};
+	const bool have = stat((outDir + "/ROM_SAMPLES.bin").c_str(), &so) == 0 && so.st_size > 0;
+	if(have && readStamp(marker) == stamp) return false;	// made already; the normal load picks it up
+	mkdir(outDir.c_str(), 0755);
+	const std::string dump = outDir + "/dsp2_hi.bin";
+	std::fprintf(stderr, "[machinedrum] making the factory kits and ROM samples from %s (about a minute, once)\n", image.c_str());
+	pid_t pid = 0;
+	// through sh: MPC's soft stack limit is 1 MB, which the emulator overruns; the helper gets the usual 8 MB
+	char* const argv[] = {const_cast<char*>("sh"), const_cast<char*>("-c"), const_cast<char*>("ulimit -s 8192; exec \"$0\" \"$1\" \"$2\""),
+		const_cast<char*>(helper.c_str()), const_cast<char*>(image.c_str()), const_cast<char*>(outDir.c_str()), nullptr};
+	const auto fail = [&](const char* why) { std::fprintf(stderr, "[machinedrum] flash image: %s\n", why); writeStamp(outDir + "/.flash-failed"); unlink(dump.c_str()); return false; };
+	posix_spawn_file_actions_t fa;	// the emulator is chatty: its output goes nowhere
+	posix_spawn_file_actions_init(&fa);
+	posix_spawn_file_actions_addopen(&fa, 1, "/dev/null", O_WRONLY, 0);
+	posix_spawn_file_actions_addopen(&fa, 2, "/dev/null", O_WRONLY, 0);
+	char* const envp[] = {const_cast<char*>("PATH=/usr/bin:/bin"), nullptr};	// not MPC's: its LD_PRELOAD add-ins crash the helper
+	const int spawned = posix_spawn(&pid, "/bin/sh", &fa, nullptr, argv, envp);
+	posix_spawn_file_actions_destroy(&fa);
+	if(spawned != 0) return fail("cannot start mdextract");
+	// the helper runs at the lowest priority: MPC keeps its audio threads
+	setpriority(PRIO_PROCESS, static_cast<id_t>(pid), 19);
+	int status = 0;
+	while(waitpid(pid, &status, 0) < 0 && errno == EINTR) {}
+	if(!WIFEXITED(status) || WEXITSTATUS(status) != 0) return fail("mdextract failed");
+	std::vector<uint32_t> words;
+	if(std::FILE* f = std::fopen(dump.c_str(), "rb"))
+	{
+		std::fseek(f, 0, SEEK_END);
+		words.resize(static_cast<size_t>(std::ftell(f)) / 4);
+		std::fseek(f, 0, SEEK_SET);
+		if(std::fread(words.data(), 4, words.size(), f) != words.size()) words.clear();
+		std::fclose(f);
+	}
+	unlink(dump.c_str());
+	const auto runs = md::romsamples::diff(words, md::romsamples::kProgEnd, 0x800000, [&](uint32_t a) { return voices.readP(a); });
+	if(runs.empty()) return fail("no sample data in the dump");
+	std::FILE* o = std::fopen((outDir + "/ROM_SAMPLES.bin").c_str(), "wb");
+	if(!o) return fail("cannot write ROM_SAMPLES.bin");
+	std::fwrite("MDS1", 1, 4, o);
+	for(const auto& r : runs)
+	{
+		const uint32_t count = static_cast<uint32_t>(r.words.size());
+		std::fwrite(&r.address, 4, 1, o);
+		std::fwrite(&count, 4, 1, o);
+		std::fwrite(r.words.data(), 4, count, o);
+	}
+	const uint32_t zero[2] = {0, 0};
+	std::fwrite(zero, 4, 2, o);
+	std::fclose(o);
+	writeStamp(marker);
+	std::fprintf(stderr, "[machinedrum] factory kits and ROM samples made\n");
+	return true;
+}
+
 void Inst::run()
 {
 	try
@@ -610,7 +755,8 @@ void Inst::run()
 		}
 		Engine eng(fwv, std::move(c.sections.at(0).data), std::clamp(groups, 1, 4));
 		auto& h = eng.host();
-		// ROM machines: their samples, if the installer put the extracted sample memory in place
+		// ROM machines: their samples, if the installer put the extracted sample memory in place (or the user's flash image makes them)
+		extractFlash(dataDir, eng.voices());
 		if(loadSamples(eng.voices(), dataDir + "/factory/ROM_SAMPLES.bin") > 0)
 		{
 			romAvail = true;
@@ -995,6 +1141,10 @@ void eSet(void* p, const char* key, const char* val)
 	}
 	// momentary actions (the wrapper springs them back; they read back as 0)
 	const bool on = std::atof(val) > 0.5;
+	if(!std::strcmp(key, "bank_pick")) { const int k = static_cast<int>(std::lround(std::atof(val))); if(k >= 0 && k < Inst::kBankSlots) in->selectBank(in->bankPage() * Inst::kBankSlots + k); return; }
+	if(!std::strcmp(key, "kit_pick")) { in->pickKit(static_cast<int>(std::lround(std::atof(val)))); return; }
+	if(!std::strcmp(key, "bank_pgprev") || !std::strcmp(key, "bank_pgnext")) { if(on) in->stepBankPage(key[7] == 'n' ? 1 : -1); return; }
+	if(!std::strcmp(key, "kit_pgprev") || !std::strcmp(key, "kit_pgnext")) { if(on) in->stepKitPage(key[6] == 'n' ? 1 : -1); return; }
 	if(!std::strcmp(key, "kit_prev") || !std::strcmp(key, "kit_next")) { if(on) in->stepKit(key[4] == 'n' ? 1 : -1); return; }
 	if(!std::strcmp(key, "bank_prev") || !std::strcmp(key, "bank_next")) { if(on) in->stepBank(key[5] == 'n' ? 1 : -1); return; }
 	if(!std::strcmp(key, "randomize_all")) { if(on) in->randomiseMachines(0, 15); return; }
@@ -1029,6 +1179,26 @@ int eGet(void* p, const char* key, char* buf, int bufLen)
 	if(!std::strcmp(key, "state")) return std::snprintf(buf, static_cast<size_t>(bufLen), "%s", in->saveState().c_str()) > 0;
 	if(!std::strcmp(key, "kit_name")) return std::snprintf(buf, static_cast<size_t>(bufLen), "%s", in->kitLabel().c_str()) > 0;
 	if(!std::strcmp(key, "bank_name")) return std::snprintf(buf, static_cast<size_t>(bufLen), "%s", in->bankLabel().c_str()) > 0;
+	if(!std::strcmp(key, "bank_pick"))
+	{
+		const int k = in->bankIndex() - in->bankPage() * Inst::kBankSlots;
+		return std::snprintf(buf, static_cast<size_t>(bufLen), "%d", k >= 0 && k < Inst::kBankSlots ? k : Inst::kBankSlots) > 0;
+	}
+	if(!std::strcmp(key, "kit_pick"))
+	{
+		const int k = in->kitIdx - in->kitPage() * Inst::kKitSlots;
+		return std::snprintf(buf, static_cast<size_t>(bufLen), "%d", in->kitIdx >= 0 && k >= 0 && k < Inst::kKitSlots ? k : Inst::kKitSlots) > 0;
+	}
+	if(!std::strncmp(key, "bank_s", 6) && std::isdigit(static_cast<unsigned char>(key[6])))
+	{
+		const auto banks = in->bankList();
+		const size_t k = static_cast<size_t>(in->bankPage() * Inst::kBankSlots + std::atoi(key + 6));
+		return std::snprintf(buf, static_cast<size_t>(bufLen), "%s", k >= banks.size() ? "" : k == 0 ? "ALL" : banks[k].c_str()) >= 0;
+	}
+	if(!std::strncmp(key, "kit_s", 5) && std::isdigit(static_cast<unsigned char>(key[5])))
+		return std::snprintf(buf, static_cast<size_t>(bufLen), "%s", in->kitEntry(std::atoi(key + 5)).c_str()) >= 0;
+	if(!std::strcmp(key, "bank_page")) return std::snprintf(buf, static_cast<size_t>(bufLen), "PAGE %d/%d", in->bankPage() + 1, std::max(in->bankPages(), 1)) > 0;
+	if(!std::strcmp(key, "kit_page")) return std::snprintf(buf, static_cast<size_t>(bufLen), "PAGE %d/%d", in->kitPage() + 1, std::max(in->kitPages(), 1)) > 0;
 	if(!std::strncmp(key, "kit_", 4) || !std::strncmp(key, "bank_", 5) || !std::strncmp(key, "randomize_", 10))
 		return std::snprintf(buf, static_cast<size_t>(bufLen), "0") > 0;	// momentary: always reads back off
 	if(!std::strcmp(key, "ready"))

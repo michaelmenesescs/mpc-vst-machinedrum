@@ -75,15 +75,16 @@ A first-generation Force has four slow ARM cores shared with MPC itself, so some
 MPC gives a VST2 instrument only one stereo pair of outputs, so the Module cannot offer 16 outputs. Instead, two small extra
 plugins read channels from the Module running in the same project:
 
-- **Machinemodule Tap** (an instrument) and **Machinemodule Tap FX** (an effect, for a return or FX track). Each has an on/off
-  cell for every track (mono, after the track's effects and VOL, before its pan), for the reverb send and for the delay send.
-  Turn on as many as you like: the tap outputs their sum, so one MPC track or submix can carry any set of Machinedrum channels.
-  Tap FX also has THRU, which adds whatever the track receives.
+- **Machinemodule Tap** (an effect, for a return or FX track). It has an on/off cell for every track (mono, after the
+  track's effects and VOL, before its pan), for the reverb send and for the delay send. Turn on as many as you like: the tap
+  outputs their sum, so one MPC track or submix can carry any set of Machinedrum channels. It also has THRU, which adds
+  whatever the track receives. (It is an effect: put it on an FX or return track. The earlier instrument version of the tap was removed, and the
+  effect took its name.)
 - A track that a tap reads leaves the Module's own dry main mix, so it is not heard twice. It still feeds the Machinedrum's
   reverb and delay sends (the track's REV and DEL knobs), which the send taps carry.
 - Use them to give each drum its own MPC track, submix and insert effects, or to put the sends on a return track and run
   them through MPC's own reverb and delay. Taps are sample-aligned with the Module (measured on a Force) and cost almost no CPU.
-- Needs one Machinemodule in the project; a tap is silent without it. The build makes an installer zip for each tap
+- Needs one Machinemodule in the project; a tap is silent without it. The build makes an installer zip for the tap
   next to the Module's (see [Building](#building)).
 
 **New in 0.3.4:** saving and reloading now keeps your kit. A saved MPC project, program or plugin preset used to come back empty, because
@@ -100,7 +101,7 @@ until it is played again; before, every track you had hit kept costing its full 
 instead of two. New instances start at VOICES 6 with ROM machines on (projects you saved keep their own settings). The GLOBAL page
 now has VOICES and ROM on the top row and the four randomise toggles below.
 
-**New in 0.3.0:** **Machinemodule Tap** and **Machinemodule Tap FX**: extra plugins that put any tracks, and the reverb and delay sends, on their own MPC tracks, submixes or return tracks, so MPC's mixer and effects can process them. Tracks and sends can be mixed freely on one tap. Timing against the main output was measured on a Force (sample-aligned). The Module itself is unchanged, and its output is bit-identical when no tap is in use.
+**New in 0.3.0:** **Machinemodule Tap**, in an instrument and an effect form (the instrument form was later removed): an extra plugin that put any tracks, and the reverb and delay sends, on their own MPC tracks, submixes or return tracks, so MPC's mixer and effects can process them. Tracks and sends can be mixed freely on one tap. Timing against the main output was measured on a Force (sample-aligned). The Module itself is unchanged, and its output is bit-identical when no tap is in use.
 
 **New in 0.2.1:** build fixes only. The build no longer needs Monomodule's art file (the LCD fonts come from your Machinedrum OS, and the
 randomise toggle icon is now drawn by this project), `mdProbe` is built for you, and the README has plain steps including a macOS setup.
@@ -206,16 +207,28 @@ cd mpc-vst-machinedrum
 release/build_release.sh "/path/to/Elektron_SPS1-1UW_OS1.63.syx" "/path/to/flash image.bin"   # the flash image is optional
 ```
 
-Put both file paths in quotes. Watch for the `== 3/7 ...` step headings; at the end you have three installer zips in `dist/`:
-`Machinemodule-<version>-mpc-armv7.zip` and one each for the two taps, `Machinemodule-Tap-...` and `Machinemodule-Tap-FX-...`
-(install the ones you want; the taps need the Module).
+Put both file paths in quotes. Watch for the `== 3/7 ...` step headings; at the end you have two installer zips in `dist/`:
+`Machinemodule-<version>-mpc-armv7.zip` and `Machinemodule-Tap-<version>-mpc-armv7.zip`
+(the tap needs the Module).
 
-**Gen2 MPCs, ready-made download:** from v0.4.0 the Gen2 installers are on the [Releases](../../releases) page, with nothing of
-Elektron's in them: install `Machinemodule-<version>-mpc-aarch64.zip` (and the taps if you want them), put your own
-`Elektron_SPS1-1UW_OS1.63.syx` in `/sdcard/Synths/sd88me - VST - Machinemodule/machinedrum/`, load Machinemodule on a track once
-(it makes its LCD skin from your OS file), then restart MPC to see the skin. This build has no ROM machines or factory kits (they
-need your flash image: build your own zips as below for those). Release builds of it: `release/build_release.sh "<OS .syx>" -P`
-(the skin goes in as a recipe, tools/mdskin/skin_recipe.py, checked to give the skin exactly; the plugin fills it in on the device).
+**Gen2 MPCs, ready-made download:** the Gen2 installers are on the [Releases](../../releases) page, with nothing of
+Elektron's in them: install `Machinemodule-<version>-mpc-aarch64.zip` (and `Machinemodule-Tap-<version>-mpc-aarch64.zip` if you want
+the tap), put your own `Elektron_SPS1-1UW_OS1.63.syx` in the plugin's `machinedrum/` folder (on a Live III
+`/nvme/Synths/sd88me - VST - Machinemodule/machinedrum/`), load Machinemodule on a track once (it makes its LCD skin from your OS file),
+then restart MPC to see the skin. **Optional:** put your Machinedrum UW flash image (the 8 MB `.bin`) there too and the plugin makes the
+ROM sample machines and the 16 factory kits from it the first time you load it (about 2 minutes; it makes sound only after that, and
+you reload the plugin once afterwards). Without the `.bin` those stay silent / absent. Release builds of it:
+`release/build_release.sh "<OS .syx>" -P` (the skin goes in as a recipe, tools/mdskin/skin_recipe.py, checked to give the skin exactly;
+the plugin fills it in on the device; the flash image is extracted on the device by the shipped `extract/mdextract` helper).
+The Gen2 zips carry their own catalog ids (`machinemodule-gen2`, `machinemodule-tap-gen2`), beside the build-yourself `machinemodule`.
+
+![Machinemodule on an MPC Live III](docs/img/machinemodule-gen2.png)
+![The kit list: 16 factory kits, 32 to a page](docs/img/machinemodule-gen2-kits.png)
+
+**Tested on an MPC Live III** (v0.5.0), with the plugin's own paced render test and MPC running alongside: 16 tracks of TRX machines
+use about 0.3 of a core (the 16-voice case about 0.65), with no underruns once running; ROM-machine tracks about 0.4 of a core. The
+first seconds after the plugin starts, and each machine change, can underrun briefly while the JIT compiles the machine's code. The
+first-load extraction from the flash image took about 75 s and made byte-identical factory data.
 
 **Gen2 MPCs, your own build:** add `-a aarch64`. That build runs the voice DSP on the JIT
 compiler instead of the recompiled code, so it skips the long steps 3-4 (a couple of minutes in all) and is about 2.4x faster on the
