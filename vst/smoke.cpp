@@ -30,7 +30,7 @@ int main(int argc, char** argv)
 	{
 		if(e->get_param(in, "ready", buf, sizeof buf) > 0 && buf[0] == '1') break;
 		std::this_thread::sleep_for(std::chrono::milliseconds(20));
-		if(Clock::now() - t0 > std::chrono::seconds(60)) { puts("engine never became ready"); return 1; }
+		if(Clock::now() - t0 > std::chrono::seconds(std::getenv("MD_SMOKE_READY_S") ? std::atoi(std::getenv("MD_SMOKE_READY_S")) : 60)) { puts("engine never became ready"); return 1; }	// the first load makes the factory data from a flash image (minutes)
 	}
 	printf("ready after %.0f ms\n", std::chrono::duration<double, std::milli>(Clock::now() - t0).count());
 
