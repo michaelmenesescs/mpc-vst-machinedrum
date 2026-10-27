@@ -225,6 +225,7 @@ The Gen2 zips carry their own catalog ids (`machinemodule-gen2`, `machinemodule-
 ![Machinemodule on an MPC Live III: track 1](docs/img/machinemodule-gen2.png)
 ![The kit list: 16 factory kits, 32 to a page](docs/img/machinemodule-gen2-kits.png)
 ![The GLOBAL tab: mixer, VOICES, randomise, banks and kits](docs/img/machinemodule-gen2-global.png)
+![Machinemodule Tap on an MPC Live III](docs/img/machinemodule-tap-gen2.png)
 
 **Tested on an MPC Live III** (v0.5.0), with the plugin's own paced render test and MPC running alongside: 16 tracks of TRX machines
 use about 0.3 of a core (the 16-voice case about 0.65), with no underruns once running; ROM-machine tracks about 0.4 of a core. The

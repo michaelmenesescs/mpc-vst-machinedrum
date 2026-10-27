@@ -109,7 +109,7 @@ def text_width(font, s):
 CELLS = [("TRK %d" % (i + 1), "src%d" % (i + 1)) for i in range(16)] + [("REV", "src_rev"), ("DEL", "src_del")]
 if FX:
     CELLS.append(("THRU", "through"))
-TITLE = "MACHINEMODULE TAP FX" if FX else "MACHINEMODULE TAP"
+TITLE = "MACHINEMODULE TAP"
 NAME, VENDOR = "Machinemodule Tap", "sd88me"
 OUT = os.path.join(sys.argv[3], "%s - VST - %s" % (VENDOR, NAME))
 SKIN = os.path.join(OUT, "Plugin Skins")
