@@ -29,7 +29,7 @@ from PIL import Image
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 # the two skins, as build_skin.sh makes them: (generator, its arguments after art.json, the output dir relative to <run dir>)
-SKINS = [("mk_skin.py", ["{machines}", "vst/params.json"], "main"),
+SKINS = [("mk_skin.py", ["{machines}", "vst/params.json"], "main", ["rom=0"]),
          ("mk_tap_skin.py", ["vst/tapfx/params.json"], "tapfx", ["fx"])]
 
 

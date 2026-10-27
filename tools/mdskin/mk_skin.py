@@ -757,11 +757,12 @@ mcv.dots_h(0, MW - 1, GRID_Y); mcv.dots_v(TRACKS * MCW, GRID_Y, PAGE_LCD_H - 1);
 mx0, my0 = page_origin("SYN")
 gbg = TRACK_CHASSIS.copy()
 gbg.paste(mcv.image(), (mx0, my0))
-GLOBAL_CELLS = [P("VOICES", default=42, fmt=lambda raw: str(1 + int(round(raw * 15 / 127.0)))),
-                P("ROM", "toggle", default=127), P(""), P(""),
+ROM_SWITCH = args.get("rom", "1") != "0"   # rom=0 (the Gen2 download): no ROM cell; the JIT build gains nothing from switching ROM machines off
+GLOBAL_CELLS = [P("VOICES", default=127, fmt=lambda raw: str(1 + int(round(raw * 15 / 127.0)))),
+                P("ROM", "toggle", default=127) if ROM_SWITCH else P(""), P(""), P(""),
                 P("RND ALL", "toggle"), P("RND 1-8", "toggle"), P("RND 9-16", "toggle"), P("RND KIT", "toggle")]
 # top row: VOICES and ROM (the settings); bottom row: the four randomise toggles
-GLOBAL_KEYS = ["max_voices", "rom_enabled", None, None, "randomize_all", "randomize_1_8", "randomize_9_16", "randomize_kit"]
+GLOBAL_KEYS = ["max_voices", "rom_enabled" if ROM_SWITCH else None, None, None, "randomize_all", "randomize_1_8", "randomize_9_16", "randomize_kit"]
 gcv = page_canvas("ROUTE", GLOBAL_CELLS, "GLOBAL")
 gbg.paste(gcv.image(), page_origin("ROUTE"))
 gbg.paste(KITS_IMG, (kits_x, kits_y))
@@ -802,7 +803,7 @@ tkey = "mdToggleTouch"
 defs[tkey] = ss._local(tkey, [ss._action("Mouse Down", "Q-Link"), ss._action("Enter Pressed", "Toggle Switch")],
                        [ss._focus(TOUCH_W, TOUCH_H), ss._button("clear.png", "clear.png", 1, 1, TOUCH_W, TOUCH_H)])
 gx0, gy0 = page_origin("ROUTE")
-for k_ in (1, 4, 5, 6, 7):   # ROM on/off (the only one that stays set), then the four randomise toggles
+for k_ in ((1, 4, 5, 6, 7) if ROM_SWITCH else (4, 5, 6, 7)):   # ROM on/off (the only one that stays set), then the four randomise toggles
     p_, key_p = GLOBAL_CELLS[k_], GLOBAL_KEYS[k_]
     imgs = {}
     for state, raw in (("on", 127), ("off", 0)):

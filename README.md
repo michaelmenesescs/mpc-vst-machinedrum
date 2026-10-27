@@ -53,7 +53,7 @@ A first-generation Force has four slow ARM cores shared with MPC itself, so some
   reverb and delay sends come out through the taps (below) so MPC's own effects can do that job.
 - **Taps: each track or send on its own MPC track** (added; see below). The Machinedrum's individual outputs become separate
   MPC tracks, submixes or return tracks to be processed by MPC OS insert effects.
-- **Voice budget, default 6** (added). The VOICES knob on GLOBAL is a CPU budget, not a plain voice count. Most machines cost
+- **Voice budget, default 16** (added; it was 6 until 0.5.0 - lower it on a Force, which can sound only about 6 busy voices). The VOICES knob on GLOBAL is a CPU budget, not a plain voice count. Most machines cost
   1 unit and the ROM (sample) machines cost 2, matching what they cost the Force's CPU. When a trigger would go past the
   budget, the oldest sounding track is cut, tail included. The real Machinedrum always plays all 16 tracks.
 - **Silence release** (added). A track whose sound has died away (below -96 dBFS for 100 ms, under the plugin's 16-bit
@@ -61,7 +61,7 @@ A first-generation Force has four slow ARM cores shared with MPC itself, so some
   same as a normal retrigger (noise-based machines start a fresh noise sequence, as any two hits differ anyway).
 - **The voices render on three threads** (the real Machinedrum has one voice DSP). Each thread runs its own copy of the
   voice DSP for some of the tracks, balanced by what they cost.
-- **ROM on/off switch** (GLOBAL, on by default). Off, tracks on a ROM machine stay silent and the randomiser leaves ROM
+- **ROM on/off switch** (GLOBAL, on by default; the Gen2 download has no switch, because the JIT build gains nothing from it). Off, tracks on a ROM machine stay silent and the randomiser leaves ROM
   machines out; each track keeps its ROM setting. The quickest way to make a busy kit safe.
 - **Randomise** (GLOBAL): machines on all tracks, tracks 1-8, tracks 9-16, or a random kit.
 - **GLOBAL tab:** a 16-track level mixer, VOICES, ROM, randomise, and the bank and kit selectors.
@@ -222,8 +222,9 @@ you reload the plugin once afterwards). Without the `.bin` those stay silent / a
 the plugin fills it in on the device; the flash image is extracted on the device by the shipped `extract/mdextract` helper).
 The Gen2 zips carry their own catalog ids (`machinemodule-gen2`, `machinemodule-tap-gen2`), beside the build-yourself `machinemodule`.
 
-![Machinemodule on an MPC Live III](docs/img/machinemodule-gen2.png)
+![Machinemodule on an MPC Live III: track 1](docs/img/machinemodule-gen2.png)
 ![The kit list: 16 factory kits, 32 to a page](docs/img/machinemodule-gen2-kits.png)
+![The GLOBAL tab: mixer, VOICES, randomise, banks and kits](docs/img/machinemodule-gen2-global.png)
 
 **Tested on an MPC Live III** (v0.5.0), with the plugin's own paced render test and MPC running alongside: 16 tracks of TRX machines
 use about 0.3 of a core (the 16-voice case about 0.65), with no underruns once running; ROM-machine tracks about 0.4 of a core. The
