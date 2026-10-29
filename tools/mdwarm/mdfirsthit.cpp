@@ -3,7 +3,7 @@
 // warmed first, the other is cold (its JIT compiles each machine's code at its first hit). Prints, per machine, the
 // slowest block after its hit in each engine, and whether the two engines' output (main, sends, individual outputs and
 // every track) is identical sample for sample. Idea and method from c0remusic/MModule's mdDrumsFirstHitTest (GPL-3.0).
-// usage: md-firsthit <OS.syx> [ROM_SAMPLES.bin]   MD_GROUPS=n (default 3, as the plugin)  MD_WARM_BLOCKS=n (default 4)
+// usage: md-firsthit <OS.syx> [ROM_SAMPLES.bin]   MD_GROUPS=n (default 3, as the plugin)  MD_WARM_BLOCKS=n (default 32, as the plugin)
 //   MD_FH_PARAMS=1 (then every machine at SYN all 0, all 127 and random: the parameter-dependent code)
 //   MD_FH_CHURN=s (md-vst-smoke's churn script for s seconds instead, MD_FH_THRESH=us)  MD_FH_BLOCKS=n (blocks after each hit, default 24)  MD_FH_STAGES=1 (the warm engine's stage timing per machine)
 #include <algorithm>
@@ -51,7 +51,7 @@ int main(int argc, char** argv)
 	const auto fwv = md::fw::loadFirmware(argv[1]);
 	auto c = md::fw::parseContainer(md::fw::parseSysex(md::fw::readFile(argv[1])));
 	const int groups = getenv("MD_GROUPS") ? atoi(getenv("MD_GROUPS")) : 3;
-	const int warmBlocks = getenv("MD_WARM_BLOCKS") ? atoi(getenv("MD_WARM_BLOCKS")) : 4;
+	const int warmBlocks = getenv("MD_WARM_BLOCKS") ? atoi(getenv("MD_WARM_BLOCKS")) : 32;	// the plugin's kWarmBlocks
 	const int hitBlocks = getenv("MD_FH_BLOCKS") ? atoi(getenv("MD_FH_BLOCKS")) : 24;	// blocks played after each hit
 	Eng cold(fwv, std::vector<uint8_t>(c.sections.at(0).data), groups);
 	Eng warm(fwv, std::vector<uint8_t>(c.sections.at(0).data), groups);

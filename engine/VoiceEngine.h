@@ -47,9 +47,9 @@ namespace md::engine
 		uint32_t readP(uint32_t _addr) const;
 
 		// The DSP's memory (P, X, Y), registers and this class's per-block bookkeeping, between two blocks. restoreState puts
-		// back exactly what saveState saw: the voice slots (in Y), every voice's state, the ROM samples. P goes back word by
-		// word through memWriteP only where it changed, so the JIT keeps every block it compiled for code that did not
-		// change: what warmUp is for. Call between blocks, never while renderBlock runs.
+		// back exactly what saveState saw: the voice slots (in Y), every voice's state, the ROM samples. P goes back directly,
+		// word by word where it changed, and a changed word in the loaded program's range is reported to the JIT; unchanged
+		// code keeps every block the JIT compiled for it: what warmUp is for. Call between blocks, never while renderBlock runs.
 		struct State;
 		std::shared_ptr<State> saveState();
 		void restoreState(const State& _state);

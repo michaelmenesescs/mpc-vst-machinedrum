@@ -31,7 +31,6 @@ namespace md::engine
 	public:
 		static constexpr int kTracks = 16;
 		static constexpr int kBlock = 32;
-		static constexpr int kParamsWarm = 24;
 
 		// _osImage: the OS file's section 0 (the ColdFire OS), decompressed. Constructs TVoices with just the
 		// firmware (VoiceEngine's own constructor).
@@ -159,7 +158,7 @@ namespace md::engine
 						const auto* m = os->machine(_machines[first + v]);
 						if(!m)
 							continue;
-						std::array<uint16_t, kParamsWarm> params{};	// SYN1-8: the machine reads no other
+						std::array<uint16_t, 24> params{};	// the per-voice array; SYN1-8 only: the machine reads no other
 						for(size_t p = 0; p < 8; ++p)
 							params[p] = static_cast<uint16_t>(m->defaults[p] << 7);
 						uint32_t out[32];
