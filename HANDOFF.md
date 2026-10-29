@@ -1570,8 +1570,11 @@ still published with older zips (Tap title "TAP FX", VOICES 6, a ROM cell): dele
   16 ROM tracks about 0.38; ROM on/off no CPU difference. Every run has a startup underrun burst (33-76; the JIT compiling) and each machine change in the churn test cost 20-30.
 
 **Open items**
-1. **JIT prewarm for Machinemodule** (the startup and machine-change underruns above). Monomodule has `MonoVoice::prewarm()`; here the engine is a parallel multi-voice engine (`engine/ParallelVoiceEngine`),
-   so warming means pushing every machine's code through each voice thread once at load. Measure first: `MD_SMOKE_CHURN=1` prints per-second underruns.
+1. **JIT prewarm for Machinemodule: done on branch `perf/jit-prewarm`, not yet tried on a device** (details, numbers and provenance: `OVERNIGHT-REPORT.md`). Ported from
+   c0remusic/MModule: `VoiceEngine::saveState/restoreState/warmUp`, `ParallelVoiceEngine::warmUp` (every group, in parallel), `EngineT::warmUpVoices`; the plugin warms every offered
+   machine for 32 blocks before `ready` (`MD_WARM` / `/tmp/md-warm` = blocks, 0 = off). md-hash unchanged with it on; `md-firsthit` proves warm == cold sample for sample.
+   aarch64 container: +~0.24 s load, startup underruns 20-24 -> 0-3, churn 42-51 -> 5-9 per 30 s (the container's floor under 16 voices). VmRSS reads ~5 GB but is the JIT's
+   shared default-block mappings counted per mapping: physical cost ~+70 MB. Next: the Live III's `[machinedrum] JIT warm-up: ... ms` log line and churn A/B.
 2. **ROM machines and the 16 factory kits are not yet verified by ear** after the on-device extraction (the files are identical to the reference, but nobody has heard them play through MPC).
 3. **FX inside the main plugin** (parked): 1-2 FX slots taking only the plugin's own stream as NEIBOR. Same question as in the Monomodule handoff (does MPC feed an instrument audio?).
 4. **Other Gen2 models** untried. The Gen2 `INSTALL.md` text ("32-bit ARM, /sdcard/Synths") comes from the shared `release.py` in mpc-vst-plugins and is wrong for Gen2 zips.
