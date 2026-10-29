@@ -5,9 +5,11 @@
 //   MD_SWEEP=1    plays every machine on a fresh engine and prints "SWEEP id name peak" (release gate: none of the offered ones silent)
 //   MD_BUDGET=n   voice budget n; prints the max/mean number of voices that rendered
 //   MD_RELEASE=n  silence release after n quiet blocks (HostModel::setSilenceRelease)
+//   MD_WARM=n     JIT warm-up first (EngineT::warmUpVoices, n blocks per machine; ROM machines too with the ROM samples): must give the same hash
 #include <cstdio>
 #include <cstdlib>
 #include <algorithm>
+#include <chrono>
 #include <cstdint>
 #include <vector>
 #include "MdEngine.h"
@@ -28,6 +30,13 @@ static void run(E& eng, int argc, char** argv)
 				}
 			fclose(rf);
 		}
+	if(const char* w = getenv("MD_WARM"))
+	{
+		const auto t0 = std::chrono::steady_clock::now();
+		const int n = eng.warmUpVoices(eng.warmableMachines(argc > 2), atoi(w));
+		fprintf(stderr, "warm-up: %d machines, %.0f ms\n", n, std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count());
+		if(n < 0) { fprintf(stderr, "warm-up fault: %s\n", eng.fault().c_str()); exit(1); }
+	}
 	auto& h = eng.host();
 	typename E::Output out;
 	uint64_t hash = 1469598103934665603ull;

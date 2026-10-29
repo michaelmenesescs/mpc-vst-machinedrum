@@ -1,6 +1,8 @@
 // Harness structure adapted from shnolk/monomodule src/core/dsp/DspEngine.cpp (AGPL-3.0).
+// saveState/restoreState/warmUp adapted from c0remusic/MModule source/elektron/md/mdEngine/engine/VoiceEngine.cpp (GPL-3.0).
 #include "VoiceEngine.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <sstream>
@@ -104,7 +106,10 @@ namespace md::engine
 				const TWord a = r.addr + static_cast<TWord>(k);
 				// P space, and anything in the shared external range, must go through memWriteP so the JIT sees it.
 				if(r.space == fw::Space::P || a >= kBridge)
+				{
 					m_dsp->memWriteP(a, r.words[k]);
+					m_maxProgramP = std::max(m_maxProgramP, static_cast<uint32_t>(a));
+				}
 				else
 					m_dsp->memWrite(r.space == fw::Space::X ? MemArea_X : MemArea_Y, a, r.words[k]);
 			}
@@ -216,6 +221,7 @@ namespace md::engine
 		m_dsp->resetHW();
 		loadImage(m_fw.dspA);	// section 1 = voice program (docs/PROTOCOL.md)
 		installHarness();
+		m_maxProgramP = std::max<uint32_t>(m_maxProgramP, 0x100094);	// the harness's highest patch
 		for(int i = 0; i < 4; ++i)
 			m_periphX->write(0xfffff9 - static_cast<TWord>(i), kAar[i]);
 		m_dsp->regs().omr.var = kOmr;
@@ -305,6 +311,92 @@ namespace md::engine
 		}
 		m_voiceInstr[kVoices - 1] = static_cast<uint32_t>(m_dsp->getInstructionCounter() - prev);
 		return true;
+	}
+
+	struct VoiceEngine::State
+	{
+		std::vector<TWord> p;	// P up to its last non-zero word; everything above was zero
+		std::vector<TWord> x, y;
+		DspRegs regs;
+		uint64_t lastInstructions = 0;
+		int lastActive = 0;
+		std::array<uint32_t, kVoices> voiceInstr{};
+	};
+
+	std::shared_ptr<VoiceEngine::State> VoiceEngine::saveState()
+	{
+		// P is as large as the external memory X and Y share with it (8M words here), mostly zero: kept up to its last
+		// non-zero word. X and Y up to where they join P.
+		const size_t sizeP = m_mem->size(MemArea_P);
+		const size_t sizeXY = Memory::calcXYMemSize(kSizeXY, kBridge);
+		const auto* p = m_mem->getMemAreaPtr(MemArea_P);
+		const auto* x = m_mem->getMemAreaPtr(MemArea_X);
+		const auto* y = m_mem->getMemAreaPtr(MemArea_Y);
+		size_t usedP = sizeP;
+		while(usedP > 0 && p[usedP - 1] == 0)
+			--usedP;
+		auto state = std::make_shared<State>();
+		state->p.assign(p, p + usedP);
+		state->x.assign(x, x + sizeXY);
+		state->y.assign(y, y + sizeXY);
+		state->regs = m_dsp->regs();
+		state->lastInstructions = m_lastInstructions;
+		state->lastActive = m_lastActive;
+		state->voiceInstr = m_voiceInstr;
+		return state;
+	}
+
+	void VoiceEngine::restoreState(const State& _state)
+	{
+		// The DSP's own data writes into the shared external memory do not tell the JIT (DSP::memWrite), so P is put back
+		// the same way, directly. A changed word the JIT may hold code for (what reset() loaded through memWriteP) is also
+		// reported to it, so no block compiled from a word changed meanwhile survives; restoring identical words keeps every
+		// compiled block valid, and that is the point.
+		auto* p = m_mem->getMemAreaPtr(MemArea_P);
+		const size_t sizeP = m_mem->size(MemArea_P);
+		for(size_t a = 0; a < sizeP; ++a)
+		{
+			const TWord v = a < _state.p.size() ? _state.p[a] : 0;
+			if(p[a] == v)
+				continue;
+			p[a] = v;
+			if(a <= m_maxProgramP)
+			{
+				m_dsp->notifyProgramMemWrite(static_cast<TWord>(a));
+				m_dsp->getJit().notifyProgramMemWrite(static_cast<TWord>(a));
+			}
+		}
+		std::copy(_state.x.begin(), _state.x.end(), m_mem->getMemAreaPtr(MemArea_X));
+		std::copy(_state.y.begin(), _state.y.end(), m_mem->getMemAreaPtr(MemArea_Y));
+		m_dsp->regs() = _state.regs;
+		auto& hi = m_periphX->getHI08();	// empty between two blocks; not after a fault
+		hi.clearRX();
+		while(hi.hasTX())
+			hi.readTX();
+		m_lastInstructions = _state.lastInstructions;
+		m_lastActive = _state.lastActive;
+		m_voiceInstr = _state.voiceInstr;
+		m_fault.clear();
+	}
+
+	bool VoiceEngine::warmUp(const std::vector<WarmBlock>& _blocks)
+	{
+		const auto state = saveState();
+		Block out;
+		bool ok = true;
+		for(const auto& blk : _blocks)
+		{
+			for(int v = 0; v < kVoices; ++v)
+				if(blk[static_cast<size_t>(v)].count > 0)
+					setSlot(v, blk[static_cast<size_t>(v)].words.data(), blk[static_cast<size_t>(v)].count);
+			if(!(ok = renderBlock(out)))
+				break;
+		}
+		const std::string fault = m_fault;
+		restoreState(*state);
+		if(!ok)
+			m_fault = fault;
+		return ok;
 	}
 
 	bool VoiceEngine::renderBlock(Block& _out)

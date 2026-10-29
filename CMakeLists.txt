@@ -57,6 +57,10 @@ target_link_libraries(md-cost PRIVATE mdcore pthread dl)
 # mdhash: an audio hash of a fixed pattern, to compare builds
 add_executable(md-hash tools/mdhash/mdhash.cpp)
 target_link_libraries(md-hash PRIVATE mdcore pthread dl)
+
+# md-firsthit: a machine's first-hit cost cold vs after the JIT warm-up, and that the warm-up changes no sample
+add_executable(md-firsthit tools/mdwarm/mdfirsthit.cpp)
+target_link_libraries(md-firsthit PRIVATE mdcore pthread dl)
 # mdsamples: extracts the ROM machines' sample memory from a dump of the emulated MD's voice DSP (tools/mdkits)
 add_executable(mdsamples tools/mdkits/mdsamples.cpp)
 target_link_libraries(mdsamples PRIVATE mdcore pthread)

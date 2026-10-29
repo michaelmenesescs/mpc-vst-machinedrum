@@ -87,6 +87,14 @@ namespace md::engine
 
 	MachineRunner::~MachineRunner() = default;
 
+	std::unique_ptr<MachineRunner> MachineRunner::clone() const
+	{
+		auto c = std::make_unique<MachineRunner>(m_os);
+		c->m_cpu->m_main = m_cpu->m_main;
+		c->m_cpu->m_sram = m_cpu->m_sram;
+		return c;
+	}
+
 	uint8_t MachineRunner::peek8(const uint32_t _a) const { const auto* p = m_cpu->ptr(_a, 1); return p ? *p : 0; }
 	uint16_t MachineRunner::peek16(const uint32_t _a) const { const auto* p = m_cpu->ptr(_a, 2); return p ? static_cast<uint16_t>(p[0] << 8 | p[1]) : 0; }
 	uint32_t MachineRunner::peek32(const uint32_t _a) const { return static_cast<uint32_t>(peek16(_a)) << 16 | peek16(_a + 2); }

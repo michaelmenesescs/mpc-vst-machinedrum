@@ -64,6 +64,12 @@ namespace md::engine
 			m_map[static_cast<size_t>(_voice)] = _group;
 		}
 
+		// JIT warm-up (VoiceEngine::warmUp) of every group, each on its own thread at once: each group is its own DSP with its
+		// own JIT, and a voice can move to any group (moveVoice), so every group runs the whole script with all 16 of its
+		// own slots. Call before the first renderBlock (or between blocks, from its thread). False if any group faulted.
+		using WarmBlock = VoiceEngine::WarmBlock;
+		bool warmUp(const std::vector<WarmBlock>& _blocks);
+
 		// Sample memory etc: written to every group (each has its own P memory).
 		void writeP(uint32_t _addr, const uint32_t* _words, size_t _count);
 		uint32_t readP(uint32_t _addr) const { return m_groups[0]->readP(_addr); }

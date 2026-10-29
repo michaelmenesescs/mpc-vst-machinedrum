@@ -31,6 +31,9 @@ namespace md::engine
 		explicit MachineRunner(std::vector<uint8_t> _osImage);	// decompressed section 0
 		~MachineRunner();
 
+		// A second OS with this one's memory as it is now (its own CPU): for calls that must leave this one untouched.
+		std::unique_ptr<MachineRunner> clone() const;
+
 		const std::vector<MachineInfo>& machines() const { return m_machines; }
 		const MachineInfo* machine(uint8_t _id) const;
 

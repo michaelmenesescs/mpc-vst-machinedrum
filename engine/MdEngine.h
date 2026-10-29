@@ -31,6 +31,7 @@ namespace md::engine
 	public:
 		static constexpr int kTracks = 16;
 		static constexpr int kBlock = 32;
+		static constexpr int kParamsWarm = 24;
 
 		// _osImage: the OS file's section 0 (the ColdFire OS), decompressed. Constructs TVoices with just the
 		// firmware (VoiceEngine's own constructor).
@@ -120,6 +121,61 @@ namespace md::engine
 		}
 
 		const std::string& fault() const { return m_voices->faultReason(); }
+
+		// The machines warmUpVoices runs by default: every audio machine (not MID/CTR) except RAM-R/RAM-P (they record and
+		// play the input), and the ROM machines only if their samples are loaded (_rom).
+		std::vector<uint8_t> warmableMachines(const bool _rom) const
+		{
+			std::vector<uint8_t> ids;
+			for(const auto& m : m_os->machines())
+			{
+				const bool rom = (m.id >= 128 && m.id < 160) || (m.id >= 176 && m.id < 192);
+				if(m.name.empty() || (m.id >= 0x60 && m.id <= 0x7b) || m.name.rfind("RAM", 0) == 0 || (rom && !_rom))
+					continue;
+				ids.push_back(m.id);
+			}
+			return ids;
+		}
+
+		// Warm-up adapted from c0remusic/MModule (MdEngine.h, EngineT::warmUpVoices, GPL-3.0). The voice DSP's JIT compiles
+		// a machine's code the first time a voice runs it, a block or more of DSP time at once: the startup and machine-change
+		// underruns. Here each machine of _machines plays a Hit at its default SYN1-8 for _blocks blocks, 16 machines at a
+		// time across the 16 voice slots, their words computed by a copy of the OS; every voice DSP (every group of a
+		// ParallelVoiceEngine) then gets its memory and registers back (VoiceEngine::saveState), so the engine sounds as if
+		// nothing had run. Call after the ROM samples are written, before the first render. Returns the machines run, or -1
+		// if a voice DSP faulted.
+		int warmUpVoices(const std::vector<uint8_t>& _machines, const int _blocks = 4)
+		{
+			using WarmBlock = typename TVoices::WarmBlock;
+			const auto os = m_os->clone();
+			std::vector<WarmBlock> script;
+			for(size_t first = 0; first < _machines.size(); first += kTracks)
+			{
+				for(int b = 0; b < _blocks; ++b)
+				{
+					WarmBlock blk{};
+					for(size_t v = 0; v < static_cast<size_t>(kTracks) && first + v < _machines.size(); ++v)
+					{
+						const auto* m = os->machine(_machines[first + v]);
+						if(!m)
+							continue;
+						std::array<uint16_t, kParamsWarm> params{};	// SYN1-8: the machine reads no other
+						for(size_t p = 0; p < 8; ++p)
+							params[p] = static_cast<uint16_t>(m->defaults[p] << 7);
+						uint32_t out[32];
+						const int n = os->compute(m->id, params.data(), out, 32, b == 0);
+						if(n < 0)
+							continue;
+						out[0] = b == 0 ? static_cast<uint32_t>(m->id) + 1 : 0;	// the trigger word, as HostModel::updateVoice
+						auto& slot = blk[v];
+						slot.count = std::clamp(n, 1, static_cast<int>(TVoices::kSlotWords));
+						std::copy(out, out + slot.count, slot.words.begin());
+					}
+					script.push_back(blk);
+				}
+			}
+			return m_voices->warmUp(script) ? static_cast<int>(_machines.size()) : -1;
+		}
 
 		bool skipSettled = true;	// false: run every track's effects every block (for verifying the skip)
 

@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "../tools/mdfw/Firmware.h"
 
@@ -45,6 +46,21 @@ namespace md::engine
 		void writeP(uint32_t _addr, const uint32_t* _words, size_t _count);
 		uint32_t readP(uint32_t _addr) const;
 
+		// The DSP's memory (P, X, Y), registers and this class's per-block bookkeeping, between two blocks. restoreState puts
+		// back exactly what saveState saw: the voice slots (in Y), every voice's state, the ROM samples. P goes back word by
+		// word through memWriteP only where it changed, so the JIT keeps every block it compiled for code that did not
+		// change: what warmUp is for. Call between blocks, never while renderBlock runs.
+		struct State;
+		std::shared_ptr<State> saveState();
+		void restoreState(const State& _state);
+
+		// JIT warm-up: run _blocks[b][voice] (word count 0 = leave that slot as it is) for each b on this DSP, then put its
+		// state back (saveState/restoreState). The DSP's JIT compiles the code it ran now rather than at a voice's first hit,
+		// and the engine then sounds as if nothing had run. Returns false on a DSP fault (the state is put back either way).
+		struct WarmSlot { std::array<uint32_t, kSlotWords> words{}; int count = 0; };
+		using WarmBlock = std::array<WarmSlot, kVoices>;
+		bool warmUp(const std::vector<WarmBlock>& _blocks);
+
 		uint64_t instructionsLastBlock() const { return m_lastInstructions; }
 		uint32_t voiceInstructions(int _voice) const { return m_voiceInstr[static_cast<size_t>(_voice)]; }	// DSP instructions the voice used in the last block
 		int activeVoicesLastBlock() const { return m_lastActive; }	// voices that rendered (flag 1) in the last block
@@ -67,5 +83,6 @@ namespace md::engine
 		int m_lastActive = 0;
 		std::array<uint32_t, kVoices> m_voiceInstr{};
 		std::string m_fault;
+		uint32_t m_maxProgramP = 0;	// highest P address reset() wrote through memWriteP (the JIT tracks up to there)
 	};
 }

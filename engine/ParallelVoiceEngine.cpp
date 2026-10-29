@@ -86,6 +86,21 @@ namespace md::engine
 			g->writeP(_addr, _words, _count);
 	}
 
+	bool ParallelVoiceEngine::warmUp(const std::vector<WarmBlock>& _blocks)
+	{
+		std::vector<std::thread> threads;
+		for(size_t g = 1; g < m_groups.size(); ++g)
+			threads.emplace_back([this, g, &_blocks] { m_ok[g] = m_groups[g]->warmUp(_blocks) ? 1 : 0; });
+		m_ok[0] = m_groups[0]->warmUp(_blocks) ? 1 : 0;
+		for(auto& t : threads)
+			t.join();
+		m_fault.clear();
+		for(size_t g = 0; g < m_groups.size(); ++g)
+			if(!m_ok[g] && m_fault.empty())
+				m_fault = m_groups[g]->faultReason();
+		return m_fault.empty() && std::all_of(m_ok.begin(), m_ok.end(), [](uint8_t _ok) { return _ok != 0; });
+	}
+
 	int ParallelVoiceEngine::activeVoicesLastBlock() const
 	{
 		int n = 0;
