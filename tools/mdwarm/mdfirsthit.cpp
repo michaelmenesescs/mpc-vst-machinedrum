@@ -16,6 +16,17 @@
 #include "Firmware.h"
 
 using Clock = std::chrono::steady_clock;
+
+// resident memory now, MB (Linux: /proc/self/statm; elsewhere 0)
+static double rssMb()
+{
+	FILE* f = fopen("/proc/self/statm", "r");
+	if(!f) return 0;
+	long pages = 0, res = 0;
+	const int n = fscanf(f, "%ld %ld", &pages, &res);
+	fclose(f);
+	return n == 2 ? res * 4096.0 / 1048576.0 : 0;
+}
 using Eng = md::engine::ParallelEngine;
 
 static bool loadRom(Eng& _e, const char* _path)
@@ -45,12 +56,27 @@ int main(int argc, char** argv)
 	Eng cold(fwv, std::vector<uint8_t>(c.sections.at(0).data), groups);
 	Eng warm(fwv, std::vector<uint8_t>(c.sections.at(0).data), groups);
 	const bool rom = argc > 2 && loadRom(cold, argv[2]) && loadRom(warm, argv[2]);
+	printf("rss: two engines built %.0f MB\n", rssMb());
 	const auto machines = warm.warmableMachines(rom);
+	if(getenv("MD_FH_RSSSTEP"))	// the warm-up one machine at a time, resident memory after each (where the JIT's memory goes)
+	{
+		double prev = rssMb();
+		printf("rss: start %.0f MB\n", prev);
+		for(const auto id : machines)
+		{
+			warm.warmUpVoices({id}, warmBlocks);
+			const double now = rssMb();
+			printf("rss: %-8s +%5.0f MB (%.0f MB)\n", warm.os().machine(id)->name.c_str(), now - prev, now);
+			prev = now;
+		}
+		return 0;
+	}
 	const auto t0 = Clock::now();
 	const int n = warm.warmUpVoices(machines, warmBlocks);
 	printf("warm-up: %d machines, %d groups, %d blocks each, %.0f ms\n", n, groups, warmBlocks,
 		std::chrono::duration<double, std::milli>(Clock::now() - t0).count());
 	if(n < 0) { printf("warm-up fault: %s\n", warm.fault().c_str()); return 1; }
+	printf("rss: after the warm-up %.0f MB\n", rssMb());
 
 	Eng::Output oc, ow;
 	auto same = [](const Eng::Output& _a, const Eng::Output& _b)
@@ -136,6 +162,7 @@ int main(int argc, char** argv)
 		}
 		printf("HIT %3d %-8s cold %7.0f us  warm %6.0f us  %s\n", m->id, m->name.c_str(), wc, ww, eq ? "identical" : "DIFFERENT");
 	}
+	printf("rss: after every machine's first hit on both %.0f MB\n", rssMb());
 	if(getenv("MD_FH_PARAMS"))
 	{
 		// Parameter-dependent code: every machine again with SYN1-8 all 0, all 127 and 3 random sets. Both engines have

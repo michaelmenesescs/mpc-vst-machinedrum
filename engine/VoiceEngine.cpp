@@ -363,7 +363,8 @@ namespace md::engine
 			if(a <= m_maxProgramP)
 			{
 				m_dsp->notifyProgramMemWrite(static_cast<TWord>(a));
-				m_dsp->getJit().notifyProgramMemWrite(static_cast<TWord>(a));
+				if constexpr(g_useJIT)
+					m_dsp->getJit().notifyProgramMemWrite(static_cast<TWord>(a));
 			}
 		}
 		std::copy(_state.x.begin(), _state.x.end(), m_mem->getMemAreaPtr(MemArea_X));
@@ -378,6 +379,8 @@ namespace md::engine
 		m_voiceInstr = _state.voiceInstr;
 		m_fault.clear();
 	}
+
+	bool VoiceEngine::hasJit() { return g_useJIT; }
 
 	bool VoiceEngine::warmUp(const std::vector<WarmBlock>& _blocks)
 	{

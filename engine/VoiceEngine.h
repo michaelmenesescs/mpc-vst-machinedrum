@@ -57,6 +57,7 @@ namespace md::engine
 		// JIT warm-up: run _blocks[b][voice] (word count 0 = leave that slot as it is) for each b on this DSP, then put its
 		// state back (saveState/restoreState). The DSP's JIT compiles the code it ran now rather than at a voice's first hit,
 		// and the engine then sounds as if nothing had run. Returns false on a DSP fault (the state is put back either way).
+		static bool hasJit();	// false: interpreter / statically recompiled blocks (32-bit ARM), where nothing compiles at a first hit
 		struct WarmSlot { std::array<uint32_t, kSlotWords> words{}; int count = 0; };
 		using WarmBlock = std::array<WarmSlot, kVoices>;
 		bool warmUp(const std::vector<WarmBlock>& _blocks);

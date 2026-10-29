@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <algorithm>
 #include <chrono>
+#include <sys/resource.h>
 #include <cstdint>
 #include <vector>
 #include "MdEngine.h"
@@ -69,6 +70,12 @@ static void run(E& eng, int argc, char** argv)
 	}
 	if(raw) fclose(raw);
 	printf("hash %016llx\n", (unsigned long long)hash);
+#ifdef __APPLE__
+	constexpr double kRssUnit = 1048576.0;	// ru_maxrss: bytes on macOS, KB on Linux
+#else
+	constexpr double kRssUnit = 1024.0;
+#endif
+	if(getenv("MD_RSS")) { rusage ru{}; getrusage(RUSAGE_SELF, &ru); printf("max rss %.0f MB\n", ru.ru_maxrss / kRssUnit); }
 	if(getenv("MD_BUDGET") || getenv("MD_RELEASE")) printf("budget %s release %s: max rendered voices %d, mean %.2f, released %u\n", getenv("MD_BUDGET") ? getenv("MD_BUDGET") : "-", getenv("MD_RELEASE") ? getenv("MD_RELEASE") : "-", maxActive, double(sumActive) / (nb ? nb : 1), h.silenceReleases());
 }
 int main(int argc, char** argv)

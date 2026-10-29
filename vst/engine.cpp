@@ -777,7 +777,7 @@ void Inst::run()
 				if(std::fscanf(wf, "%d", &v) == 1) warmBlocks = v;
 				std::fclose(wf);
 			}
-			if(warmBlocks > 0)
+			if(warmBlocks > 0 && md::engine::VoiceEngine::hasJit())	// Gen1 (32-bit ARM): no JIT, nothing to warm
 			{
 				const auto w0 = std::chrono::steady_clock::now();
 				const int n = eng.warmUpVoices(eng.warmableMachines(romAvail), std::min(warmBlocks, 256));
