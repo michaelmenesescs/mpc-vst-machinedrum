@@ -50,6 +50,9 @@ namespace md::engine
 		// summed over blocks; reset by the caller.
 		bool timingOn = false;
 		std::vector<double> groupUs, groupVoices;
+		// and per group its slowest block since the caller last reset them: wall time, the group thread's own CPU time over it
+		// (a compile burns CPU, a preemption does not) and the DSP instructions it ran (a busy block runs many)
+		std::vector<double> groupWorstUs, groupWorstCpuUs, groupWorstInstr;
 		int groupCount() const { return static_cast<int>(m_groups.size()); }
 		int groupOf(int _voice) const { return m_map[static_cast<size_t>(_voice)]; }
 

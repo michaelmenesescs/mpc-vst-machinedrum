@@ -120,6 +120,7 @@ std::vector<int> rankCores()
 }
 
 constexpr int kDefaultGroups = 3;	// DSP2 instances (voice threads); 1 = single thread. 3 on the Force (4 cores) since the groups are cost-balanced: each ~40% lighter than with 2 (HANDOFF 2026-09-30)
+constexpr int kWarmBlocks = 32;	// JIT warm-up: blocks each machine plays at load (0 = off; MD_WARM / /tmp/md-warm override). 4 left TRX BD's later code cold (md-firsthit)
 constexpr int kFrames = 128;					// the host's block size
 constexpr int kInner = kFrames / Engine::kBlock;	// 32-sample engine blocks per host block
 constexpr int kRing = 5, kAheadDefault = 3;	// blocks rendered ahead: 3 (8.7 ms) rides out the 7-8 ms stalls seen on the Force with 2 voice threads (2 = 5.8 ms glitched on a busy E12 kit); /tmp/md-ahead overrides
@@ -763,6 +764,28 @@ void Inst::run()
 			for(int k = 0; k < 48; ++k)
 				romSlot[k] = eng.voices().readP(kRomDirectory + 4 * static_cast<uint32_t>(k) + 1) != 0;	// its length
 		}
+		// JIT warm-up (EngineT::warmUpVoices, adapted from c0remusic/MModule): every machine the plugin offers (the ROM ones once
+		// their samples are in) plays at its defaults on every voice group's DSP now, so the JIT compiles its code here rather
+		// than at its first hit on the audio path (10-50 ms in one block: the startup and machine-change underruns). Each DSP's
+		// memory and registers then go back as they were: the engine sounds exactly as without it (md-hash, md-firsthit).
+		{
+			int warmBlocks = kWarmBlocks;
+			if(const char* e = std::getenv("MD_WARM")) warmBlocks = std::atoi(e);
+			if(std::FILE* wf = std::fopen("/tmp/md-warm", "r"))	// A/B on the device: echo 0 > /tmp/md-warm, re-insert the plugin
+			{
+				int v = 0;
+				if(std::fscanf(wf, "%d", &v) == 1) warmBlocks = v;
+				std::fclose(wf);
+			}
+			if(warmBlocks > 0)
+			{
+				const auto w0 = std::chrono::steady_clock::now();
+				const int n = eng.warmUpVoices(eng.warmableMachines(romAvail), std::min(warmBlocks, 256));
+				const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - w0).count();
+				if(n < 0) std::fprintf(stderr, "[machinedrum] JIT warm-up: DSP fault (%s), state restored, %.0f ms\n", eng.fault().c_str(), ms);
+				else std::fprintf(stderr, "[machinedrum] JIT warm-up: %d machines x %d groups, %d blocks each, %.0f ms\n", n, eng.voices().groupCount(), warmBlocks, ms);
+			}
+		}
 		for(const auto& m : eng.os().machines())
 		{
 			machines.valid[m.id] = true;
@@ -1053,8 +1076,9 @@ void Inst::run()
 						std::fprintf(f, "  groups:");
 						for(int g = 0; g < vg.groupCount(); ++g)
 						{
-							std::fprintf(f, " g%d_us=%.0f g%d_voices=%.2f", g, vg.groupUs[g] / std::max(1, nUs), g, vg.groupVoices[g] / std::max(1, nUs));
-							vg.groupUs[g] = vg.groupVoices[g] = 0;
+							std::fprintf(f, " g%d_us=%.0f g%d_voices=%.2f g%d_worst_us=%.0f/cpu=%.0f/instr=%.0f", g, vg.groupUs[g] / std::max(1, nUs), g, vg.groupVoices[g] / std::max(1, nUs),
+								g, vg.groupWorstUs[g], vg.groupWorstCpuUs[g], vg.groupWorstInstr[g]);
+							vg.groupUs[g] = vg.groupVoices[g] = vg.groupWorstUs[g] = vg.groupWorstCpuUs[g] = vg.groupWorstInstr[g] = 0;
 						}
 						std::fprintf(f, "\n");
 						std::fclose(f);

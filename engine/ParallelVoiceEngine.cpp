@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <ctime>
 
 namespace md::engine
 {
@@ -16,6 +17,9 @@ namespace md::engine
 		m_ok.assign(static_cast<size_t>(n), 0);
 		groupUs.assign(static_cast<size_t>(n), 0.0);
 		groupVoices.assign(static_cast<size_t>(n), 0.0);
+		groupWorstUs.assign(static_cast<size_t>(n), 0.0);
+		groupWorstCpuUs.assign(static_cast<size_t>(n), 0.0);
+		groupWorstInstr.assign(static_cast<size_t>(n), 0.0);
 		for(size_t g = 1; g < static_cast<size_t>(n); ++g)
 			m_workers.emplace_back([this, g] { workerMain(g); });
 	}
@@ -33,13 +37,22 @@ namespace md::engine
 
 	void ParallelVoiceEngine::runGroup(const size_t _g)
 	{
+		auto cpuUs = [] { timespec ts{}; clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts); return ts.tv_sec * 1e6 + ts.tv_nsec / 1e3; };
+		const double c0 = timingOn ? cpuUs() : 0;
 		const auto t0 = timingOn ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
 		m_ok[_g] = m_groups[_g]->renderBlock(m_groupOut[_g]) ? 1 : 0;
 		if(m_ok[_g] && m_post)
 			m_post(static_cast<int>(_g), m_groupOut[_g]);
 		if(timingOn)
 		{
-			groupUs[_g] += std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - t0).count();
+			const double us = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - t0).count();
+			groupUs[_g] += us;
+			if(us > groupWorstUs[_g])
+			{
+				groupWorstUs[_g] = us;
+				groupWorstCpuUs[_g] = cpuUs() - c0;
+				groupWorstInstr[_g] = static_cast<double>(m_groups[_g]->instructionsLastBlock());
+			}
 			groupVoices[_g] += m_groups[_g]->activeVoicesLastBlock();
 		}
 	}

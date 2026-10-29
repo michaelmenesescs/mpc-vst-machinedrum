@@ -172,6 +172,7 @@ int main(int argc, char** argv)
 			if(*q) ++q;
 		}
 	const int blocks = secs * 44100 / 128;
+	bool heard = false;	// time to first audio: the first non-zero sample, from create()
 	for(int b = 0; b < blocks; ++b)
 	{
 		if(churn)
@@ -197,6 +198,11 @@ int main(int argc, char** argv)
 			if(b % 6 == 3) e->midi(in, hat, 3);
 		}
 		e->render(in, out, 128);
+		if(!heard && std::any_of(out, out + 128 * 2, [](int16_t v) { return v != 0; }))
+		{
+			heard = true;
+			printf("first audio after %.0f ms (block %d)\n", std::chrono::duration<double, std::milli>(Clock::now() - t0).count(), b);
+		}
 		for(int i = 0; i < 128 * 2; ++i)
 		{
 			if(std::abs(out[i]) > peak) peak = std::abs(out[i]);
